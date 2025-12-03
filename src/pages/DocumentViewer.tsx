@@ -14,7 +14,6 @@ import {
   Share2,
   FolderPlus,
   Tag,
-  RefreshCw,
   ZoomIn,
   ZoomOut,
   RotateCw,
@@ -42,6 +41,7 @@ import {
   Plus,
   Check
 } from "lucide-react";
+import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 
 // Document metadata
 const documentData = {
@@ -446,10 +446,6 @@ const DocumentViewer = () => {
                   <Tag className="h-4 w-4 mr-3" />
                   Adicionar Tag
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-3" />
-                  Reclassificar
-                </Button>
               </CardContent>
             </Card>
 
@@ -494,6 +490,14 @@ const DocumentViewer = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Classification Panel */}
+            <ClassificationPanel 
+              documentId={documentData.id}
+              currentClassification="500.10.01"
+              compact={true}
+              onClassificationSaved={(code) => console.log("Classification saved:", code)}
+            />
 
             {/* Document Status */}
             <Card>
