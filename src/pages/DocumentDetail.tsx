@@ -178,10 +178,12 @@ const DocumentDetail = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Visualizar
-                  </Button>
+                  <Link to={`/documents/${documentInfo.entryNumber}/view`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Visualizar
+                    </Button>
+                  </Link>
                   <Button variant="outline" size="sm">
                     <Download className="h-4 w-4 mr-2" />
                     Baixar
