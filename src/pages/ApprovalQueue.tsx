@@ -116,14 +116,14 @@ const ApprovalQueue = () => {
         {/* Stats */}
         <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
-            <Card key={i} variant="stat">
+            <Card key={i} variant="stat" className="p-5">
               <div className="flex items-center gap-4">
-                <div className={`h-12 w-12 rounded-lg bg-muted flex items-center justify-center ${stat.color}`}>
-                  <stat.icon className="h-6 w-6" aria-hidden="true" />
+                <div className={`h-11 w-11 rounded-xl bg-muted/80 flex items-center justify-center ${stat.color}`}>
+                  <stat.icon className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
               </div>
             </Card>
