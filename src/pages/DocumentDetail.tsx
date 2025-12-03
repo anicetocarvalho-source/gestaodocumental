@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,10 +30,12 @@ import {
   ChevronRight,
   Eye,
   Trash2,
-  Plus
+  Plus,
+  FileSignature
 } from "lucide-react";
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
+import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
 
 // Document metadata
 const documentInfo = {
@@ -132,6 +135,9 @@ const auditLog = [
 ];
 
 const DocumentDetail = () => {
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [documentSigned, setDocumentSigned] = useState(false);
+
   const getStageIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -141,6 +147,11 @@ const DocumentDetail = () => {
       default:
         return <Circle className="h-5 w-5 text-muted-foreground" />;
     }
+  };
+
+  const handleSignDocument = (signatureData: SignatureData) => {
+    console.log("Documento assinado:", signatureData);
+    setDocumentSigned(true);
   };
 
   return (
@@ -437,6 +448,14 @@ const DocumentDetail = () => {
                 <Forward className="h-4 w-4 mr-3" />
                 Despachar
               </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant={documentSigned ? "success" : "outline"}
+                onClick={() => setSignatureModalOpen(true)}
+              >
+                <FileSignature className="h-4 w-4 mr-3" />
+                {documentSigned ? "Documento Assinado" : "Assinar Documento"}
+              </Button>
               <Button className="w-full justify-start" variant="outline">
                 <UserPlus className="h-4 w-4 mr-3" />
                 Reatribuir
@@ -533,6 +552,15 @@ const DocumentDetail = () => {
           </Card>
         </div>
       </div>
+
+      {/* Signature Modal */}
+      <DocumentSignatureModal
+        open={signatureModalOpen}
+        onOpenChange={setSignatureModalOpen}
+        documentTitle={documentInfo.title}
+        documentId={documentInfo.entryNumber}
+        onSign={handleSignDocument}
+      />
     </DashboardLayout>
   );
 };
