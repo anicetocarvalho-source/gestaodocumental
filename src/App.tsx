@@ -34,6 +34,7 @@ import SLAConfiguration from "./pages/SLAConfiguration";
 import WorkflowVisualization from "./pages/WorkflowVisualization";
 import DocumentIntelligence from "./pages/DocumentIntelligence";
 import IntelligentSearch from "./pages/IntelligentSearch";
+import ProcedureGuide from "./pages/ProcedureGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => (
           <Route path="/workflow-visualization" element={<WorkflowVisualization />} />
           <Route path="/document-intelligence" element={<DocumentIntelligence />} />
           <Route path="/intelligent-search" element={<IntelligentSearch />} />
+          <Route path="/procedure-guide" element={<ProcedureGuide />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

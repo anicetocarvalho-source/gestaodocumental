@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.intelligent-search]
 verify_jwt = false
+
+[functions.procedure-guide]
+verify_jwt = false
