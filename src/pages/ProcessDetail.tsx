@@ -1,93 +1,235 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
-import { AuditLogReference } from "@/components/common/AuditLogReference";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ChevronRight, 
   Clock, 
-  Users, 
   Calendar,
   FileText,
   Download,
-  Plus,
   CheckCircle,
   Circle,
   ArrowRight,
   MessageSquare,
+  Building2,
+  AlertTriangle,
+  Send,
+  Forward,
+  FileOutput,
+  ThumbsUp,
+  ThumbsDown,
+  XCircle,
+  Eye,
+  Trash2,
+  Plus,
+  History,
+  ChevronRight,
+  User,
   Paperclip
 } from "lucide-react";
 
+// Process data
 const processData = {
-  name: "Budget Approval Workflow",
-  description: "Annual budget review and approval process for fiscal year 2025",
-  status: "active",
-  priority: "high",
-  progress: 60,
-  deadline: "Dec 15, 2024",
-  created: "Nov 1, 2024",
-  department: "Finance",
+  number: "PROC-2024-0001",
+  subject: "Licitação - Aquisição de Equipamentos de TI",
+  description: "Processo de licitação para aquisição de computadores e periféricos para modernização do parque tecnológico.",
+  status: "em_andamento",
+  priority: "alta",
+  deadline: "20 Dez 2024",
+  created: "15 Nov 2024",
+  requester: "Maria Silva",
+  currentUnit: "Setor de Compras",
+  type: "Licitação",
+  slaRemaining: 15,
 };
 
-const stages = [
-  { name: "Initiation", status: "completed", date: "Nov 1, 2024" },
-  { name: "Department Review", status: "completed", date: "Nov 15, 2024" },
-  { name: "Finance Review", status: "current", date: "In Progress" },
-  { name: "Executive Approval", status: "pending", date: "Pending" },
-  { name: "Final Sign-off", status: "pending", date: "Pending" },
+// Workflow stages with visual nodes
+const workflowStages = [
+  { 
+    id: 1, 
+    name: "Abertura", 
+    status: "completed",
+    date: "15 Nov 2024",
+    user: "Maria Silva",
+    unit: "Gabinete",
+    duration: "1 dia"
+  },
+  { 
+    id: 2, 
+    name: "Análise Técnica", 
+    status: "completed",
+    date: "18 Nov 2024",
+    user: "Carlos Mendes",
+    unit: "Setor Técnico",
+    duration: "3 dias"
+  },
+  { 
+    id: 3, 
+    name: "Parecer Jurídico", 
+    status: "completed",
+    date: "22 Nov 2024",
+    user: "Ana Costa",
+    unit: "Procuradoria",
+    duration: "4 dias"
+  },
+  { 
+    id: 4, 
+    name: "Aprovação", 
+    status: "current",
+    date: "Em andamento",
+    user: "João Santos",
+    unit: "Setor de Compras",
+    duration: "-"
+  },
+  { 
+    id: 5, 
+    name: "Publicação", 
+    status: "pending",
+    date: "Pendente",
+    user: null,
+    unit: "Comunicação",
+    duration: "-"
+  },
+  { 
+    id: 6, 
+    name: "Encerramento", 
+    status: "pending",
+    date: "Pendente",
+    user: null,
+    unit: "Arquivo",
+    duration: "-"
+  },
 ];
 
-const tasks = [
-  { id: 1, title: "Review budget allocations", description: "Verify all department budget requests", assignee: "Sarah Johnson", status: "completed" },
-  { id: 2, title: "Validate expense projections", description: "Cross-reference with historical data", assignee: "Michael Chen", status: "completed" },
-  { id: 3, title: "Compliance check", description: "Ensure regulatory compliance", assignee: "Emma Wilson", status: "in-progress" },
-  { id: 4, title: "Risk assessment", description: "Identify potential budget risks", assignee: "David Brown", status: "pending" },
-  { id: 5, title: "Final recommendations", description: "Prepare summary report", assignee: "Lisa Anderson", status: "pending" },
-];
-
+// Attached documents
 const documents = [
-  { name: "Budget Request Form.pdf", size: "1.2 MB", type: "PDF" },
-  { name: "Department Allocations.xlsx", size: "856 KB", type: "XLSX" },
-  { name: "Historical Analysis.pdf", size: "2.4 MB", type: "PDF" },
-  { name: "Compliance Report.docx", size: "445 KB", type: "DOCX" },
+  { id: 1, name: "Termo de Referência.pdf", size: "2.4 MB", type: "PDF", date: "15 Nov 2024", author: "Maria Silva" },
+  { id: 2, name: "Planilha de Custos.xlsx", size: "856 KB", type: "XLSX", date: "16 Nov 2024", author: "Carlos Mendes" },
+  { id: 3, name: "Parecer Técnico.pdf", size: "1.2 MB", type: "PDF", date: "18 Nov 2024", author: "Carlos Mendes" },
+  { id: 4, name: "Parecer Jurídico.pdf", size: "945 KB", type: "PDF", date: "22 Nov 2024", author: "Ana Costa" },
+  { id: 5, name: "Minuta do Edital.docx", size: "445 KB", type: "DOCX", date: "25 Nov 2024", author: "João Santos" },
 ];
 
-const activity = [
-  { user: "Sarah Johnson", action: "completed task 'Review budget allocations'", time: "2 hours ago" },
-  { user: "Michael Chen", action: "uploaded 'Department Allocations.xlsx'", time: "4 hours ago" },
-  { user: "Emma Wilson", action: "started task 'Compliance check'", time: "1 day ago" },
-  { user: "System", action: "moved to stage 'Finance Review'", time: "2 days ago" },
-  { user: "David Brown", action: "added comment on budget projections", time: "3 days ago" },
+// Pareceres e despachos
+const pareceres = [
+  {
+    id: 1,
+    type: "Parecer Técnico",
+    number: "PAR-TEC-2024-0089",
+    date: "18 Nov 2024",
+    author: "Carlos Mendes",
+    unit: "Setor Técnico",
+    summary: "Parecer favorável à aquisição dos equipamentos conforme especificações técnicas apresentadas no Termo de Referência.",
+    status: "favoravel"
+  },
+  {
+    id: 2,
+    type: "Parecer Jurídico",
+    number: "PAR-JUR-2024-0156",
+    date: "22 Nov 2024",
+    author: "Ana Costa",
+    unit: "Procuradoria",
+    summary: "Processo em conformidade com a legislação vigente. Autorizada a continuidade do processo licitatório.",
+    status: "favoravel"
+  },
+  {
+    id: 3,
+    type: "Despacho",
+    number: "DESP-2024-0234",
+    date: "25 Nov 2024",
+    author: "João Santos",
+    unit: "Setor de Compras",
+    summary: "Encaminho para aprovação da autoridade competente conforme pareceres técnico e jurídico favoráveis.",
+    status: "encaminhado"
+  },
 ];
 
-const assignees = [
-  { name: "Sarah Johnson", role: "Finance Director", avatar: "SJ" },
-  { name: "Michael Chen", role: "Budget Analyst", avatar: "MC" },
-  { name: "Emma Wilson", role: "Compliance Officer", avatar: "EW" },
-  { name: "David Brown", role: "Risk Manager", avatar: "DB" },
+// Comentários internos
+const comentarios = [
+  {
+    id: 1,
+    author: "João Santos",
+    avatar: "JS",
+    date: "01 Dez 2024, 14:30",
+    text: "Aguardando retorno da Secretaria de Administração para validação do orçamento disponível.",
+    isInternal: true
+  },
+  {
+    id: 2,
+    author: "Ana Costa",
+    avatar: "AC",
+    date: "28 Nov 2024, 10:15",
+    text: "Recomendo atenção especial aos prazos de publicação conforme Lei 14.133/2021.",
+    isInternal: true
+  },
+  {
+    id: 3,
+    author: "Carlos Mendes",
+    avatar: "CM",
+    date: "20 Nov 2024, 09:00",
+    text: "Especificações técnicas validadas. Valores dentro da média de mercado.",
+    isInternal: false
+  },
 ];
+
+// Audit log
+const auditLog = [
+  { action: "Visualização do processo", user: "João Santos", date: "01 Dez 2024, 14:35", ip: "192.168.1.45" },
+  { action: "Comentário adicionado", user: "João Santos", date: "01 Dez 2024, 14:30", ip: "192.168.1.45" },
+  { action: "Despacho emitido", user: "João Santos", date: "25 Nov 2024, 16:00", ip: "192.168.1.45" },
+  { action: "Parecer jurídico anexado", user: "Ana Costa", date: "22 Nov 2024, 11:30", ip: "192.168.1.22" },
+  { action: "Processo tramitado", user: "Carlos Mendes", date: "18 Nov 2024, 15:00", ip: "192.168.1.33" },
+  { action: "Parecer técnico anexado", user: "Carlos Mendes", date: "18 Nov 2024, 14:45", ip: "192.168.1.33" },
+  { action: "Documento anexado", user: "Maria Silva", date: "15 Nov 2024, 10:00", ip: "192.168.1.10" },
+  { action: "Processo criado", user: "Maria Silva", date: "15 Nov 2024, 09:30", ip: "192.168.1.10" },
+];
+
+const statusConfig = {
+  em_andamento: { label: "Em Andamento", variant: "info" as const },
+  concluido: { label: "Concluído", variant: "success" as const },
+  urgente: { label: "Urgente", variant: "warning" as const },
+  atrasado: { label: "Atrasado", variant: "error" as const },
+  suspenso: { label: "Suspenso", variant: "secondary" as const },
+};
+
+const priorityConfig = {
+  alta: { label: "Alta", variant: "error" as const },
+  média: { label: "Média", variant: "warning" as const },
+  baixa: { label: "Baixa", variant: "info" as const },
+};
 
 const ProcessDetail = () => {
-  const navigate = useNavigate();
-  
-  const handleAdvanceStage = () => {
-    // Navigate to approvals for workflow action
-    navigate("/approvals");
+  const [activeTab, setActiveTab] = useState("workflow");
+  const status = statusConfig[processData.status as keyof typeof statusConfig];
+  const priority = priorityConfig[processData.priority as keyof typeof priorityConfig];
+
+  const getStageIcon = (stageStatus: string) => {
+    switch (stageStatus) {
+      case "completed":
+        return <CheckCircle className="h-6 w-6 text-success" />;
+      case "current":
+        return <Clock className="h-6 w-6 text-warning" />;
+      default:
+        return <Circle className="h-6 w-6 text-muted-foreground" />;
+    }
   };
 
   return (
     <DashboardLayout 
-      title="Process Detail" 
-      subtitle="Manage workflow stages and tasks"
+      title="Detalhes do Processo" 
+      subtitle="Gerenciar e acompanhar processo"
     >
       <PageBreadcrumb 
         items={[
-          { label: "Processes", href: "/processes" },
-          { label: processData.name }
+          { label: "Processos", href: "/processes" },
+          { label: processData.number }
         ]} 
       />
 
@@ -95,288 +237,474 @@ const ProcessDetail = () => {
         {/* Process Header */}
         <Card className="lg:col-span-12">
           <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-semibold text-foreground">{processData.name}</h1>
-                  <Badge variant="error">{processData.priority}</Badge>
-                  <div className="flex items-center gap-1 text-info">
-                    <Clock className="h-4 w-4" aria-hidden="true" />
-                    <span className="text-sm">Active</span>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground max-w-2xl">{processData.description}</p>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-2">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" aria-hidden="true" />
-                    <span>Created: {processData.created}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" aria-hidden="true" />
-                    <span>Due: {processData.deadline}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" aria-hidden="true" />
-                    <span>{processData.department}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline">
-                  <MessageSquare className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Comment
-                </Button>
-                <Button onClick={handleAdvanceStage}>
-                  <ArrowRight className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Advance Stage
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stage Progress */}
-        <Card className="lg:col-span-12">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Workflow Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Stage Stepper */}
-            <div className="relative">
-              <div className="flex items-center justify-between">
-                {stages.map((stage, i) => (
-                  <div key={i} className="flex flex-col items-center relative z-10">
-                    <div 
-                      className={`h-10 w-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                        stage.status === 'completed' 
-                          ? 'bg-success border-success text-success-foreground' 
-                          : stage.status === 'current'
-                            ? 'bg-info border-info text-info-foreground'
-                            : 'bg-muted border-border text-muted-foreground'
-                      }`}
-                      aria-label={`${stage.name}: ${stage.status}`}
-                    >
-                      {stage.status === 'completed' ? (
-                        <CheckCircle className="h-5 w-5" />
-                      ) : stage.status === 'current' ? (
-                        <Circle className="h-5 w-5 fill-current" />
-                      ) : (
-                        <Circle className="h-5 w-5" />
-                      )}
-                    </div>
-                    <span className={`text-xs mt-2 font-medium text-center max-w-[80px] ${
-                      stage.status === 'completed' || stage.status === 'current' 
-                        ? 'text-foreground' 
-                        : 'text-muted-foreground'
-                    }`}>
-                      {stage.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground mt-1">{stage.date}</span>
-                  </div>
-                ))}
-              </div>
-              {/* Progress Line */}
-              <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -z-0">
-                <div 
-                  className="h-full bg-success transition-all" 
-                  style={{ width: `${(stages.filter(s => s.status === 'completed').length / (stages.length - 1)) * 100}%` }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main Content - 8 columns */}
-        <div className="lg:col-span-8 space-y-4">
-          {/* Current Stage Tasks */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">Current Tasks</CardTitle>
-                  <Badge variant="info">Finance Review</Badge>
-                </div>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Add Task
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {tasks.map((task) => (
-                <div 
-                  key={task.id} 
-                  className="flex items-start gap-4 p-4 border border-border rounded-lg hover:border-border-strong transition-colors"
-                >
-                  <Checkbox 
-                    checked={task.status === 'completed'} 
-                    aria-label={`Mark "${task.title}" as complete`}
-                  />
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <p className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                      {task.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{task.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">
-                      {task.assignee.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">{task.assignee.split(' ')[0]}</span>
-                  </div>
-                  <Badge 
-                    variant={task.status === 'completed' ? 'approved' : task.status === 'in-progress' ? 'in-progress' : 'draft'}
-                    className="shrink-0"
-                  >
-                    {task.status.replace('-', ' ')}
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-sm">
+                    {processData.number}
                   </Badge>
+                  <Badge variant={status.variant}>{status.label}</Badge>
+                  <Badge variant={priority.variant}>{priority.label}</Badge>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Attached Documents */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Attached Documents</CardTitle>
-                <Button variant="outline" size="sm">
-                  <Paperclip className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Attach File
-                </Button>
+                <h1 className="text-xl font-semibold text-foreground">{processData.subject}</h1>
+                <p className="text-sm text-muted-foreground max-w-3xl">{processData.description}</p>
+                
+                {/* Key Info Row */}
+                <div className="flex flex-wrap items-center gap-6 pt-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Prazo:</span>
+                    <span className="font-medium">{processData.deadline}</span>
+                    <Badge variant={processData.slaRemaining > 10 ? "success" : processData.slaRemaining > 3 ? "warning" : "error"} className="text-xs">
+                      {processData.slaRemaining} dias
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Unidade:</span>
+                    <span className="font-medium">{processData.currentUnit}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Responsável:</span>
+                    <span className="font-medium">{processData.requester}</span>
+                  </div>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {documents.map((doc, i) => (
-                  <div 
-                    key={i} 
-                    className="flex items-center gap-3 p-3 border border-border rounded-lg hover:border-border-strong transition-colors cursor-pointer"
-                  >
-                    <div className="h-10 w-10 bg-primary-muted rounded-lg flex items-center justify-center shrink-0">
-                      <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                      <p className="text-xs text-muted-foreground">{doc.size}</p>
-                    </div>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Download ${doc.name}`}>
-                      <Download className="h-4 w-4" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Content with Tabs - 9 columns */}
+        <div className="lg:col-span-9">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="workflow" className="text-xs sm:text-sm">
+                Workflow
+              </TabsTrigger>
+              <TabsTrigger value="documentos" className="text-xs sm:text-sm">
+                Documentos
+              </TabsTrigger>
+              <TabsTrigger value="pareceres" className="text-xs sm:text-sm">
+                Pareceres
+              </TabsTrigger>
+              <TabsTrigger value="comentarios" className="text-xs sm:text-sm">
+                Comentários
+              </TabsTrigger>
+              <TabsTrigger value="auditoria" className="text-xs sm:text-sm">
+                Auditoria
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tab 1: Workflow Visual */}
+            <TabsContent value="workflow" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ArrowRight className="h-4 w-4" />
+                    Fluxo do Processo
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Workflow Visual */}
+                  <div className="relative py-4">
+                    {workflowStages.map((stage, index) => (
+                      <div key={stage.id} className="flex items-start gap-4 mb-6 last:mb-0">
+                        {/* Node */}
+                        <div className="relative flex flex-col items-center">
+                          <div className={`h-12 w-12 rounded-full flex items-center justify-center border-2 ${
+                            stage.status === "completed" 
+                              ? "border-success bg-success-muted" 
+                              : stage.status === "current"
+                              ? "border-warning bg-warning-muted"
+                              : "border-border bg-muted"
+                          }`}>
+                            {getStageIcon(stage.status)}
+                          </div>
+                          {/* Connector line */}
+                          {index < workflowStages.length - 1 && (
+                            <div className={`w-0.5 h-10 mt-2 ${
+                              stage.status === "completed" ? "bg-success" : "bg-border"
+                            }`} />
+                          )}
+                        </div>
+                        
+                        {/* Stage Info */}
+                        <div className={`flex-1 p-4 rounded-lg border ${
+                          stage.status === "current" 
+                            ? "border-warning bg-warning-muted/30" 
+                            : "border-border"
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">{stage.name}</h4>
+                                {stage.status === "current" && (
+                                  <Badge variant="warning" className="text-xs">Atual</Badge>
+                                )}
+                                {stage.status === "completed" && (
+                                  <Badge variant="success" className="text-xs">Concluído</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Unidade: {stage.unit}
+                              </p>
+                            </div>
+                            <div className="text-right text-sm">
+                              <p className="text-muted-foreground">{stage.date}</p>
+                              {stage.user && (
+                                <p className="font-medium">{stage.user}</p>
+                              )}
+                            </div>
+                          </div>
+                          {stage.duration !== "-" && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Duração: {stage.duration}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab 2: Documentos Anexos */}
+            <TabsContent value="documentos" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Documentos Anexos
+                    </CardTitle>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Anexar Documento
                     </Button>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {documents.map((doc) => (
+                      <div 
+                        key={doc.id}
+                        className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 bg-primary-muted rounded-lg flex items-center justify-center">
+                            <FileText className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{doc.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {doc.type} • {doc.size} • {doc.date} • {doc.author}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon-sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon-sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon-sm">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Activity Log */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Activity Log</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative space-y-4">
-                <div className="absolute left-4 top-2 bottom-2 w-px bg-border" aria-hidden="true" />
-                {activity.map((item, i) => (
-                  <div key={i} className="flex gap-4 pl-2 relative">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 z-10">
-                      {item.user === 'System' ? '⚙️' : item.user.split(' ').map(n => n[0]).join('')}
+            {/* Tab 3: Pareceres e Despachos */}
+            <TabsContent value="pareceres" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileOutput className="h-4 w-4" />
+                      Pareceres e Despachos
+                    </CardTitle>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Parecer
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {pareceres.map((parecer) => (
+                      <div 
+                        key={parecer.id}
+                        className="p-4 rounded-lg border border-border"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={parecer.type === "Despacho" ? "info" : "secondary"}>
+                                {parecer.type}
+                              </Badge>
+                              <span className="font-mono text-sm text-muted-foreground">
+                                {parecer.number}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {parecer.author} • {parecer.unit} • {parecer.date}
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={parecer.status === "favoravel" ? "success" : "info"}
+                            className="capitalize"
+                          >
+                            {parecer.status === "favoravel" ? "Favorável" : "Encaminhado"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                          {parecer.summary}
+                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Completo
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4 mr-2" />
+                            Baixar PDF
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab 4: Comentários Internos */}
+            <TabsContent value="comentarios" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Comentários Internos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {comentarios.map((comment) => (
+                    <div 
+                      key={comment.id}
+                      className={`flex gap-3 p-4 rounded-lg ${
+                        comment.isInternal ? "bg-warning-muted/30 border border-warning/20" : "bg-muted/30"
+                      }`}
+                    >
+                      <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium shrink-0">
+                        {comment.avatar}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{comment.author}</span>
+                          {comment.isInternal && (
+                            <Badge variant="warning" className="text-xs">Interno</Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">{comment.date}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{comment.text}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 space-y-0.5 pt-1">
-                      <p className="text-sm">
-                        <span className="font-medium text-foreground">{item.user}</span>
-                        {' '}
-                        <span className="text-muted-foreground">{item.action}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">{item.time}</p>
+                  ))}
+
+                  <Separator />
+
+                  {/* Add Comment */}
+                  <div className="space-y-3">
+                    <Textarea 
+                      placeholder="Adicionar comentário..." 
+                      className="min-h-[80px]"
+                    />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" id="internal" className="rounded" />
+                        <label htmlFor="internal" className="text-sm text-muted-foreground">
+                          Marcar como nota interna
+                        </label>
+                      </div>
+                      <Button size="sm">
+                        <Send className="h-4 w-4 mr-2" />
+                        Enviar
+                      </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab 5: Audit Log */}
+            <TabsContent value="auditoria" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      Registro de Auditoria
+                    </CardTitle>
+                    <Link to="/audit-logs">
+                      <Button variant="link" size="sm" className="text-xs">
+                        Ver completo
+                        <ChevronRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1">
+                    {auditLog.map((entry, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center justify-between py-3 border-b border-border last:border-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                          <div>
+                            <p className="text-sm font-medium">{entry.action}</p>
+                            <p className="text-xs text-muted-foreground">{entry.user}</p>
+                          </div>
+                        </div>
+                        <div className="text-right text-xs text-muted-foreground">
+                          <p>{entry.date}</p>
+                          <p className="font-mono">{entry.ip}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
 
-        {/* Sidebar - 4 columns */}
-        <div className="lg:col-span-4 space-y-4">
+        {/* Sidebar - Actions - 3 columns */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Primary Actions */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Ações</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button className="w-full justify-start" variant="default">
+                <Send className="h-4 w-4 mr-3" />
+                Enviar
+              </Button>
+              <Button className="w-full justify-start" variant="outline">
+                <Forward className="h-4 w-4 mr-3" />
+                Reencaminhar
+              </Button>
+              <Button className="w-full justify-start" variant="outline">
+                <FileOutput className="h-4 w-4 mr-3" />
+                Despachar
+              </Button>
+              <Separator className="my-3" />
+              <Button className="w-full justify-start" variant="success">
+                <ThumbsUp className="h-4 w-4 mr-3" />
+                Aprovar
+              </Button>
+              <Button className="w-full justify-start" variant="destructive">
+                <ThumbsDown className="h-4 w-4 mr-3" />
+                Rejeitar
+              </Button>
+              <Separator className="my-3" />
+              <Button className="w-full justify-start" variant="outline">
+                <XCircle className="h-4 w-4 mr-3" />
+                Encerrar
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Process Info */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Process Details</CardTitle>
+              <CardTitle className="text-base">Informações</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium">{processData.progress}%</span>
-                </div>
-                <Progress value={processData.progress} size="sm" />
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Tipo</span>
+                <span className="font-medium">{processData.type}</span>
               </div>
-              {[
-                { label: "Status", value: "In Progress" },
-                { label: "Priority", value: processData.priority },
-                { label: "Department", value: processData.department },
-                { label: "Created", value: processData.created },
-                { label: "Deadline", value: processData.deadline },
-              ].map((item, i) => (
-                <div key={i} className="flex justify-between py-2 border-b border-border last:border-0">
-                  <span className="text-sm text-muted-foreground">{item.label}</span>
-                  <span className="text-sm font-medium text-foreground capitalize">{item.value}</span>
-                </div>
-              ))}
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Criado em</span>
+                <span className="font-medium">{processData.created}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Prazo</span>
+                <span className="font-medium">{processData.deadline}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Solicitante</span>
+                <span className="font-medium">{processData.requester}</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-muted-foreground">Documentos</span>
+                <span className="font-medium">{documents.length}</span>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Assignees */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Assignees</CardTitle>
-                <Button variant="ghost" size="sm" className="h-auto p-0 text-xs">
-                  Manage
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {assignees.map((person, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium shrink-0">
-                    {person.avatar}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{person.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{person.role}</p>
-                  </div>
+          {/* SLA Indicator */}
+          <Card className={processData.slaRemaining <= 3 ? "border-error" : ""}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
+                  processData.slaRemaining > 10 
+                    ? "bg-success-muted" 
+                    : processData.slaRemaining > 3 
+                    ? "bg-warning-muted" 
+                    : "bg-error-muted"
+                }`}>
+                  <AlertTriangle className={`h-6 w-6 ${
+                    processData.slaRemaining > 10 
+                      ? "text-success" 
+                      : processData.slaRemaining > 3 
+                      ? "text-warning" 
+                      : "text-error"
+                  }`} />
                 </div>
-              ))}
+                <div>
+                  <p className="text-sm text-muted-foreground">SLA Restante</p>
+                  <p className={`text-xl font-bold ${
+                    processData.slaRemaining > 10 
+                      ? "text-success" 
+                      : processData.slaRemaining > 3 
+                      ? "text-warning" 
+                      : "text-error"
+                  }`}>
+                    {processData.slaRemaining} dias
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
+          {/* Related */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quick Actions</CardTitle>
+              <CardTitle className="text-base">Relacionados</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/dispatches">
-                  <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Generate Report
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={handleAdvanceStage}>
-                <Users className="h-4 w-4 mr-2" aria-hidden="true" />
-                Request Approval
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Clock className="h-4 w-4 mr-2" aria-hidden="true" />
-                Extend Deadline
-              </Button>
+              <Link 
+                to="/documents/1"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">DOC-2024-001234</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             </CardContent>
           </Card>
-
-          {/* Audit Log Reference */}
-          <AuditLogReference context="View process activity history" />
         </div>
       </div>
     </DashboardLayout>
