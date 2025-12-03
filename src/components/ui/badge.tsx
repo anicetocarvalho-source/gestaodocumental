@@ -8,10 +8,26 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        default: "border-transparent bg-primary text-primary-foreground",
+        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        destructive: "border-transparent bg-destructive text-destructive-foreground",
+        outline: "text-foreground border-border",
+        // Semantic status badges
+        success: "border-transparent bg-success-muted text-success font-medium",
+        warning: "border-transparent bg-warning-muted text-warning font-medium",
+        error: "border-transparent bg-error-muted text-error font-medium",
+        info: "border-transparent bg-info-muted text-info font-medium",
+        // Solid semantic variants
+        "success-solid": "border-transparent bg-success text-success-foreground",
+        "warning-solid": "border-transparent bg-warning text-warning-foreground",
+        "error-solid": "border-transparent bg-error text-error-foreground",
+        "info-solid": "border-transparent bg-info text-info-foreground",
+        // Document status variants
+        draft: "border-border bg-muted text-muted-foreground",
+        pending: "border-transparent bg-warning-muted text-warning",
+        approved: "border-transparent bg-success-muted text-success",
+        rejected: "border-transparent bg-error-muted text-error",
+        "in-progress": "border-transparent bg-info-muted text-info",
       },
     },
     defaultVariants: {
