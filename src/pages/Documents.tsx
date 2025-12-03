@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { UploadModal } from "@/components/documents/UploadModal";
+import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
@@ -20,7 +21,8 @@ import {
   Eye,
   Pencil,
   Trash2,
-  Plus
+  Plus,
+  FolderPlus
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,6 +61,13 @@ const statusLabels: Record<string, string> = {
 
 const Documents = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
+  const [selectedDocumentForProcess, setSelectedDocumentForProcess] = useState<typeof documents[0] | null>(null);
+
+  const handleCreateProcess = (doc: typeof documents[0]) => {
+    setSelectedDocumentForProcess(doc);
+    setCreateProcessModalOpen(true);
+  };
 
   return (
     <DashboardLayout 
@@ -169,6 +178,10 @@ const Documents = () => {
                             <Download className="mr-2 h-4 w-4" /> Descarregar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleCreateProcess(doc)}>
+                            <FolderPlus className="mr-2 h-4 w-4" /> Criar Processo
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-error focus:text-error">
                             <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                           </DropdownMenuItem>
@@ -210,6 +223,22 @@ const Documents = () => {
 
       {/* Modal de Carregamento */}
       <UploadModal open={uploadModalOpen} onOpenChange={setUploadModalOpen} />
+
+      {/* Modal de Criar Processo */}
+      {selectedDocumentForProcess && (
+        <CreateProcessFromDocumentModal
+          open={createProcessModalOpen}
+          onOpenChange={setCreateProcessModalOpen}
+          document={{
+            number: `DOC-2024-${String(selectedDocumentForProcess.id).padStart(6, '0')}`,
+            title: selectedDocumentForProcess.name,
+            type: selectedDocumentForProcess.type,
+            origin: "Interno",
+            subject: selectedDocumentForProcess.name,
+            author: selectedDocumentForProcess.author,
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 };
