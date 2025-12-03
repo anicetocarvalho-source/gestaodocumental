@@ -26,6 +26,7 @@ import CreateDispatch from "./pages/CreateDispatch";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
 import ProcessTemplates from "./pages/ProcessTemplates";
 import Reports from "./pages/Reports";
+import Notifications from "./pages/Notifications";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -62,7 +63,7 @@ const App = () => (
           <Route path="/process-templates" element={<ProcessTemplates />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/archive" element={<PlaceholderPage title="Archive" subtitle="Access archived documents and records" />} />
-          <Route path="/notifications" element={<PlaceholderPage title="Notifications" subtitle="Manage notification preferences" />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
