@@ -8,6 +8,7 @@ import Documents from "./pages/Documents";
 import DocumentDetail from "./pages/DocumentDetail";
 import RegisterDocument from "./pages/RegisterDocument";
 import Processes from "./pages/Processes";
+import CreateProcess from "./pages/CreateProcess";
 import ProcessDetail from "./pages/ProcessDetail";
 import DispatchManagement from "./pages/DispatchManagement";
 import ApprovalQueue from "./pages/ApprovalQueue";
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/documents/new" element={<RegisterDocument />} />
           <Route path="/documents/:id" element={<DocumentDetail />} />
           <Route path="/processes" element={<Processes />} />
+          <Route path="/processes/new" element={<CreateProcess />} />
           <Route path="/processes/:id" element={<ProcessDetail />} />
           <Route path="/dispatches" element={<DispatchManagement />} />
           <Route path="/approvals" element={<ApprovalQueue />} />
