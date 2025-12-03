@@ -31,6 +31,7 @@ import OCRProcessing from "./pages/OCRProcessing";
 import DocumentClassification from "./pages/DocumentClassification";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import SLAConfiguration from "./pages/SLAConfiguration";
+import WorkflowVisualization from "./pages/WorkflowVisualization";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/archive" element={<PlaceholderPage title="Archive" subtitle="Access archived documents and records" />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/sla-configuration" element={<SLAConfiguration />} />
+          <Route path="/workflow-visualization" element={<WorkflowVisualization />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
