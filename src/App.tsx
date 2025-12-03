@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Documents from "./pages/Documents";
 import DocumentDetail from "./pages/DocumentDetail";
+import RegisterDocument from "./pages/RegisterDocument";
 import Processes from "./pages/Processes";
 import ProcessDetail from "./pages/ProcessDetail";
 import DispatchManagement from "./pages/DispatchManagement";
@@ -30,6 +31,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/documents" element={<Documents />} />
+          <Route path="/documents/new" element={<RegisterDocument />} />
           <Route path="/documents/:id" element={<DocumentDetail />} />
           <Route path="/processes" element={<Processes />} />
           <Route path="/processes/:id" element={<ProcessDetail />} />
