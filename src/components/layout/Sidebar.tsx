@@ -20,6 +20,7 @@ import {
   ScanLine,
   GitBranch,
   Layers,
+  FileCheck,
 } from "lucide-react";
 
 const navigation = [
@@ -31,6 +32,7 @@ const navigation = [
   { name: "Dispatches", href: "/dispatches", icon: Package },
   { name: "Approvals", href: "/approvals", icon: CheckSquare },
   { name: "Digitization", href: "/digitization", icon: ScanLine },
+  { name: "Quality Review", href: "/quality-review", icon: FileCheck },
   { name: "Folders", href: "/folders", icon: FolderOpen },
   { name: "Archive", href: "/archive", icon: Archive },
 ];
