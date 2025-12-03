@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ const DocumentDetail = () => {
     >
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-        <a href="/documents" className="hover:text-foreground transition-colors">Documents</a>
+        <Link to="/documents" className="hover:text-foreground transition-colors">Documents</Link>
         <ChevronRight className="h-4 w-4" aria-hidden="true" />
         <span className="text-foreground font-medium" aria-current="page">{documentInfo.title}</span>
       </nav>

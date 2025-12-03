@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { FileText, MoreVertical, Download, Eye, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,8 +67,8 @@ export function RecentDocuments() {
     <Card variant="default" className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <CardTitle>Recent Documents</CardTitle>
-        <Button variant="outline" size="sm">
-          View All
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/documents">View All</Link>
         </Button>
       </CardHeader>
       <CardContent className="p-0">
@@ -87,12 +88,12 @@ export function RecentDocuments() {
               {documents.map((doc) => (
                 <tr key={doc.id} className="table-row">
                   <td className="table-cell">
-                    <div className="flex items-center gap-3">
+                    <Link to={`/documents/${doc.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-muted">
                         <FileText className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="font-medium text-foreground">{doc.name}</span>
-                    </div>
+                      <span className="font-medium text-foreground hover:text-primary transition-colors">{doc.name}</span>
+                    </Link>
                   </td>
                   <td className="table-cell">
                     <span className="text-muted-foreground">{doc.type}</span>
@@ -116,9 +117,11 @@ export function RecentDocuments() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48 bg-popover">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View
+                        <DropdownMenuItem asChild>
+                          <Link to={`/documents/${doc.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Pencil className="mr-2 h-4 w-4" />

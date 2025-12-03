@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -177,27 +178,28 @@ const Processes = () => {
 
       <div className="mt-4 grid gap-4">
         {processes.map((process) => (
-          <Card key={process.id} variant="interactive" className="p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground">{process.name}</h3>
-                      <Badge variant={priorityVariants[process.priority]} className="capitalize">
-                        {process.priority}
-                      </Badge>
-                      <span className={`flex items-center gap-1 text-sm ${statusColors[process.status]}`}>
-                        {statusIcons[process.status]}
-                        <span className="capitalize">{process.status}</span>
-                      </span>
+          <Link key={process.id} to={`/processes/${process.id}`}>
+            <Card variant="interactive" className="p-6 hover:border-primary transition-colors">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground">{process.name}</h3>
+                        <Badge variant={priorityVariants[process.priority]} className="capitalize">
+                          {process.priority}
+                        </Badge>
+                        <span className={`flex items-center gap-1 text-sm ${statusColors[process.status]}`}>
+                          {statusIcons[process.status]}
+                          <span className="capitalize">{process.status}</span>
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{process.description}</p>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{process.description}</p>
+                    <Button variant="ghost" size="icon">
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon">
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
 
                 {/* Stage Progress */}
                 <div className="space-y-2">
@@ -248,6 +250,7 @@ const Processes = () => {
               </div>
             </div>
           </Card>
+          </Link>
         ))}
       </div>
     </DashboardLayout>
