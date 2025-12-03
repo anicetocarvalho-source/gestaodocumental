@@ -98,7 +98,7 @@ const Index = () => {
       title="Dashboard Institucional" 
       subtitle="Visão geral do sistema de gestão documental"
     >
-      <PageBreadcrumb items={[{ label: "Dashboard" }]} />
+      <PageBreadcrumb items={[{ label: "Painel" }]} />
 
       {/* Filters and Export Bar */}
       <Card variant="toolbar">

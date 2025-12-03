@@ -7,7 +7,7 @@ interface AuditLogReferenceProps {
   className?: string;
 }
 
-export function AuditLogReference({ context = "View activity history", className = "" }: AuditLogReferenceProps) {
+export function AuditLogReference({ context = "Ver histórico de actividade", className = "" }: AuditLogReferenceProps) {
   return (
     <Card variant="interactive" className={className}>
       <Link to="/audit-logs">
@@ -17,7 +17,7 @@ export function AuditLogReference({ context = "View activity history", className
               <History className="h-5 w-5 text-info" aria-hidden="true" />
             </div>
             <div>
-              <p className="font-medium text-foreground">Audit Logs</p>
+              <p className="font-medium text-foreground">Registos de Auditoria</p>
               <p className="text-xs text-muted-foreground">{context}</p>
             </div>
           </div>

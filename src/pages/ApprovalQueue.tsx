@@ -21,76 +21,76 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { icon: Clock, label: "Pending", value: 12, color: "text-warning" },
-  { icon: AlertTriangle, label: "Urgent", value: 5, color: "text-error" },
-  { icon: CheckCircle, label: "Approved Today", value: 28, color: "text-success" },
-  { icon: XCircle, label: "Rejected", value: 3, color: "text-muted-foreground" },
+  { icon: Clock, label: "Pendentes", value: 12, color: "text-warning" },
+  { icon: AlertTriangle, label: "Urgentes", value: 5, color: "text-error" },
+  { icon: CheckCircle, label: "Aprovados Hoje", value: 28, color: "text-success" },
+  { icon: XCircle, label: "Rejeitados", value: 3, color: "text-muted-foreground" },
 ];
 
 const approvalItems = [
   {
     id: 1,
     type: "document",
-    title: "Annual Budget Report 2024",
-    description: "Final budget allocation for fiscal year 2025 including departmental breakdowns",
-    submitter: "Sarah Johnson",
-    department: "Finance",
-    submitted: "2 hours ago",
+    title: "Relatório Orçamental Anual 2024",
+    description: "Alocação final do orçamento para o ano fiscal 2025 incluindo discriminação por departamento",
+    submitter: "Sara Ferreira",
+    department: "Finanças",
+    submitted: "há 2 horas",
     priority: "high",
     urgent: true,
   },
   {
     id: 2,
     type: "process",
-    title: "Contract Renewal - Vendor ABC",
-    description: "Service agreement renewal for IT infrastructure maintenance",
-    submitter: "Michael Chen",
-    department: "Procurement",
-    submitted: "4 hours ago",
+    title: "Renovação de Contrato - Fornecedor ABC",
+    description: "Renovação do acordo de serviço para manutenção de infra-estrutura de TI",
+    submitter: "Miguel Costa",
+    department: "Aquisições",
+    submitted: "há 4 horas",
     priority: "medium",
     urgent: true,
   },
   {
     id: 3,
     type: "document",
-    title: "Environmental Impact Assessment",
-    description: "Assessment report for new construction project in district 7",
-    submitter: "Emma Wilson",
-    department: "Environment",
-    submitted: "1 day ago",
+    title: "Avaliação de Impacto Ambiental",
+    description: "Relatório de avaliação para novo projecto de construção no distrito 7",
+    submitter: "Ana Rodrigues",
+    department: "Ambiente",
+    submitted: "há 1 dia",
     priority: "medium",
     urgent: false,
   },
   {
     id: 4,
     type: "dispatch",
-    title: "Equipment Dispatch Request",
-    description: "Emergency equipment transfer to regional office",
-    submitter: "David Brown",
-    department: "Operations",
-    submitted: "1 day ago",
+    title: "Pedido de Expedição de Equipamento",
+    description: "Transferência de equipamento de emergência para escritório regional",
+    submitter: "David Mendes",
+    department: "Operações",
+    submitted: "há 1 dia",
     priority: "high",
     urgent: false,
   },
   {
     id: 5,
     type: "document",
-    title: "Policy Amendment Proposal",
-    description: "Updates to internal communication protocols",
-    submitter: "Lisa Anderson",
-    department: "HR",
-    submitted: "2 days ago",
+    title: "Proposta de Alteração de Política",
+    description: "Actualizações aos protocolos de comunicação interna",
+    submitter: "Lígia Santos",
+    department: "RH",
+    submitted: "há 2 dias",
     priority: "low",
     urgent: false,
   },
   {
     id: 6,
     type: "process",
-    title: "New Vendor Onboarding",
-    description: "Approval for onboarding TechCorp as technology partner",
-    submitter: "James Wilson",
-    department: "Procurement",
-    submitted: "2 days ago",
+    title: "Integração de Novo Fornecedor",
+    description: "Aprovação para integrar TechCorp como parceiro tecnológico",
+    submitter: "Tiago Oliveira",
+    department: "Aquisições",
+    submitted: "há 2 dias",
     priority: "medium",
     urgent: false,
   },
@@ -99,21 +99,27 @@ const approvalItems = [
 const selectedItem = approvalItems[0];
 
 const approvalHistory = [
-  { user: "John Doe", action: "Reviewed", date: "1 hour ago", status: "pending" },
-  { user: "Finance Team", action: "Verified", date: "3 hours ago", status: "approved" },
-  { user: "Sarah Johnson", action: "Submitted", date: "2 days ago", status: "submitted" },
+  { user: "João Silva", action: "Revisto", date: "há 1 hora", status: "pending" },
+  { user: "Equipa Financeira", action: "Verificado", date: "há 3 horas", status: "approved" },
+  { user: "Sara Ferreira", action: "Submetido", date: "há 2 dias", status: "submitted" },
 ];
+
+const priorityLabels = {
+  high: "Alta",
+  medium: "Média",
+  low: "Baixa",
+};
 
 const ApprovalQueue = () => {
   return (
     <DashboardLayout 
-      title="Approval Queue" 
-      subtitle="Review and approve pending items"
+      title="Fila de Aprovações" 
+      subtitle="Rever e aprovar itens pendentes"
     >
-      <PageBreadcrumb items={[{ label: "Approval Queue" }]} />
+      <PageBreadcrumb items={[{ label: "Fila de Aprovações" }]} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Stats */}
+        {/* Estatísticas */}
         <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
             <Card key={i} variant="stat" className="p-5">
@@ -130,31 +136,31 @@ const ApprovalQueue = () => {
           ))}
         </div>
 
-        {/* Tabs & Filter */}
+        {/* Separadores e Filtro */}
         <div className="lg:col-span-12">
           <Tabs defaultValue="all" className="w-full">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="processes">Processes</TabsTrigger>
-                <TabsTrigger value="dispatches">Dispatches</TabsTrigger>
+                <TabsTrigger value="all">Todos</TabsTrigger>
+                <TabsTrigger value="documents">Documentos</TabsTrigger>
+                <TabsTrigger value="processes">Processos</TabsTrigger>
+                <TabsTrigger value="dispatches">Expedições</TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-2">
                 <select 
                   className="h-9 px-3 border border-border rounded-md bg-background text-sm"
-                  aria-label="Sort by"
+                  aria-label="Ordenar por"
                 >
-                  <option>Newest First</option>
-                  <option>Oldest First</option>
-                  <option>Priority</option>
+                  <option>Mais Recentes</option>
+                  <option>Mais Antigos</option>
+                  <option>Prioridade</option>
                 </select>
               </div>
             </div>
 
             <TabsContent value="all" className="mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Queue List - 8 columns */}
+                {/* Lista da Fila - 8 colunas */}
                 <div className="lg:col-span-8 space-y-3">
                   {approvalItems.map((item) => (
                     <Card 
@@ -163,7 +169,7 @@ const ApprovalQueue = () => {
                       className={`p-4 ${item.id === selectedItem.id ? 'ring-2 ring-primary' : ''}`}
                     >
                       <div className="flex gap-4">
-                        <Checkbox aria-label={`Select ${item.title}`} />
+                        <Checkbox aria-label={`Seleccionar ${item.title}`} />
                         <div className="h-12 w-12 bg-primary-muted rounded-lg flex items-center justify-center shrink-0">
                           <FileText className="h-6 w-6 text-primary" aria-hidden="true" />
                         </div>
@@ -174,10 +180,10 @@ const ApprovalQueue = () => {
                               <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="text-sm font-medium text-foreground">{item.title}</h3>
                                 <Badge variant={item.priority === 'high' ? 'error' : item.priority === 'medium' ? 'warning' : 'info'}>
-                                  {item.priority}
+                                  {priorityLabels[item.priority as keyof typeof priorityLabels]}
                                 </Badge>
                                 {item.urgent && (
-                                  <Badge variant="error-solid" className="text-xs">Urgent</Badge>
+                                  <Badge variant="error-solid" className="text-xs">Urgente</Badge>
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
@@ -194,21 +200,21 @@ const ApprovalQueue = () => {
                               <Calendar className="h-3 w-3" aria-hidden="true" />
                               <span>{item.department}</span>
                             </div>
-                            <Badge variant="outline" className="capitalize">{item.type}</Badge>
+                            <Badge variant="outline" className="capitalize">{item.type === 'document' ? 'Documento' : item.type === 'process' ? 'Processo' : 'Expedição'}</Badge>
                           </div>
                           
                           <div className="flex flex-wrap gap-2 pt-2">
                             <Button size="sm">
                               <ThumbsUp className="h-3 w-3 mr-1" aria-hidden="true" />
-                              Approve
+                              Aprovar
                             </Button>
                             <Button variant="outline" size="sm">
                               <ThumbsDown className="h-3 w-3 mr-1" aria-hidden="true" />
-                              Reject
+                              Rejeitar
                             </Button>
                             <Button variant="ghost" size="sm">
                               <MessageSquare className="h-3 w-3 mr-1" aria-hidden="true" />
-                              Request Info
+                              Pedir Informação
                             </Button>
                           </div>
                         </div>
@@ -216,49 +222,49 @@ const ApprovalQueue = () => {
                     </Card>
                   ))}
                   
-                  {/* Pagination */}
+                  {/* Paginação */}
                   <div className="flex items-center justify-between pt-4">
                     <p className="text-sm text-muted-foreground">
-                      Showing 1-6 of 12 items
+                      A mostrar 1-6 de 12 itens
                     </p>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" disabled>Previous</Button>
+                      <Button variant="outline" size="sm" disabled>Anterior</Button>
                       <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">1</Button>
                       <Button variant="outline" size="sm">2</Button>
-                      <Button variant="outline" size="sm">Next</Button>
+                      <Button variant="outline" size="sm">Seguinte</Button>
                     </div>
                   </div>
                 </div>
 
-                {/* Preview Panel - 4 columns */}
+                {/* Painel de Pré-visualização - 4 colunas */}
                 <div className="lg:col-span-4 space-y-4">
                   <Card>
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">Preview</CardTitle>
+                        <CardTitle className="text-base">Pré-visualização</CardTitle>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4 mr-1" aria-hidden="true" />
-                          Full View
+                          Ver Completo
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {/* Document Preview */}
+                      {/* Pré-visualização do Documento */}
                       <div className="h-48 bg-muted border border-border rounded-lg mb-4 flex items-center justify-center">
                         <div className="text-center space-y-2">
                           <FileText className="h-8 w-8 text-muted-foreground mx-auto" aria-hidden="true" />
-                          <p className="text-xs text-muted-foreground">Document preview</p>
+                          <p className="text-xs text-muted-foreground">Pré-visualização do documento</p>
                         </div>
                       </div>
                       
-                      {/* Details */}
+                      {/* Detalhes */}
                       <div className="space-y-3">
                         {[
-                          { label: "Title", value: selectedItem.title },
-                          { label: "Type", value: selectedItem.type },
-                          { label: "Submitter", value: selectedItem.submitter },
-                          { label: "Department", value: selectedItem.department },
-                          { label: "Submitted", value: selectedItem.submitted },
+                          { label: "Título", value: selectedItem.title },
+                          { label: "Tipo", value: selectedItem.type === 'document' ? 'Documento' : selectedItem.type === 'process' ? 'Processo' : 'Expedição' },
+                          { label: "Remetente", value: selectedItem.submitter },
+                          { label: "Departamento", value: selectedItem.department },
+                          { label: "Submetido", value: selectedItem.submitted },
                         ].map((item, i) => (
                           <div key={i} className="flex justify-between py-2 border-b border-border last:border-0 text-sm">
                             <span className="text-muted-foreground">{item.label}</span>
@@ -269,10 +275,10 @@ const ApprovalQueue = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Approval History */}
+                  {/* Histórico de Aprovação */}
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Approval History</CardTitle>
+                      <CardTitle className="text-base">Histórico de Aprovação</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {approvalHistory.map((item, i) => (
@@ -294,24 +300,24 @@ const ApprovalQueue = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Quick Actions */}
+                  {/* Acções Rápidas */}
                   <div className="space-y-2">
                     <Button className="w-full">
                       <ThumbsUp className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Approve Selected
+                      Aprovar Seleccionados
                     </Button>
                     <Button variant="outline" className="w-full">
                       <ThumbsDown className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Reject Selected
+                      Rejeitar Seleccionados
                     </Button>
                     <Button variant="ghost" className="w-full">
                       <MessageSquare className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Bulk Comment
+                      Comentário em Massa
                     </Button>
                   </div>
 
-                  {/* Audit Log Reference */}
-                  <AuditLogReference context="View approval activity" />
+                  {/* Referência ao Registo de Auditoria */}
+                  <AuditLogReference context="Ver actividade de aprovação" />
                 </div>
               </div>
             </TabsContent>

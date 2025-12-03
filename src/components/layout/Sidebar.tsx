@@ -27,27 +27,27 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Documents", href: "/documents", icon: FileText },
-  { name: "Processes", href: "/processes", icon: ClipboardList },
-  { name: "Dispatches", href: "/dispatches", icon: Package },
-  { name: "Approvals", href: "/approvals", icon: CheckSquare },
-  { name: "Digitization", href: "/digitization", icon: ScanLine },
-  { name: "OCR Processing", href: "/ocr-processing", icon: FileSearch },
-  { name: "Classification", href: "/classification", icon: Tags },
-  { name: "Quality Review", href: "/quality-review", icon: FileCheck },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Folders", href: "/folders", icon: FolderOpen },
-  { name: "Archive", href: "/archive", icon: Archive },
+  { name: "Painel", href: "/", icon: LayoutDashboard },
+  { name: "Documentos", href: "/documents", icon: FileText },
+  { name: "Processos", href: "/processes", icon: ClipboardList },
+  { name: "Expedições", href: "/dispatches", icon: Package },
+  { name: "Aprovações", href: "/approvals", icon: CheckSquare },
+  { name: "Digitalização", href: "/digitization", icon: ScanLine },
+  { name: "Processamento OCR", href: "/ocr-processing", icon: FileSearch },
+  { name: "Classificação", href: "/classification", icon: Tags },
+  { name: "Revisão Qualidade", href: "/quality-review", icon: FileCheck },
+  { name: "Relatórios", href: "/reports", icon: BarChart3 },
+  { name: "Pastas", href: "/folders", icon: FolderOpen },
+  { name: "Arquivo", href: "/archive", icon: Archive },
 ];
 
 const management = [
-  { name: "Users", href: "/users", icon: Users },
-  { name: "Permissions", href: "/permissions", icon: Shield },
-  { name: "Notifications", href: "/notifications", icon: Bell },
-  { name: "Workflow Builder", href: "/workflow-builder", icon: GitBranch },
-  { name: "Templates", href: "/process-templates", icon: Layers },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Utilizadores", href: "/users", icon: Users },
+  { name: "Permissões", href: "/permissions", icon: Shield },
+  { name: "Notificações", href: "/notifications", icon: Bell },
+  { name: "Editor Fluxos", href: "/workflow-builder", icon: GitBranch },
+  { name: "Modelos", href: "/process-templates", icon: Layers },
+  { name: "Definições", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -81,16 +81,16 @@ export function Sidebar() {
         "flex h-screen flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300",
         collapsed ? "w-16" : "w-60"
       )}
-      aria-label="Main navigation"
+      aria-label="Navegação principal"
     >
-      {/* Header */}
+      {/* Cabeçalho */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         {!collapsed && (
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
               <Shield className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
             </div>
-            <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">GovDocs</span>
+            <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">MINAGRIF</span>
           </div>
         )}
         <Button
@@ -98,7 +98,7 @@ export function Sidebar() {
           size="icon-sm"
           onClick={() => setCollapsed(!collapsed)}
           className="ml-auto"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -108,7 +108,7 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Search */}
+      {/* Pesquisa */}
       {!collapsed && (
         <div className="p-3">
           <NavLink 
@@ -116,18 +116,18 @@ export function Sidebar() {
             className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border/50 bg-sidebar-accent/20 px-3 py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent/40 transition-colors"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
-            <span>Search...</span>
+            <span>Pesquisar...</span>
             <kbd className="ml-auto rounded bg-sidebar-accent/50 px-1.5 py-0.5 text-[10px] text-sidebar-muted/80">⌘K</kbd>
           </NavLink>
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
+      {/* Navegação */}
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2" aria-label="Navegação primária">
         <div className="space-y-0.5">
           {!collapsed && (
             <span className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted/70">
-              Main
+              Principal
             </span>
           )}
           <div className="space-y-0.5 pt-1">
@@ -140,7 +140,7 @@ export function Sidebar() {
         <div className="space-y-0.5 pt-6">
           {!collapsed && (
             <span className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted/70">
-              Management
+              Gestão
             </span>
           )}
           <div className="space-y-0.5 pt-1">
@@ -151,16 +151,16 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* User */}
+      {/* Utilizador */}
       <div className="border-t border-sidebar-border p-3">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-sidebar-foreground">
-            JD
+            JS
           </div>
           {!collapsed && (
             <div className="flex-1 truncate">
-              <p className="text-sm font-medium text-sidebar-foreground">John Doe</p>
-              <p className="text-[11px] text-sidebar-muted">Administrator</p>
+              <p className="text-sm font-medium text-sidebar-foreground">João Silva</p>
+              <p className="text-[11px] text-sidebar-muted">Administrador</p>
             </div>
           )}
         </div>

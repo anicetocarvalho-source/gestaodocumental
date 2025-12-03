@@ -7,49 +7,49 @@ const activities = [
   {
     id: 1,
     type: "approved",
-    title: "Document Approved",
-    description: "Annual Budget Report 2024 was approved by Finance Director",
-    time: "2 hours ago",
+    title: "Documento Aprovado",
+    description: "Relatório Orçamental Anual 2024 aprovado pelo Director Financeiro",
+    time: "há 2 horas",
     icon: CheckCircle,
   },
   {
     id: 2,
     type: "upload",
-    title: "New Upload",
-    description: "Infrastructure Development Plan uploaded by Michael Chen",
-    time: "4 hours ago",
+    title: "Novo Carregamento",
+    description: "Plano de Desenvolvimento de Infra-estruturas carregado por Miguel Costa",
+    time: "há 4 horas",
     icon: Upload,
   },
   {
     id: 3,
     type: "comment",
-    title: "New Comment",
-    description: "Sarah Johnson commented on Environmental Impact Assessment",
-    time: "5 hours ago",
+    title: "Novo Comentário",
+    description: "Sara Ferreira comentou na Avaliação de Impacto Ambiental",
+    time: "há 5 horas",
     icon: MessageSquare,
   },
   {
     id: 4,
     type: "rejected",
-    title: "Document Rejected",
-    description: "Transportation Policy Amendment requires revisions",
-    time: "1 day ago",
+    title: "Documento Rejeitado",
+    description: "Alteração à Política de Transportes requer revisões",
+    time: "há 1 dia",
     icon: XCircle,
   },
   {
     id: 5,
     type: "assigned",
-    title: "Task Assigned",
-    description: "You were assigned to review Public Health Initiative",
-    time: "1 day ago",
+    title: "Tarefa Atribuída",
+    description: "Foi-lhe atribuída a revisão da Iniciativa de Saúde Pública",
+    time: "há 1 dia",
     icon: UserCheck,
   },
   {
     id: 6,
     type: "pending",
-    title: "Awaiting Review",
-    description: "Contract Renewal Process pending your approval",
-    time: "2 days ago",
+    title: "A Aguardar Revisão",
+    description: "Processo de Renovação de Contrato aguarda a sua aprovação",
+    time: "há 2 dias",
     icon: Clock,
   },
 ];
@@ -67,14 +67,14 @@ export function ActivityFeed() {
   return (
     <Card variant="default" className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle>Recent Activity</CardTitle>
+        <CardTitle>Actividade Recente</CardTitle>
         <Button variant="link" size="sm" className="text-sm">
-          View All
+          Ver Tudo
         </Button>
       </CardHeader>
       <CardContent>
         <div className="relative space-y-4">
-          {/* Timeline line */}
+          {/* Linha do tempo */}
           <div className="absolute left-5 top-2 bottom-2 w-px bg-border" />
           
           {activities.map((activity) => (

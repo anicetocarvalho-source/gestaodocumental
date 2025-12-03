@@ -14,43 +14,43 @@ import {
 const documents = [
   {
     id: 1,
-    name: "Annual Budget Report 2024",
+    name: "Relatório Orçamental Anual 2024",
     type: "PDF",
     status: "approved",
-    date: "Dec 1, 2024",
-    author: "Sarah Johnson",
+    date: "1 Dez, 2024",
+    author: "Sara Ferreira",
   },
   {
     id: 2,
-    name: "Infrastructure Development Plan",
+    name: "Plano de Desenvolvimento de Infra-estruturas",
     type: "DOCX",
     status: "pending",
-    date: "Nov 28, 2024",
-    author: "Michael Chen",
+    date: "28 Nov, 2024",
+    author: "Miguel Costa",
   },
   {
     id: 3,
-    name: "Environmental Impact Assessment",
+    name: "Avaliação de Impacto Ambiental",
     type: "PDF",
     status: "in-progress",
-    date: "Nov 25, 2024",
-    author: "Emma Wilson",
+    date: "25 Nov, 2024",
+    author: "Ana Rodrigues",
   },
   {
     id: 4,
-    name: "Public Health Initiative Proposal",
+    name: "Proposta de Iniciativa de Saúde Pública",
     type: "DOCX",
     status: "draft",
-    date: "Nov 22, 2024",
-    author: "David Brown",
+    date: "22 Nov, 2024",
+    author: "David Mendes",
   },
   {
     id: 5,
-    name: "Transportation Policy Amendment",
+    name: "Alteração à Política de Transportes",
     type: "PDF",
     status: "rejected",
-    date: "Nov 20, 2024",
-    author: "Lisa Anderson",
+    date: "20 Nov, 2024",
+    author: "Lígia Santos",
   },
 ];
 
@@ -62,13 +62,21 @@ const statusMap: Record<string, "approved" | "pending" | "in-progress" | "draft"
   rejected: "rejected",
 };
 
+const statusLabels: Record<string, string> = {
+  approved: "Aprovado",
+  pending: "Pendente",
+  "in-progress": "Em Curso",
+  draft: "Rascunho",
+  rejected: "Rejeitado",
+};
+
 export function RecentDocuments() {
   return (
     <Card variant="default" className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle>Recent Documents</CardTitle>
+        <CardTitle>Documentos Recentes</CardTitle>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/documents">View All</Link>
+          <Link to="/documents">Ver Todos</Link>
         </Button>
       </CardHeader>
       <CardContent className="p-0">
@@ -76,12 +84,12 @@ export function RecentDocuments() {
           <table className="w-full">
             <thead>
               <tr className="table-header border-b border-border">
-                <th className="px-6 py-3 text-left">Document</th>
-                <th className="px-6 py-3 text-left">Type</th>
-                <th className="px-6 py-3 text-left">Status</th>
-                <th className="px-6 py-3 text-left">Author</th>
-                <th className="px-6 py-3 text-left">Date</th>
-                <th className="px-6 py-3 text-right">Actions</th>
+                <th className="px-6 py-3 text-left">Documento</th>
+                <th className="px-6 py-3 text-left">Tipo</th>
+                <th className="px-6 py-3 text-left">Estado</th>
+                <th className="px-6 py-3 text-left">Autor</th>
+                <th className="px-6 py-3 text-left">Data</th>
+                <th className="px-6 py-3 text-right">Acções</th>
               </tr>
             </thead>
             <tbody>
@@ -100,7 +108,7 @@ export function RecentDocuments() {
                   </td>
                   <td className="table-cell">
                     <Badge variant={statusMap[doc.status]}>
-                      {doc.status.replace("-", " ")}
+                      {statusLabels[doc.status]}
                     </Badge>
                   </td>
                   <td className="table-cell">
@@ -120,21 +128,21 @@ export function RecentDocuments() {
                         <DropdownMenuItem asChild>
                           <Link to={`/documents/${doc.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
-                            View
+                            Ver
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Pencil className="mr-2 h-4 w-4" />
-                          Edit
+                          Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Download className="mr-2 h-4 w-4" />
-                          Download
+                          Descarregar
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-error focus:text-error">
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
