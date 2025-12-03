@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Logo } from "./Logo";
 import {
   LayoutDashboard,
   FileText,
@@ -87,19 +88,12 @@ export function Sidebar() {
     >
       {/* Cabeçalho */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-              <Shield className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">MINAGRIF</span>
-          </div>
-        )}
+        <Logo collapsed={collapsed} />
         <Button
           variant="sidebar"
           size="icon-sm"
           onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto"
+          className={cn("shrink-0", !collapsed && "ml-auto")}
           aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
         >
           {collapsed ? (
