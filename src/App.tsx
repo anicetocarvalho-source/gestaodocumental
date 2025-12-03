@@ -19,6 +19,7 @@ import AuditLogs from "./pages/AuditLogs";
 import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Wireframes from "./pages/Wireframes";
+import Repository from "./pages/Repository";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -47,7 +48,7 @@ const App = () => (
           <Route path="/settings" element={<Settings />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/wireframes" element={<Wireframes />} />
-          <Route path="/folders" element={<PlaceholderPage title="Folders" subtitle="Organize and manage document folders" />} />
+          <Route path="/folders" element={<Repository />} />
           <Route path="/archive" element={<PlaceholderPage title="Archive" subtitle="Access archived documents and records" />} />
           <Route path="/notifications" element={<PlaceholderPage title="Notifications" subtitle="Manage notification preferences" />} />
           <Route path="*" element={<NotFound />} />
