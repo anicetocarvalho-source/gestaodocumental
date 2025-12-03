@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   ChevronRight, 
   Clock, 
@@ -82,12 +84,12 @@ const ProcessDetail = () => {
       title="Process Detail" 
       subtitle="Manage workflow stages and tasks"
     >
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-        <Link to="/processes" className="hover:text-foreground transition-colors">Processes</Link>
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        <span className="text-foreground font-medium" aria-current="page">{processData.name}</span>
-      </nav>
+      <PageBreadcrumb 
+        items={[
+          { label: "Processes", href: "/processes" },
+          { label: processData.name }
+        ]} 
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Process Header */}
@@ -372,6 +374,9 @@ const ProcessDetail = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Audit Log Reference */}
+          <AuditLogReference context="View process activity history" />
         </div>
       </div>
     </DashboardLayout>

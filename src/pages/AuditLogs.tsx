@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { 
   History, 
   ChevronRight, 
@@ -130,14 +131,13 @@ const AuditLogs = () => {
       title="Audit Logs" 
       subtitle="Track all system activities and changes"
     >
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-        <Link to="/users" className="hover:text-foreground transition-colors">User Management</Link>
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        <Link to="/permissions" className="hover:text-foreground transition-colors">Permissions</Link>
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        <span className="text-foreground font-medium" aria-current="page">Audit Logs</span>
-      </nav>
+      <PageBreadcrumb 
+        items={[
+          { label: "User Management", href: "/users" },
+          { label: "Permissions", href: "/permissions" },
+          { label: "Audit Logs" }
+        ]} 
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

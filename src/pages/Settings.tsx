@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -45,6 +48,8 @@ const Settings = () => {
       title="Settings" 
       subtitle="Manage your account and preferences"
     >
+      <PageBreadcrumb items={[{ label: "Settings" }]} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Settings Navigation - 3 columns */}
         <div className="lg:col-span-3">
@@ -263,6 +268,9 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Audit Log Reference */}
+          <AuditLogReference context="View settings change history" />
         </div>
       </div>
     </DashboardLayout>

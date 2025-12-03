@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   ClipboardPlus, 
   Clock, 
@@ -11,7 +14,9 @@ import {
   ArrowRight,
   CheckCircle,
   AlertCircle,
-  Pause
+  Pause,
+  Search,
+  Filter
 } from "lucide-react";
 
 const processes = [
@@ -119,6 +124,8 @@ const Processes = () => {
       title="Processes" 
       subtitle="Track and manage all active workflows"
     >
+      <PageBreadcrumb items={[{ label: "Processes" }]} />
+
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card variant="stat">
@@ -167,14 +174,38 @@ const Processes = () => {
         </Card>
       </div>
 
-      {/* Process List */}
-      <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">All Processes</h2>
+      {/* Toolbar */}
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input 
+              placeholder="Search processes..." 
+              className="pl-10 w-64"
+              aria-label="Search processes"
+            />
+          </div>
+          <Button variant="outline" size="icon">
+            <Filter className="h-4 w-4" />
+          </Button>
+          <select 
+            className="h-10 px-3 border border-border rounded-md bg-background text-sm"
+            aria-label="Filter by status"
+          >
+            <option value="">All Status</option>
+            <option>Active</option>
+            <option>Completed</option>
+            <option>Paused</option>
+          </select>
+        </div>
         <Button>
           <ClipboardPlus className="mr-2 h-4 w-4" />
           New Process
         </Button>
       </div>
+
+      {/* Process List */}
+      <h2 className="text-lg font-semibold mt-6">All Processes</h2>
 
       <div className="mt-4 grid gap-4">
         {processes.map((process) => (
@@ -252,6 +283,26 @@ const Processes = () => {
           </Card>
           </Link>
         ))}
+      </div>
+
+      {/* Pagination */}
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing 1-6 of 24 processes
+        </p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled>Previous</Button>
+          <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">1</Button>
+          <Button variant="outline" size="sm">2</Button>
+          <Button variant="outline" size="sm">3</Button>
+          <Button variant="outline" size="sm">4</Button>
+          <Button variant="outline" size="sm">Next</Button>
+        </div>
+      </div>
+
+      {/* Audit Log Reference */}
+      <div className="mt-6">
+        <AuditLogReference context="View process activity history" />
       </div>
     </DashboardLayout>
   );
