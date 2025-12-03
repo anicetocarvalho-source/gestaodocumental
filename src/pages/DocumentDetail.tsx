@@ -31,6 +31,7 @@ import {
   Trash2,
   Plus
 } from "lucide-react";
+import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 
 // Document metadata
 const documentInfo = {
@@ -446,19 +447,23 @@ const DocumentDetail = () => {
             </CardContent>
           </Card>
 
-          {/* Document Classification */}
+          {/* Document Classification Panel */}
+          <ClassificationPanel 
+            documentId={documentInfo.entryNumber}
+            currentClassification="100.20.02"
+            compact={true}
+            onClassificationSaved={(code) => console.log("Classification saved:", code)}
+          />
+
+          {/* Document Info Summary */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Classificação</CardTitle>
+              <CardTitle className="text-base">Informação</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-border">
                 <span className="text-sm text-muted-foreground">Assunto</span>
                 <span className="text-sm font-medium">{documentInfo.subject}</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-sm text-muted-foreground">Classificação</span>
-                <Badge variant="success">{documentInfo.classification}</Badge>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-border">
                 <span className="text-sm text-muted-foreground">Prioridade</span>
