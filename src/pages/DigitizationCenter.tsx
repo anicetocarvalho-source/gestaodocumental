@@ -302,12 +302,12 @@ const DigitizationCenter = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input placeholder="Pesquisar documentos..." className="pl-9 w-64" />
                   </div>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <Select value={filterStatus || "all"} onValueChange={(v) => setFilterStatus(v === "all" ? "" : v)}>
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="pendente">Pendente</SelectItem>
                       <SelectItem value="em_processamento">Em Processamento</SelectItem>
                       <SelectItem value="concluido">Concluído</SelectItem>
@@ -315,12 +315,12 @@ const DigitizationCenter = () => {
                       <SelectItem value="erro">Erro</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={filterOperator} onValueChange={setFilterOperator}>
+                  <Select value={filterOperator || "all"} onValueChange={(v) => setFilterOperator(v === "all" ? "" : v)}>
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="Operador" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {operators.map(op => (
                         <SelectItem key={op} value={op}>{op}</SelectItem>
                       ))}
