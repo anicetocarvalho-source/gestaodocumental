@@ -13,7 +13,6 @@ import {
   Download, 
   Send,
   Forward,
-  UserPlus,
   Archive,
   FolderPlus,
   CheckCircle2,
@@ -23,7 +22,6 @@ import {
   Calendar,
   Building2,
   Tag,
-  Hash,
   Paperclip,
   MessageSquare,
   History,
@@ -32,14 +30,16 @@ import {
   Trash2,
   Plus,
   FileSignature,
-  ThumbsUp,
-  ThumbsDown,
-  FileOutput
+  XCircle,
+  FileSearch,
+  FolderInput,
+  RotateCcw,
+  Hash
 } from "lucide-react";
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
 import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
-import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
+import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 
 // Document metadata
 const documentInfo = {
@@ -142,7 +142,7 @@ const DocumentDetail = () => {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [documentSigned, setDocumentSigned] = useState(false);
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
-  const [selectedAction, setSelectedAction] = useState<WorkflowAction | null>(null);
+  const [selectedAction, setSelectedAction] = useState<DocumentAction | null>(null);
 
   const getStageIcon = (status: string) => {
     switch (status) {
@@ -160,12 +160,12 @@ const DocumentDetail = () => {
     setDocumentSigned(true);
   };
 
-  const openActionDrawer = (action: WorkflowAction) => {
+  const openActionDrawer = (action: DocumentAction) => {
     setSelectedAction(action);
     setActionDrawerOpen(true);
   };
 
-  const handleActionComplete = (action: WorkflowAction, data: Record<string, unknown>) => {
+  const handleActionComplete = (action: DocumentAction, data: Record<string, unknown>) => {
     console.log("Action completed:", action, data);
   };
 
@@ -453,60 +453,60 @@ const DocumentDetail = () => {
 
         {/* Sidebar - Actions - 3 columns */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Primary Actions */}
+          {/* Document Workflow Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Ações do Workflow</CardTitle>
+              <CardTitle className="text-base">Ações do Documento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
+              <Button 
+                className="w-full justify-start" 
+                variant="success"
+                onClick={() => openActionDrawer("validar")}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-3" />
+                Validar
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="destructive"
+                onClick={() => openActionDrawer("rejeitar_validacao")}
+              >
+                <XCircle className="h-4 w-4 mr-3" />
+                Rejeitar Validação
+              </Button>
+              <Separator className="my-3" />
               <Button 
                 className="w-full justify-start" 
                 variant="default"
                 onClick={() => openActionDrawer("despachar")}
               >
-                <FileOutput className="h-4 w-4 mr-3" />
+                <Forward className="h-4 w-4 mr-3" />
                 Despachar
               </Button>
               <Button 
                 className="w-full justify-start" 
                 variant="outline"
-                onClick={() => openActionDrawer("reencaminhar")}
+                onClick={() => openActionDrawer("solicitar_correcao")}
               >
-                <Forward className="h-4 w-4 mr-3" />
-                Reencaminhar
+                <FileSearch className="h-4 w-4 mr-3" />
+                Solicitar Correção
               </Button>
               <Button 
                 className="w-full justify-start" 
                 variant="outline"
-                onClick={() => openActionDrawer("solicitar_info")}
+                onClick={() => openActionDrawer("anexar_processo")}
               >
-                <MessageSquare className="h-4 w-4 mr-3" />
-                Solicitar Informações
+                <FolderInput className="h-4 w-4 mr-3" />
+                Anexar a Processo
               </Button>
               <Button 
                 className="w-full justify-start" 
                 variant="outline"
-                onClick={() => openActionDrawer("atribuir")}
+                onClick={() => openActionDrawer("devolver")}
               >
-                <UserPlus className="h-4 w-4 mr-3" />
-                Atribuir Responsável
-              </Button>
-              <Separator className="my-3" />
-              <Button 
-                className="w-full justify-start" 
-                variant="success"
-                onClick={() => openActionDrawer("aprovar")}
-              >
-                <ThumbsUp className="h-4 w-4 mr-3" />
-                Aprovar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="destructive"
-                onClick={() => openActionDrawer("rejeitar")}
-              >
-                <ThumbsDown className="h-4 w-4 mr-3" />
-                Rejeitar
+                <RotateCcw className="h-4 w-4 mr-3" />
+                Devolver à Origem
               </Button>
             </CardContent>
           </Card>
@@ -525,7 +525,19 @@ const DocumentDetail = () => {
                 <FileSignature className="h-4 w-4 mr-3" />
                 {documentSigned ? "Documento Assinado" : "Assinar Documento"}
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("classificar")}
+              >
+                <Tag className="h-4 w-4 mr-3" />
+                Classificar
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("arquivar")}
+              >
                 <Archive className="h-4 w-4 mr-3" />
                 Arquivar
               </Button>
@@ -627,16 +639,16 @@ const DocumentDetail = () => {
         onSign={handleSignDocument}
       />
 
-      {/* Workflow Action Drawer */}
-      <WorkflowActionDrawer
+      {/* Document Workflow Drawer */}
+      <DocumentWorkflowDrawer
         open={actionDrawerOpen}
         onOpenChange={setActionDrawerOpen}
         action={selectedAction}
-        processSummary={{
+        documentSummary={{
           number: documentInfo.entryNumber,
           title: documentInfo.title,
-          unit: documentInfo.department,
-          slaRemaining: 15,
+          origin: documentInfo.origin,
+          type: documentInfo.type,
           status: documentInfo.status,
         }}
         onActionComplete={handleActionComplete}
