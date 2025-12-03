@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   Clock, 
   AlertTriangle, 
@@ -108,6 +110,8 @@ const ApprovalQueue = () => {
       title="Approval Queue" 
       subtitle="Review and approve pending items"
     >
+      <PageBreadcrumb items={[{ label: "Approval Queue" }]} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Stats */}
         <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -305,6 +309,9 @@ const ApprovalQueue = () => {
                       Bulk Comment
                     </Button>
                   </div>
+
+                  {/* Audit Log Reference */}
+                  <AuditLogReference context="View approval activity" />
                 </div>
               </div>
             </TabsContent>

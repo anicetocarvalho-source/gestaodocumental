@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   Package, 
   Truck, 
@@ -85,6 +87,8 @@ const DispatchManagement = () => {
       title="Dispatch Management" 
       subtitle="Track and manage document dispatches"
     >
+      <PageBreadcrumb items={[{ label: "Dispatch Management" }]} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Stats */}
         <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -287,6 +291,25 @@ const DispatchManagement = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        <div className="lg:col-span-12 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing 1-5 of 42 dispatches
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled>Previous</Button>
+            <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">1</Button>
+            <Button variant="outline" size="sm">2</Button>
+            <Button variant="outline" size="sm">3</Button>
+            <Button variant="outline" size="sm">Next</Button>
+          </div>
+        </div>
+
+        {/* Audit Log Reference */}
+        <div className="lg:col-span-12">
+          <AuditLogReference context="View dispatch activity history" />
+        </div>
       </div>
     </DashboardLayout>
   );

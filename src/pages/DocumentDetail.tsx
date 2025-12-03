@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   FileText, 
   Download, 
@@ -55,12 +57,12 @@ const DocumentDetail = () => {
       title="Document Detail" 
       subtitle="View and manage document"
     >
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-        <Link to="/documents" className="hover:text-foreground transition-colors">Documents</Link>
-        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        <span className="text-foreground font-medium" aria-current="page">{documentInfo.title}</span>
-      </nav>
+      <PageBreadcrumb 
+        items={[
+          { label: "Documents", href: "/documents" },
+          { label: documentInfo.title }
+        ]} 
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Document Header */}
@@ -254,6 +256,9 @@ const DocumentDetail = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Audit Log Reference */}
+          <AuditLogReference context="View document activity history" />
         </div>
       </div>
     </DashboardLayout>

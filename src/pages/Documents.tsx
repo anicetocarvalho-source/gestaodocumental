@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { UploadModal } from "@/components/documents/UploadModal";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   FileText, 
   Search, 
@@ -54,6 +56,8 @@ const Documents = () => {
       title="Documents" 
       subtitle="Manage and organize all your documents"
     >
+      <PageBreadcrumb items={[{ label: "Documents" }]} />
+
       {/* Toolbar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-3">
@@ -178,6 +182,11 @@ const Documents = () => {
             Next
           </Button>
         </div>
+      </div>
+
+      {/* Audit Log Reference */}
+      <div className="mt-6">
+        <AuditLogReference context="View document activity history" />
       </div>
 
       {/* Upload Modal */}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { 
   Users, 
   UserPlus, 
@@ -67,6 +68,8 @@ const UserManagement = () => {
       title="User Management" 
       subtitle="Manage users, roles, and permissions"
     >
+      <PageBreadcrumb items={[{ label: "User Management" }]} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Stats */}
         <div className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">

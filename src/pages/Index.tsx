@@ -4,6 +4,8 @@ import { RecentDocuments } from "@/components/dashboard/RecentDocuments";
 import { ActiveProcesses } from "@/components/dashboard/ActiveProcesses";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { FileText, FolderOpen, ClipboardList, Users, CheckCircle, Clock } from "lucide-react";
 
 const Index = () => {
@@ -12,6 +14,7 @@ const Index = () => {
       title="Dashboard" 
       subtitle="Welcome back, John. Here's your overview."
     >
+      <PageBreadcrumb items={[{ label: "Dashboard" }]} />
       {/* Stats Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
@@ -77,6 +80,11 @@ const Index = () => {
       {/* Active Processes */}
       <div className="mt-6">
         <ActiveProcesses />
+      </div>
+
+      {/* Audit Log Reference */}
+      <div className="mt-6">
+        <AuditLogReference context="View recent system activity" />
       </div>
     </DashboardLayout>
   );

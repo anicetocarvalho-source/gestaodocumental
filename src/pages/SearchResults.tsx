@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { 
   Search, 
   FileText, 
@@ -111,6 +113,8 @@ const SearchResults = () => {
       title="Search Results" 
       subtitle='Results for "budget"'
     >
+      <PageBreadcrumb items={[{ label: "Search Results" }]} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Search Header */}
         <div className="lg:col-span-12">
@@ -338,6 +342,11 @@ const SearchResults = () => {
                   <Button variant="outline" size="sm">26</Button>
                   <Button variant="outline" size="sm">Next</Button>
                 </div>
+              </div>
+
+              {/* Audit Log Reference */}
+              <div className="pt-4">
+                <AuditLogReference context="View search activity history" />
               </div>
             </TabsContent>
           </Tabs>
