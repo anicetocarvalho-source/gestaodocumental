@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -552,8 +552,8 @@ const AuditLogs = () => {
                       const isExpanded = expandedRows.has(log.id);
 
                       return (
-                        <>
-                          <tr 
+                        <React.Fragment key={log.id}>
+                          <tr
                             key={log.id} 
                             className={cn(
                               "border-b border-border hover:bg-muted/50 transition-colors",
@@ -615,7 +615,7 @@ const AuditLogs = () => {
                           </tr>
                           {/* Expanded Row - Before/After Data */}
                           {isExpanded && hasDetails && (
-                            <tr key={`${log.id}-details`} className="bg-muted/20">
+                            <tr className="bg-muted/20">
                               <td colSpan={7} className="px-4 py-4">
                                 <div className="grid grid-cols-2 gap-6 ml-10">
                                   {log.beforeData && (
@@ -657,7 +657,7 @@ const AuditLogs = () => {
                               </td>
                             </tr>
                           )}
-                        </>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
