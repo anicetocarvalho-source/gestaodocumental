@@ -32,8 +32,10 @@ import {
   History,
   ChevronRight,
   User,
-  Paperclip
+  Paperclip,
+  UserPlus,
 } from "lucide-react";
+import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 
 // Process data
 const processData = {
@@ -207,8 +209,21 @@ const priorityConfig = {
 
 const ProcessDetail = () => {
   const [activeTab, setActiveTab] = useState("workflow");
+  const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<WorkflowAction | null>(null);
+  
   const status = statusConfig[processData.status as keyof typeof statusConfig];
   const priority = priorityConfig[processData.priority as keyof typeof priorityConfig];
+
+  const openActionDrawer = (action: WorkflowAction) => {
+    setSelectedAction(action);
+    setActionDrawerOpen(true);
+  };
+
+  const handleActionComplete = (action: WorkflowAction, data: Record<string, unknown>) => {
+    console.log("Action completed:", action, data);
+    // Here you would update the workflow timeline
+  };
 
   const getStageIcon = (stageStatus: string) => {
     switch (stageStatus) {
@@ -591,34 +606,66 @@ const ProcessDetail = () => {
           {/* Primary Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Ações</CardTitle>
+              <CardTitle className="text-base">Ações do Workflow</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full justify-start" variant="default">
-                <Send className="h-4 w-4 mr-3" />
-                Enviar
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Forward className="h-4 w-4 mr-3" />
-                Reencaminhar
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="default"
+                onClick={() => openActionDrawer("despachar")}
+              >
                 <FileOutput className="h-4 w-4 mr-3" />
                 Despachar
               </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("reencaminhar")}
+              >
+                <Forward className="h-4 w-4 mr-3" />
+                Reencaminhar
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("solicitar_info")}
+              >
+                <MessageSquare className="h-4 w-4 mr-3" />
+                Solicitar Informações
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("atribuir")}
+              >
+                <UserPlus className="h-4 w-4 mr-3" />
+                Atribuir Responsável
+              </Button>
               <Separator className="my-3" />
-              <Button className="w-full justify-start" variant="success">
+              <Button 
+                className="w-full justify-start" 
+                variant="success"
+                onClick={() => openActionDrawer("aprovar")}
+              >
                 <ThumbsUp className="h-4 w-4 mr-3" />
                 Aprovar
               </Button>
-              <Button className="w-full justify-start" variant="destructive">
+              <Button 
+                className="w-full justify-start" 
+                variant="destructive"
+                onClick={() => openActionDrawer("rejeitar")}
+              >
                 <ThumbsDown className="h-4 w-4 mr-3" />
                 Rejeitar
               </Button>
               <Separator className="my-3" />
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("encerrar")}
+              >
                 <XCircle className="h-4 w-4 mr-3" />
-                Encerrar
+                Encerrar Processo
               </Button>
             </CardContent>
           </Card>
@@ -707,6 +754,21 @@ const ProcessDetail = () => {
           </Card>
         </div>
       </div>
+
+      {/* Workflow Action Drawer */}
+      <WorkflowActionDrawer
+        open={actionDrawerOpen}
+        onOpenChange={setActionDrawerOpen}
+        action={selectedAction}
+        processSummary={{
+          number: processData.number,
+          title: processData.subject,
+          unit: processData.currentUnit,
+          slaRemaining: processData.slaRemaining,
+          status: processData.status,
+        }}
+        onActionComplete={handleActionComplete}
+      />
     </DashboardLayout>
   );
 };
