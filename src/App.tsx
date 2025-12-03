@@ -27,6 +27,7 @@ import WorkflowBuilder from "./pages/WorkflowBuilder";
 import ProcessTemplates from "./pages/ProcessTemplates";
 import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
+import OCRProcessing from "./pages/OCRProcessing";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -59,6 +60,7 @@ const App = () => (
           <Route path="/folders" element={<Repository />} />
           <Route path="/digitization" element={<DigitizationCenter />} />
           <Route path="/quality-review" element={<QualityReview />} />
+          <Route path="/ocr-processing" element={<OCRProcessing />} />
           <Route path="/workflow-builder" element={<WorkflowBuilder />} />
           <Route path="/process-templates" element={<ProcessTemplates />} />
           <Route path="/reports" element={<Reports />} />
