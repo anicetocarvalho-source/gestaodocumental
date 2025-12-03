@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 const actions = [
-  { icon: FilePlus, label: "New Document", description: "Create a new document", href: "/documents" },
+  { icon: FilePlus, label: "New Document", description: "Create a new document", href: "/documents/new" },
   { icon: Upload, label: "Upload File", description: "Upload from computer", href: "/documents", action: "upload" },
   { icon: ClipboardPlus, label: "Start Process", description: "Initiate new workflow", href: "/processes" },
   { icon: FolderPlus, label: "New Folder", description: "Organize documents", href: "/folders" },

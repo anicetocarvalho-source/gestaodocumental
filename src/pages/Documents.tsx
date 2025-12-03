@@ -19,7 +19,8 @@ import {
   Download,
   Eye,
   Pencil,
-  Trash2
+  Trash2,
+  Plus
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -81,9 +82,15 @@ const Documents = () => {
               <List className="h-4 w-4" />
             </Button>
           </div>
-          <Button onClick={() => setUploadModalOpen(true)}>
+          <Button variant="outline" onClick={() => setUploadModalOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Upload
+          </Button>
+          <Button asChild>
+            <Link to="/documents/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Documento
+            </Link>
           </Button>
         </div>
       </div>
