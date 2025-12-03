@@ -15,38 +15,38 @@ interface StatCardProps {
 }
 
 const variantStyles = {
-  default: "bg-primary/10 text-primary",
-  success: "bg-success-muted text-success",
-  warning: "bg-warning-muted text-warning",
-  error: "bg-error-muted text-error",
-  info: "bg-info-muted text-info",
+  default: "bg-primary/8 text-primary",
+  success: "bg-success/8 text-success",
+  warning: "bg-warning/8 text-warning",
+  error: "bg-error/8 text-error",
+  info: "bg-info/8 text-info",
 };
 
 export function StatCard({ title, value, description, icon: Icon, trend, variant = "default" }: StatCardProps) {
   return (
-    <Card variant="stat" className="animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+    <Card variant="stat" className="animate-fade-in p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-muted-foreground truncate">{title}</p>
+          <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
           {(description || trend) && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 pt-0.5">
               {trend && (
                 <span className={cn(
-                  "text-sm font-medium",
+                  "text-[12px] font-medium tabular-nums",
                   trend.isPositive ? "text-success" : "text-error"
                 )}>
                   {trend.isPositive ? "+" : ""}{trend.value}%
                 </span>
               )}
               {description && (
-                <span className="text-sm text-muted-foreground">{description}</span>
+                <span className="text-[12px] text-muted-foreground truncate">{description}</span>
               )}
             </div>
           )}
         </div>
-        <div className={cn("flex h-12 w-12 items-center justify-center rounded-lg", variantStyles[variant])}>
-          <Icon className="h-6 w-6" />
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl shrink-0", variantStyles[variant])}>
+          <Icon className="h-5 w-5" />
         </div>
       </div>
     </Card>

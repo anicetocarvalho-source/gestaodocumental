@@ -1,6 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { 
   FilePlus, 
   FolderPlus, 
@@ -9,12 +8,20 @@ import {
   UserPlus, 
   FileSearch,
   FileSignature,
-  Send
+  Send,
+  LucideIcon
 } from "lucide-react";
 
-const actions = [
+interface QuickAction {
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  href: string;
+}
+
+const actions: QuickAction[] = [
   { icon: FilePlus, label: "New Document", description: "Create a new document", href: "/documents/new" },
-  { icon: Upload, label: "Upload File", description: "Upload from computer", href: "/documents", action: "upload" },
+  { icon: Upload, label: "Upload File", description: "Upload from computer", href: "/documents" },
   { icon: ClipboardPlus, label: "Start Process", description: "Initiate new workflow", href: "/processes" },
   { icon: FolderPlus, label: "New Folder", description: "Organize documents", href: "/folders" },
   { icon: FileSearch, label: "Search Files", description: "Find documents", href: "/search" },
@@ -27,29 +34,28 @@ export function QuickActions() {
   const navigate = useNavigate();
 
   return (
-    <Card variant="default" className="animate-slide-up">
-      <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {actions.map((action) => (
+    <div className="animate-slide-up">
+      <h3 className="text-sm font-semibold text-foreground mb-4">Quick Actions</h3>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+        {actions.map((action) => {
+          const IconComponent = action.icon;
+          return (
             <button
               key={action.label}
               onClick={() => navigate(action.href)}
-              className="group flex flex-col items-center gap-2 rounded-lg border border-border bg-background p-4 text-center transition-all hover:border-primary hover:bg-primary-muted hover:shadow-card"
+              className="group flex flex-col items-center gap-2.5 rounded-xl border border-border/50 bg-card p-4 text-center transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-sm active:scale-[0.98]"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-primary/10">
-                <action.icon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 transition-all duration-200 group-hover:bg-primary/10 group-hover:scale-105">
+                <IconComponent className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">{action.label}</p>
-                <p className="text-xs text-muted-foreground">{action.description}</p>
+              <div className="space-y-0.5">
+                <p className="text-[13px] font-medium text-foreground leading-tight">{action.label}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight hidden sm:block">{action.description}</p>
               </div>
             </button>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
