@@ -160,189 +160,184 @@ const Index = () => {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Documentos Processados */}
-        <Card className="relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Documentos Processados</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{kpiData.documentosProcessados.value.toLocaleString()}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="success" className="gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    +{kpiData.documentosProcessados.trend}%
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">vs mês anterior</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-primary" />
+        <Card variant="stat" className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-muted-foreground">Documentos Processados</p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{kpiData.documentosProcessados.value.toLocaleString()}</p>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="success" className="gap-0.5 text-[11px] px-1.5 py-0">
+                  <TrendingUp className="h-3 w-3" />
+                  +{kpiData.documentosProcessados.trend}%
+                </Badge>
+                <span className="text-[11px] text-muted-foreground">vs mês anterior</span>
               </div>
             </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Meta: {kpiData.documentosProcessados.target.toLocaleString()}</span>
-                <span>{Math.round((kpiData.documentosProcessados.value / kpiData.documentosProcessados.target) * 100)}%</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${Math.min((kpiData.documentosProcessados.value / kpiData.documentosProcessados.target) * 100, 100)}%` }}
-                />
-              </div>
+            <div className="h-10 w-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
-          </CardContent>
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>Meta: {kpiData.documentosProcessados.target.toLocaleString()}</span>
+              <span className="font-medium">{Math.round((kpiData.documentosProcessados.value / kpiData.documentosProcessados.target) * 100)}%</span>
+            </div>
+            <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary rounded-full transition-all"
+                style={{ width: `${Math.min((kpiData.documentosProcessados.value / kpiData.documentosProcessados.target) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
         </Card>
 
         {/* Tempo Médio de Tramitação */}
-        <Card className="relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Tempo Médio Tramitação</p>
-                <p className="text-3xl font-bold text-foreground mt-2">
-                  {kpiData.tempoMedioTramitacao.value}
-                  <span className="text-lg font-normal text-muted-foreground ml-1">{kpiData.tempoMedioTramitacao.unit}</span>
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="success" className="gap-1">
-                    <TrendingDown className="h-3 w-3" />
-                    {kpiData.tempoMedioTramitacao.trend}%
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">mais rápido</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-info/10 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-info" />
+        <Card variant="stat" className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-muted-foreground">Tempo Médio Tramitação</p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+                {kpiData.tempoMedioTramitacao.value}
+                <span className="text-base font-normal text-muted-foreground ml-0.5">{kpiData.tempoMedioTramitacao.unit}</span>
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="success" className="gap-0.5 text-[11px] px-1.5 py-0">
+                  <TrendingDown className="h-3 w-3" />
+                  {kpiData.tempoMedioTramitacao.trend}%
+                </Badge>
+                <span className="text-[11px] text-muted-foreground">mais rápido</span>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <Target className="h-4 w-4" />
-              <span>Meta: 5 dias</span>
-              <Badge variant="outline" className="ml-auto">Dentro da meta</Badge>
+            <div className="h-10 w-10 rounded-xl bg-info/8 flex items-center justify-center shrink-0">
+              <Clock className="h-5 w-5 text-info" />
             </div>
-          </CardContent>
+          </div>
+          <div className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Target className="h-3.5 w-3.5" />
+            <span>Meta: 5 dias</span>
+            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">Dentro da meta</Badge>
+          </div>
         </Card>
 
         {/* Processos Concluídos vs Pendentes */}
-        <Card className="relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Processos</p>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <p className="text-3xl font-bold text-success">{kpiData.processosConcluidos.value}</p>
-                  <span className="text-muted-foreground">/</span>
-                  <p className="text-xl font-semibold text-warning">{kpiData.processosConcluidos.pendentes}</p>
-                </div>
-                <div className="flex items-center gap-3 mt-2 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-success"></span>
-                    Concluídos
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-warning"></span>
-                    Pendentes
-                  </span>
-                </div>
+        <Card variant="stat" className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-muted-foreground">Processos</p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-2xl font-semibold tracking-tight text-success tabular-nums">{kpiData.processosConcluidos.value}</p>
+                <span className="text-muted-foreground/60">/</span>
+                <p className="text-lg font-semibold text-warning tabular-nums">{kpiData.processosConcluidos.pendentes}</p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-success" />
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
+                  Concluídos
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning"></span>
+                  Pendentes
+                </span>
               </div>
             </div>
-            <div className="mt-4">
-              <div className="h-2 bg-muted rounded-full overflow-hidden flex">
-                <div 
-                  className="h-full bg-success"
-                  style={{ width: `${(kpiData.processosConcluidos.value / (kpiData.processosConcluidos.value + kpiData.processosConcluidos.pendentes)) * 100}%` }}
-                />
-                <div 
-                  className="h-full bg-warning"
-                  style={{ width: `${(kpiData.processosConcluidos.pendentes / (kpiData.processosConcluidos.value + kpiData.processosConcluidos.pendentes)) * 100}%` }}
-                />
-              </div>
+            <div className="h-10 w-10 rounded-xl bg-success/8 flex items-center justify-center shrink-0">
+              <CheckCircle className="h-5 w-5 text-success" />
             </div>
-          </CardContent>
+          </div>
+          <div className="mt-4">
+            <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden flex">
+              <div 
+                className="h-full bg-success rounded-l-full"
+                style={{ width: `${(kpiData.processosConcluidos.value / (kpiData.processosConcluidos.value + kpiData.processosConcluidos.pendentes)) * 100}%` }}
+              />
+              <div 
+                className="h-full bg-warning rounded-r-full"
+                style={{ width: `${(kpiData.processosConcluidos.pendentes / (kpiData.processosConcluidos.value + kpiData.processosConcluidos.pendentes)) * 100}%` }}
+              />
+            </div>
+          </div>
         </Card>
 
         {/* SLA Compliance */}
-        <Card className="relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Conformidade SLA</p>
-                <p className="text-3xl font-bold text-foreground mt-2">
-                  {kpiData.slaCompliance.value}
-                  <span className="text-lg font-normal text-muted-foreground">%</span>
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="success" className="gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    +{kpiData.slaCompliance.trend}%
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">vs trimestre</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                <Target className="h-6 w-6 text-warning" />
+        <Card variant="stat" className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-muted-foreground">Conformidade SLA</p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+                {kpiData.slaCompliance.value}
+                <span className="text-base font-normal text-muted-foreground">%</span>
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="success" className="gap-0.5 text-[11px] px-1.5 py-0">
+                  <TrendingUp className="h-3 w-3" />
+                  +{kpiData.slaCompliance.trend}%
+                </Badge>
+                <span className="text-[11px] text-muted-foreground">vs trimestre</span>
               </div>
             </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Meta: 95%</span>
-                <span className={kpiData.slaCompliance.value >= 95 ? "text-success" : "text-warning"}>
-                  {kpiData.slaCompliance.value >= 95 ? "Atingido" : "Em progresso"}
-                </span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all ${kpiData.slaCompliance.value >= 95 ? "bg-success" : "bg-warning"}`}
-                  style={{ width: `${Math.min(kpiData.slaCompliance.value, 100)}%` }}
-                />
-              </div>
+            <div className="h-10 w-10 rounded-xl bg-warning/8 flex items-center justify-center shrink-0">
+              <Target className="h-5 w-5 text-warning" />
             </div>
-          </CardContent>
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>Meta: 95%</span>
+              <span className={`font-medium ${kpiData.slaCompliance.value >= 95 ? "text-success" : "text-warning"}`}>
+                {kpiData.slaCompliance.value >= 95 ? "Atingido" : "Em progresso"}
+              </span>
+            </div>
+            <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all ${kpiData.slaCompliance.value >= 95 ? "bg-success" : "bg-warning"}`}
+                style={{ width: `${Math.min(kpiData.slaCompliance.value, 100)}%` }}
+              />
+            </div>
+          </div>
         </Card>
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 mb-6">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {/* Processos por Unidade - Bar Chart */}
-        <Card className="xl:col-span-1">
-          <CardHeader className="pb-2">
+        <Card>
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 Processos por Unidade
               </CardTitle>
-              <Button variant="ghost" size="icon-sm">
-                <Download className="h-4 w-4" />
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+                <Download className="h-3.5 w-3.5" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-64">
+          <CardContent className="pt-0">
+            <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={processosPorUnidade} layout="vertical" margin={{ left: 0, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                <BarChart data={processosPorUnidade} layout="vertical" margin={{ left: 0, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border)/0.5)" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                   <YAxis 
                     dataKey="unidade" 
                     type="category" 
-                    width={70} 
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    width={65} 
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: "hsl(var(--popover))", 
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
-                      fontSize: "12px"
+                      fontSize: "11px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
                     }} 
                   />
-                  <Bar dataKey="concluidos" fill="hsl(var(--success))" name="Concluídos" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="pendentes" fill="hsl(var(--warning))" name="Pendentes" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="concluidos" fill="hsl(var(--success))" name="Concluídos" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="pendentes" fill="hsl(var(--warning))" name="Pendentes" radius={[0, 3, 3, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -350,28 +345,28 @@ const Index = () => {
         </Card>
 
         {/* Processos por Tipo - Pie Chart */}
-        <Card className="xl:col-span-1">
-          <CardHeader className="pb-2">
+        <Card>
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <PieChart className="h-4 w-4 text-muted-foreground" />
                 Processos por Tipo
               </CardTitle>
-              <Button variant="ghost" size="icon-sm">
-                <Download className="h-4 w-4" />
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+                <Download className="h-3.5 w-3.5" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-64">
+          <CardContent className="pt-0">
+            <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
                     data={processosPorTipo}
                     cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy="45%"
+                    innerRadius={45}
+                    outerRadius={70}
                     paddingAngle={2}
                     dataKey="value"
                   >
@@ -384,14 +379,15 @@ const Index = () => {
                       backgroundColor: "hsl(var(--popover))", 
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
-                      fontSize: "12px"
+                      fontSize: "11px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
                     }}
                     formatter={(value: number) => [`${value}%`, ""]}
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value) => <span style={{ color: "hsl(var(--foreground))", fontSize: "11px" }}>{value}</span>}
+                    height={32}
+                    formatter={(value) => <span style={{ color: "hsl(var(--muted-foreground))", fontSize: "10px" }}>{value}</span>}
                   />
                 </RechartsPieChart>
               </ResponsiveContainer>
@@ -400,40 +396,43 @@ const Index = () => {
         </Card>
 
         {/* Documentos por Classificação - Bar Chart */}
-        <Card className="xl:col-span-1">
-          <CardHeader className="pb-2">
+        <Card>
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 Documentos por Classificação
               </CardTitle>
-              <Button variant="ghost" size="icon-sm">
-                <Download className="h-4 w-4" />
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+                <Download className="h-3.5 w-3.5" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-64">
+          <CardContent className="pt-0">
+            <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={documentosPorClassificacao} margin={{ left: 0, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <BarChart data={documentosPorClassificacao} margin={{ left: 0, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border)/0.5)" />
                   <XAxis 
                     dataKey="classificacao" 
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
                     angle={-45}
                     textAnchor="end"
-                    height={60}
+                    height={55}
+                    tickLine={false}
+                    axisLine={false}
                   />
-                  <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: "hsl(var(--popover))", 
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
-                      fontSize: "12px"
+                      fontSize: "11px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
                     }} 
                   />
-                  <Bar dataKey="quantidade" fill="hsl(var(--primary))" name="Documentos" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="quantidade" fill="hsl(var(--primary))" name="Documentos" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -442,12 +441,10 @@ const Index = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="mb-6">
-        <QuickActions />
-      </div>
+      <QuickActions />
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3 mb-6">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Recent Documents - Takes 2 columns */}
         <div className="lg:col-span-2">
           <RecentDocuments />
@@ -460,14 +457,10 @@ const Index = () => {
       </div>
 
       {/* Active Processes */}
-      <div className="mb-6">
-        <ActiveProcesses />
-      </div>
+      <ActiveProcesses />
 
       {/* Audit Log Reference */}
-      <div>
-        <AuditLogReference context="Ver actividade recente do sistema" />
-      </div>
+      <AuditLogReference context="Ver actividade recente do sistema" />
     </DashboardLayout>
   );
 };
