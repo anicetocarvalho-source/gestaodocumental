@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,352 +7,602 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { 
   Search, 
   FileText, 
   Calendar,
-  User,
+  Filter,
+  X,
+  Save,
   Bookmark,
-  Filter
+  BookmarkCheck,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Tag,
+  Building2,
+  FolderOpen,
+  RotateCcw,
+  Download,
+  Trash2,
+  Star,
+  Plus
 } from "lucide-react";
 
+// Search results data
 const searchResults = [
   {
-    id: 1,
-    type: "document",
-    title: "Annual Budget Report 2024",
-    excerpt: "The annual budget allocation for fiscal year 2025 includes departmental breakdowns and projected expenditures...",
-    highlight: "budget allocation",
-    author: "Sarah Johnson",
-    department: "Finance",
-    date: "Dec 1, 2024",
-    status: "approved",
+    id: "DOC-2024-001234",
+    title: "Ofício nº 123/2024 - Secretaria de Educação",
+    type: "Ofício",
+    unit: "Gabinete",
+    date: "15 Nov 2024",
+    status: "em_analise",
+    lastAction: "Tramitado para Gabinete",
+    lastActionDate: "01 Dez 2024",
+    classification: "Público",
+    origin: "Externa",
+    tags: ["educação", "recursos"],
   },
   {
-    id: 2,
-    type: "process",
-    title: "Budget Approval Workflow",
-    excerpt: "Standard workflow for budget approval including review stages and sign-off requirements...",
-    highlight: "budget approval",
-    author: "Michael Chen",
-    department: "Finance",
-    date: "Nov 28, 2024",
-    status: "active",
+    id: "DOC-2024-001230",
+    title: "Memorando Interno - Solicitação de Equipamentos",
+    type: "Memorando",
+    unit: "Setor de Compras",
+    date: "14 Nov 2024",
+    status: "aprovado",
+    lastAction: "Aprovado por Ana Costa",
+    lastActionDate: "28 Nov 2024",
+    classification: "Interno",
+    origin: "Interna",
+    tags: ["compras", "TI"],
   },
   {
-    id: 3,
-    type: "document",
-    title: "Q3 Budget Analysis Report",
-    excerpt: "Quarterly analysis of budget utilization across all departments with variance reports...",
-    highlight: "Budget Analysis",
-    author: "Emma Wilson",
-    department: "Finance",
-    date: "Oct 15, 2024",
-    status: "approved",
+    id: "DOC-2024-001228",
+    title: "Parecer Técnico - Obra Pública",
+    type: "Parecer",
+    unit: "Setor de Engenharia",
+    date: "13 Nov 2024",
+    status: "concluido",
+    lastAction: "Arquivado",
+    lastActionDate: "25 Nov 2024",
+    classification: "Público",
+    origin: "Interna",
+    tags: ["obras", "infraestrutura"],
   },
   {
-    id: 4,
-    type: "dispatch",
-    title: "Budget Documents Dispatch",
-    excerpt: "Dispatch of finalized budget documents to regional offices for distribution...",
-    highlight: "Budget Documents",
-    author: "David Brown",
-    department: "Operations",
-    date: "Nov 20, 2024",
-    status: "delivered",
+    id: "DOC-2024-001225",
+    title: "Contrato nº 456/2024 - Serviços de Limpeza",
+    type: "Contrato",
+    unit: "Departamento Jurídico",
+    date: "12 Nov 2024",
+    status: "pendente",
+    lastAction: "Aguardando assinatura",
+    lastActionDate: "20 Nov 2024",
+    classification: "Restrito",
+    origin: "Externa",
+    tags: ["contratos", "serviços"],
   },
   {
-    id: 5,
-    type: "document",
-    title: "Budget Guidelines 2025",
-    excerpt: "Guidelines and procedures for budget submission and allocation for the upcoming fiscal year...",
-    highlight: "Budget Guidelines",
-    author: "Lisa Anderson",
-    department: "Finance",
-    date: "Nov 1, 2024",
-    status: "draft",
+    id: "DOC-2024-001220",
+    title: "Relatório de Auditoria - Q3 2024",
+    type: "Relatório",
+    unit: "Controladoria",
+    date: "10 Nov 2024",
+    status: "em_analise",
+    lastAction: "Em revisão",
+    lastActionDate: "18 Nov 2024",
+    classification: "Confidencial",
+    origin: "Interna",
+    tags: ["auditoria", "financeiro"],
   },
   {
-    id: 6,
-    type: "process",
-    title: "Emergency Budget Request",
-    excerpt: "Fast-track process for emergency budget requests requiring immediate approval...",
-    highlight: "Budget Request",
-    author: "James Wilson",
-    department: "Operations",
-    date: "Oct 28, 2024",
-    status: "completed",
+    id: "DOC-2024-001215",
+    title: "Decreto nº 789/2024 - Férias Coletivas",
+    type: "Decreto",
+    unit: "Gabinete",
+    date: "08 Nov 2024",
+    status: "aprovado",
+    lastAction: "Publicado no Diário Oficial",
+    lastActionDate: "10 Nov 2024",
+    classification: "Público",
+    origin: "Interna",
+    tags: ["RH", "legislação"],
+  },
+  {
+    id: "DOC-2024-001210",
+    title: "Requerimento - Licença Especial",
+    type: "Requerimento",
+    unit: "Recursos Humanos",
+    date: "05 Nov 2024",
+    status: "pendente",
+    lastAction: "Aguardando parecer",
+    lastActionDate: "15 Nov 2024",
+    classification: "Interno",
+    origin: "Interna",
+    tags: ["RH", "licenças"],
+  },
+  {
+    id: "DOC-2024-001205",
+    title: "Convênio - Parceria com Estado",
+    type: "Convênio",
+    unit: "Setor de Convênios",
+    date: "01 Nov 2024",
+    status: "em_analise",
+    lastAction: "Análise jurídica",
+    lastActionDate: "12 Nov 2024",
+    classification: "Público",
+    origin: "Externa",
+    tags: ["convênios", "parcerias"],
   },
 ];
 
-const filters = {
-  types: [
-    { label: "Documents", count: 89 },
-    { label: "Processes", count: 42 },
-    { label: "Dispatches", count: 18 },
-    { label: "Users", count: 7 },
-  ],
-  status: [
-    { label: "Active", count: 45 },
-    { label: "Pending", count: 23 },
-    { label: "Completed", count: 67 },
-    { label: "Archived", count: 21 },
-  ],
-  departments: [
-    { label: "Finance", count: 34 },
-    { label: "Operations", count: 28 },
-    { label: "HR", count: 19 },
-    { label: "Legal", count: 15 },
-  ],
+// Saved searches
+const savedSearches = [
+  { id: 1, name: "Documentos Pendentes", query: "status:pendente", count: 45, isDefault: true },
+  { id: 2, name: "Ofícios de 2024", query: "tipo:oficio ano:2024", count: 128, isDefault: false },
+  { id: 3, name: "Contratos em Análise", query: "tipo:contrato status:em_analise", count: 23, isDefault: false },
+];
+
+// Filter options
+const documentTypes = ["Ofício", "Memorando", "Parecer", "Contrato", "Relatório", "Decreto", "Requerimento", "Convênio", "Portaria", "Circular"];
+const years = ["2024", "2023", "2022", "2021", "2020"];
+const origins = ["Interna", "Externa"];
+const units = ["Gabinete", "Setor de Compras", "Departamento Jurídico", "Setor de Engenharia", "Controladoria", "Recursos Humanos", "Setor de Convênios", "Secretaria de Educação"];
+const classifications = ["Público", "Interno", "Restrito", "Confidencial"];
+const availableTags = ["educação", "recursos", "compras", "TI", "obras", "infraestrutura", "contratos", "serviços", "auditoria", "financeiro", "RH", "legislação", "licenças", "convênios", "parcerias"];
+
+const statusConfig = {
+  em_analise: { label: "Em Análise", variant: "warning" as const },
+  aprovado: { label: "Aprovado", variant: "success" as const },
+  concluido: { label: "Concluído", variant: "info" as const },
+  pendente: { label: "Pendente", variant: "secondary" as const },
+  rejeitado: { label: "Rejeitado", variant: "error" as const },
 };
 
 const SearchResults = () => {
+  const [showFilters, setShowFilters] = useState(true);
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [filters, setFilters] = useState({
+    type: "",
+    year: "",
+    origin: "",
+    unit: "",
+    classification: "",
+    dateFrom: "",
+    dateTo: "",
+  });
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      type: "",
+      year: "",
+      origin: "",
+      unit: "",
+      classification: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+    setSelectedTags([]);
+  };
+
+  const hasActiveFilters = Object.values(filters).some(v => v !== "") || selectedTags.length > 0;
+
   return (
     <DashboardLayout 
-      title="Search Results" 
-      subtitle='Results for "budget"'
+      title="Pesquisa Avançada" 
+      subtitle="Pesquisar documentos e processos"
     >
-      <PageBreadcrumb items={[{ label: "Search Results" }]} />
+      <PageBreadcrumb items={[{ label: "Pesquisa Avançada" }]} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Search Header */}
-        <div className="lg:col-span-12">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input 
-                defaultValue="budget"
-                className="pl-10 pr-24"
-                aria-label="Search query"
-              />
-              <Button className="absolute right-1 top-1 h-8">
-                Search
-              </Button>
-            </div>
-          </div>
-          
-          {/* Search Info */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
-            <p className="text-sm text-muted-foreground">
-              Found <span className="font-semibold text-foreground">156 results</span> for "budget"
-            </p>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="sort" className="text-sm text-muted-foreground">Sort by:</Label>
-              <select 
-                id="sort"
-                className="h-9 px-3 border border-border rounded-md bg-background text-sm"
-              >
-                <option>Relevance</option>
-                <option>Newest First</option>
-                <option>Oldest First</option>
-                <option>A-Z</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters Sidebar */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Filter className="h-4 w-4" aria-hidden="true" />
-                  Filters
-                </CardTitle>
-                <Button variant="link" size="sm" className="h-auto p-0 text-xs">
-                  Clear all
+      {/* Search Header */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            {/* Main Search Bar */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input 
+                  placeholder="Pesquisar por número, título, conteúdo..." 
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant={showFilters ? "default" : "outline"}
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtros
+                  {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowSavedSearches(!showSavedSearches)}
+                >
+                  <Bookmark className="h-4 w-4 mr-2" />
+                  Pesquisas Salvas
+                </Button>
+                <Button>
+                  <Search className="h-4 w-4 mr-2" />
+                  Pesquisar
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Type Filter */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-foreground">Type</h4>
-                {filters.types.map((type, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox id={`type-${i}`} defaultChecked={i === 0} />
-                      <Label htmlFor={`type-${i}`} className="text-sm text-muted-foreground cursor-pointer">
-                        {type.label}
-                      </Label>
+            </div>
+
+            {/* Saved Searches Panel */}
+            {showSavedSearches && (
+              <div className="pt-4 border-t border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <BookmarkCheck className="h-4 w-4" />
+                    Pesquisas Salvas
+                  </h4>
+                  <Button variant="ghost" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Salvar Pesquisa Atual
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {savedSearches.map((search) => (
+                    <div 
+                      key={search.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {search.isDefault && <Star className="h-4 w-4 text-warning fill-warning" />}
+                        <div>
+                          <p className="text-sm font-medium">{search.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{search.query}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{search.count}</Badge>
+                        <Button variant="ghost" size="icon-sm">
+                          <Trash2 className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                      </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">{type.count}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-              
-              <div className="h-px bg-border" />
-              
-              {/* Status Filter */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-foreground">Status</h4>
-                {filters.status.map((status, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox id={`status-${i}`} />
-                      <Label htmlFor={`status-${i}`} className="text-sm text-muted-foreground cursor-pointer">
-                        {status.label}
-                      </Label>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{status.count}</span>
+            )}
+
+            {/* Advanced Filters */}
+            {showFilters && (
+              <div className="pt-4 border-t border-border">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                  {/* Tipo Documental */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Tipo Documental</Label>
+                    <select 
+                      className="h-9 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.type}
+                      onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                    >
+                      <option value="">Todos</option>
+                      {documentTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
                   </div>
-                ))}
-              </div>
-              
-              <div className="h-px bg-border" />
-              
-              {/* Date Range */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-foreground">Date Range</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 h-9 px-3 border border-border rounded-md">
-                    <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    <input 
-                      type="text" 
-                      placeholder="Start date" 
-                      className="flex-1 text-sm bg-transparent outline-none"
-                      aria-label="Start date"
+
+                  {/* Ano */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Ano</Label>
+                    <select 
+                      className="h-9 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.year}
+                      onChange={(e) => setFilters({ ...filters, year: e.target.value })}
+                    >
+                      <option value="">Todos</option>
+                      {years.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Origem */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Origem</Label>
+                    <select 
+                      className="h-9 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.origin}
+                      onChange={(e) => setFilters({ ...filters, origin: e.target.value })}
+                    >
+                      <option value="">Todas</option>
+                      {origins.map(origin => (
+                        <option key={origin} value={origin}>{origin}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Unidade */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Unidade</Label>
+                    <select 
+                      className="h-9 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.unit}
+                      onChange={(e) => setFilters({ ...filters, unit: e.target.value })}
+                    >
+                      <option value="">Todas</option>
+                      {units.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Classificação */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Classificação</Label>
+                    <select 
+                      className="h-9 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.classification}
+                      onChange={(e) => setFilters({ ...filters, classification: e.target.value })}
+                    >
+                      <option value="">Todas</option>
+                      {classifications.map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Data De */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Data De</Label>
+                    <Input 
+                      type="date" 
+                      className="h-9"
+                      value={filters.dateFrom}
+                      onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
                     />
                   </div>
-                  <div className="flex items-center gap-2 h-9 px-3 border border-border rounded-md">
-                    <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    <input 
-                      type="text" 
-                      placeholder="End date" 
-                      className="flex-1 text-sm bg-transparent outline-none"
-                      aria-label="End date"
+
+                  {/* Data Até */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Data Até</Label>
+                    <Input 
+                      type="date" 
+                      className="h-9"
+                      value={filters.dateTo}
+                      onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
                     />
                   </div>
                 </div>
-              </div>
-              
-              <div className="h-px bg-border" />
-              
-              {/* Department Filter */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-foreground">Department</h4>
-                {filters.departments.map((dept, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox id={`dept-${i}`} />
-                      <Label htmlFor={`dept-${i}`} className="text-sm text-muted-foreground cursor-pointer">
-                        {dept.label}
-                      </Label>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{dept.count}</span>
+
+                {/* Tags */}
+                <div className="mt-4">
+                  <Label className="text-xs font-medium text-muted-foreground mb-2 block">Tags</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {availableTags.map(tag => (
+                      <Badge
+                        key={tag}
+                        variant={selectedTags.includes(tag) ? "default" : "outline"}
+                        className="cursor-pointer hover:bg-primary/80"
+                        onClick={() => toggleTag(tag)}
+                      >
+                        <Tag className="h-3 w-3 mr-1" />
+                        {tag}
+                        {selectedTags.includes(tag) && (
+                          <X className="h-3 w-3 ml-1" />
+                        )}
+                      </Badge>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Filter Actions */}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={clearFilters}
+                    disabled={!hasActiveFilters}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Limpar Filtros
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar Pesquisa
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Exportar Resultados
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Search Results */}
-        <div className="lg:col-span-9 space-y-4">
-          {/* Result Tabs */}
-          <Tabs defaultValue="all">
-            <TabsList>
-              <TabsTrigger value="all">All (156)</TabsTrigger>
-              <TabsTrigger value="documents">Documents (89)</TabsTrigger>
-              <TabsTrigger value="processes">Processes (42)</TabsTrigger>
-              <TabsTrigger value="dispatches">Dispatches (18)</TabsTrigger>
-              <TabsTrigger value="users">Users (7)</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="all" className="mt-4 space-y-3">
-              {searchResults.map((result) => (
-                <Card key={result.id} variant="interactive">
-                  <CardContent className="p-4">
-                    <div className="flex gap-4">
-                      <div className="h-12 w-12 bg-primary-muted rounded-lg flex items-center justify-center shrink-0">
-                        <FileText className="h-6 w-6 text-primary" aria-hidden="true" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-sm font-medium text-foreground hover:text-primary cursor-pointer">
-                                {result.title}
-                              </h3>
-                              <Badge variant={
-                                result.status === 'approved' || result.status === 'completed' || result.status === 'delivered' 
-                                  ? 'approved' 
-                                  : result.status === 'active' 
-                                    ? 'in-progress' 
-                                    : 'draft'
-                              }>
-                                {result.status}
-                              </Badge>
-                            </div>
-                            {/* Highlighted excerpt */}
-                            <p className="text-sm text-muted-foreground">
-                              {result.excerpt.split(result.highlight).map((part, i, arr) => (
-                                <span key={i}>
-                                  {part}
-                                  {i < arr.length - 1 && (
-                                    <mark className="bg-warning-muted text-warning px-1 rounded">
-                                      {result.highlight}
-                                    </mark>
-                                  )}
-                                </span>
-                              ))}
-                            </p>
-                          </div>
-                          <Button variant="ghost" size="icon-sm" aria-label="Bookmark">
-                            <Bookmark className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        
-                        {/* Meta */}
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <FileText className="h-3 w-3" aria-hidden="true" />
-                            <span className="capitalize">{result.type}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" aria-hidden="true" />
-                            <span>{result.date}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" aria-hidden="true" />
-                            <span>{result.author}</span>
-                          </div>
-                          <Badge variant="outline">{result.department}</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+      {/* Results Summary */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">156</span> resultados encontrados
+          </p>
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+              {filters.type && <Badge variant="secondary" className="text-xs">{filters.type}</Badge>}
+              {filters.year && <Badge variant="secondary" className="text-xs">{filters.year}</Badge>}
+              {filters.origin && <Badge variant="secondary" className="text-xs">{filters.origin}</Badge>}
+              {selectedTags.map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
               ))}
-
-              {/* Pagination */}
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing 1-6 of 156 results
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled>Previous</Button>
-                  <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">1</Button>
-                  <Button variant="outline" size="sm">2</Button>
-                  <Button variant="outline" size="sm">3</Button>
-                  <Button variant="outline" size="sm">...</Button>
-                  <Button variant="outline" size="sm">26</Button>
-                  <Button variant="outline" size="sm">Next</Button>
-                </div>
-              </div>
-
-              {/* Audit Log Reference */}
-              <div className="pt-4">
-                <AuditLogReference context="View search activity history" />
-              </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm text-muted-foreground">Ordenar:</Label>
+          <select className="h-9 px-3 border border-border rounded-md bg-background text-sm">
+            <option>Relevância</option>
+            <option>Data (mais recente)</option>
+            <option>Data (mais antigo)</option>
+            <option>Título (A-Z)</option>
+            <option>Título (Z-A)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Results Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[140px]">Nº</TableHead>
+                <TableHead>Título</TableHead>
+                <TableHead className="w-[100px]">Tipo</TableHead>
+                <TableHead className="w-[150px]">Unidade</TableHead>
+                <TableHead className="w-[100px]">Data</TableHead>
+                <TableHead className="w-[110px]">Estado</TableHead>
+                <TableHead className="w-[200px]">Última Acção</TableHead>
+                <TableHead className="w-[80px] text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {searchResults.map((result) => {
+                const status = statusConfig[result.status as keyof typeof statusConfig];
+                
+                return (
+                  <TableRow key={result.id} className="hover:bg-muted/50">
+                    <TableCell>
+                      <Link 
+                        to={`/documents/${result.id}`}
+                        className="font-mono text-sm text-primary hover:underline"
+                      >
+                        {result.id}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Link 
+                          to={`/documents/${result.id}`}
+                          className="font-medium text-foreground hover:text-primary hover:underline line-clamp-1"
+                        >
+                          {result.title}
+                        </Link>
+                        <div className="flex items-center gap-1">
+                          {result.tags.slice(0, 2).map(tag => (
+                            <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {result.tags.length > 2 && (
+                            <span className="text-xs text-muted-foreground">+{result.tags.length - 2}</span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{result.type}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{result.unit}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{result.date}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <p className="text-sm text-muted-foreground line-clamp-1">{result.lastAction}</p>
+                        <p className="text-xs text-muted-foreground">{result.lastActionDate}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link to={`/documents/${result.id}`}>
+                        <Button variant="ghost" size="sm">Ver</Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          Mostrando <span className="font-medium">1-8</span> de <span className="font-medium">156</span> resultados
+        </p>
+        <div className="flex items-center gap-2">
+          <select className="h-9 px-3 border border-border rounded-md bg-background text-sm">
+            <option value="10">10 por página</option>
+            <option value="25">25 por página</option>
+            <option value="50">50 por página</option>
+            <option value="100">100 por página</option>
+          </select>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious href="#" />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#" isActive>1</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#">2</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#">3</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#">...</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#">16</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext href="#" />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      </div>
+
+      {/* Audit Log Reference */}
+      <div className="mt-6">
+        <AuditLogReference context="Ver histórico de pesquisas" />
       </div>
     </DashboardLayout>
   );
