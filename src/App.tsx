@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Documents from "./pages/Documents";
 import DocumentDetail from "./pages/DocumentDetail";
+import DocumentViewer from "./pages/DocumentViewer";
 import RegisterDocument from "./pages/RegisterDocument";
 import Processes from "./pages/Processes";
 import CreateProcess from "./pages/CreateProcess";
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/documents" element={<Documents />} />
           <Route path="/documents/new" element={<RegisterDocument />} />
           <Route path="/documents/:id" element={<DocumentDetail />} />
+          <Route path="/documents/:id/view" element={<DocumentViewer />} />
           <Route path="/processes" element={<Processes />} />
           <Route path="/processes/new" element={<CreateProcess />} />
           <Route path="/processes/:id" element={<ProcessDetail />} />
