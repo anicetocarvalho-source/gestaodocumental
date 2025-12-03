@@ -1,308 +1,528 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { 
-  ClipboardPlus, 
+  Plus, 
   Clock, 
-  Users, 
-  ArrowRight,
+  Search,
+  Filter,
+  Download,
+  SlidersHorizontal,
+  ChevronDown,
   CheckCircle,
   AlertCircle,
   Pause,
-  Search,
-  Filter
+  X,
+  Calendar
 } from "lucide-react";
 
+// Process data
 const processes = [
   {
     id: 1,
-    name: "Budget Approval Workflow",
-    description: "Annual budget review and approval process",
-    stage: "Finance Review",
-    stages: ["Initiation", "Department Review", "Finance Review", "Final Approval"],
-    currentStageIndex: 2,
-    progress: 75,
-    deadline: "Dec 15, 2024",
-    assignees: ["JD", "SC", "MW"],
-    priority: "high",
-    status: "active",
+    number: "PROC-2024-0001",
+    subject: "Licitação - Aquisição de Equipamentos",
+    requester: "Maria Silva",
+    currentUnit: "Setor de Compras",
+    slaRemaining: 5,
+    status: "em_andamento",
+    type: "Licitação",
+    priority: "alta",
+    date: "15 Nov 2024",
   },
   {
     id: 2,
-    name: "Contract Renewal Process",
-    description: "Vendor contract renewal and negotiation",
-    stage: "Legal Review",
-    stages: ["Request", "Vendor Negotiation", "Legal Review", "Signature"],
-    currentStageIndex: 2,
-    progress: 45,
-    deadline: "Dec 20, 2024",
-    assignees: ["MC", "LW"],
-    priority: "medium",
-    status: "active",
+    number: "PROC-2024-0002",
+    subject: "Contratação de Serviços de TI",
+    requester: "Carlos Mendes",
+    currentUnit: "Departamento Jurídico",
+    slaRemaining: 12,
+    status: "em_andamento",
+    type: "Contratação",
+    priority: "média",
+    date: "14 Nov 2024",
   },
   {
     id: 3,
-    name: "Policy Update Procedure",
-    description: "Public policy amendment and review",
-    stage: "Public Comment",
-    stages: ["Draft", "Internal Review", "Public Comment", "Finalization"],
-    currentStageIndex: 2,
-    progress: 90,
-    deadline: "Dec 8, 2024",
-    assignees: ["EW", "DB", "LA", "JW", "MG"],
-    priority: "low",
-    status: "active",
+    number: "PROC-2024-0003",
+    subject: "Renovação de Contrato - Limpeza",
+    requester: "Ana Costa",
+    currentUnit: "Gabinete",
+    slaRemaining: 2,
+    status: "urgente",
+    type: "Renovação",
+    priority: "alta",
+    date: "13 Nov 2024",
   },
   {
     id: 4,
-    name: "Vendor Evaluation Review",
-    description: "New vendor assessment and scoring",
-    stage: "Initial Screening",
-    stages: ["Initial Screening", "Technical Evaluation", "Financial Review", "Selection"],
-    currentStageIndex: 0,
-    progress: 20,
-    deadline: "Dec 30, 2024",
-    assignees: ["RT", "SJ", "MC", "EW"],
-    priority: "medium",
-    status: "active",
+    number: "PROC-2024-0004",
+    subject: "Solicitação de Recursos - Educação",
+    requester: "João Santos",
+    currentUnit: "Secretaria de Educação",
+    slaRemaining: 20,
+    status: "em_andamento",
+    type: "Solicitação",
+    priority: "baixa",
+    date: "12 Nov 2024",
   },
   {
     id: 5,
-    name: "Compliance Audit",
-    description: "Quarterly compliance review and reporting",
-    stage: "Completed",
-    stages: ["Planning", "Fieldwork", "Review", "Report"],
-    currentStageIndex: 4,
-    progress: 100,
-    deadline: "Nov 30, 2024",
-    assignees: ["LA", "JW"],
-    priority: "high",
-    status: "completed",
+    number: "PROC-2024-0005",
+    subject: "Parecer Técnico - Obra Pública",
+    requester: "Roberto Lima",
+    currentUnit: "Setor de Engenharia",
+    slaRemaining: 0,
+    status: "concluido",
+    type: "Parecer",
+    priority: "média",
+    date: "10 Nov 2024",
   },
   {
     id: 6,
-    name: "IT Infrastructure Upgrade",
-    description: "System modernization initiative",
-    stage: "On Hold",
-    stages: ["Assessment", "Planning", "Implementation", "Testing"],
-    currentStageIndex: 1,
-    progress: 35,
-    deadline: "Jan 15, 2025",
-    assignees: ["DB", "RT"],
-    priority: "medium",
-    status: "paused",
+    number: "PROC-2024-0006",
+    subject: "Convênio - Parceria Estadual",
+    requester: "Lucia Ferreira",
+    currentUnit: "Setor de Convênios",
+    slaRemaining: -3,
+    status: "atrasado",
+    type: "Convênio",
+    priority: "alta",
+    date: "08 Nov 2024",
+  },
+  {
+    id: 7,
+    number: "PROC-2024-0007",
+    subject: "Auditoria Interna - Financeiro",
+    requester: "Paulo Ribeiro",
+    currentUnit: "Controladoria",
+    slaRemaining: 8,
+    status: "suspenso",
+    type: "Auditoria",
+    priority: "média",
+    date: "05 Nov 2024",
+  },
+  {
+    id: 8,
+    number: "PROC-2024-0008",
+    subject: "Recurso Administrativo - Multa",
+    requester: "Fernanda Oliveira",
+    currentUnit: "Procuradoria",
+    slaRemaining: 15,
+    status: "em_andamento",
+    type: "Recurso",
+    priority: "baixa",
+    date: "01 Nov 2024",
   },
 ];
 
-const priorityVariants = {
-  high: "error",
-  medium: "warning",
-  low: "info",
-} as const;
-
-const statusIcons = {
-  active: <Clock className="h-4 w-4" />,
-  completed: <CheckCircle className="h-4 w-4" />,
-  paused: <Pause className="h-4 w-4" />,
+const statusConfig = {
+  em_andamento: { label: "Em Andamento", variant: "info" as const, icon: Clock },
+  concluido: { label: "Concluído", variant: "success" as const, icon: CheckCircle },
+  urgente: { label: "Urgente", variant: "warning" as const, icon: AlertCircle },
+  atrasado: { label: "Atrasado", variant: "error" as const, icon: AlertCircle },
+  suspenso: { label: "Suspenso", variant: "secondary" as const, icon: Pause },
 };
 
-const statusColors = {
-  active: "text-info",
-  completed: "text-success",
-  paused: "text-warning",
+const priorityConfig = {
+  alta: { label: "Alta", variant: "error" as const },
+  média: { label: "Média", variant: "warning" as const },
+  baixa: { label: "Baixa", variant: "info" as const },
 };
+
+const processTypes = ["Licitação", "Contratação", "Renovação", "Solicitação", "Parecer", "Convênio", "Auditoria", "Recurso"];
+const units = ["Setor de Compras", "Departamento Jurídico", "Gabinete", "Secretaria de Educação", "Setor de Engenharia", "Setor de Convênios", "Controladoria", "Procuradoria"];
 
 const Processes = () => {
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    number: "",
+    type: "",
+    status: "",
+    priority: "",
+    unit: "",
+    dateFrom: "",
+    dateTo: "",
+  });
+
+  const getSlaDisplay = (days: number) => {
+    if (days < 0) {
+      return <span className="text-error font-medium">{Math.abs(days)} dias atrasado</span>;
+    } else if (days === 0) {
+      return <span className="text-success font-medium">Concluído</span>;
+    } else if (days <= 3) {
+      return <span className="text-warning font-medium">{days} dias</span>;
+    }
+    return <span className="text-muted-foreground">{days} dias</span>;
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      number: "",
+      type: "",
+      status: "",
+      priority: "",
+      unit: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some(v => v !== "");
+
   return (
     <DashboardLayout 
-      title="Processes" 
-      subtitle="Track and manage all active workflows"
+      title="Lista de Processos" 
+      subtitle="Gerenciar e acompanhar todos os processos"
     >
-      <PageBreadcrumb items={[{ label: "Processes" }]} />
+      <PageBreadcrumb items={[{ label: "Processos" }]} />
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Summary */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         <Card variant="stat">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-info-muted">
-              <Clock className="h-6 w-6 text-info" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">24</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-primary-muted flex items-center justify-center">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold">4</p>
-              <p className="text-sm text-muted-foreground">Active</p>
-            </div>
-          </div>
+          </CardContent>
         </Card>
         <Card variant="stat">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-success-muted">
-              <CheckCircle className="h-6 w-6 text-success" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-info">15</p>
+                <p className="text-xs text-muted-foreground">Em Andamento</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-info-muted flex items-center justify-center">
+                <Clock className="h-5 w-5 text-info" />
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold">1</p>
-              <p className="text-sm text-muted-foreground">Completed</p>
-            </div>
-          </div>
+          </CardContent>
         </Card>
         <Card variant="stat">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning-muted">
-              <Pause className="h-6 w-6 text-warning" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-warning">3</p>
+                <p className="text-xs text-muted-foreground">Urgentes</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-warning-muted flex items-center justify-center">
+                <AlertCircle className="h-5 w-5 text-warning" />
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold">1</p>
-              <p className="text-sm text-muted-foreground">On Hold</p>
-            </div>
-          </div>
+          </CardContent>
         </Card>
         <Card variant="stat">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-error-muted">
-              <AlertCircle className="h-6 w-6 text-error" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-error">2</p>
+                <p className="text-xs text-muted-foreground">Atrasados</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-error-muted flex items-center justify-center">
+                <AlertCircle className="h-5 w-5 text-error" />
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold">2</p>
-              <p className="text-sm text-muted-foreground">Overdue</p>
+          </CardContent>
+        </Card>
+        <Card variant="stat">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-success">4</p>
+                <p className="text-xs text-muted-foreground">Concluídos</p>
+              </div>
+              <div className="h-10 w-10 rounded-lg bg-success-muted flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-success" />
+              </div>
             </div>
-          </div>
+          </CardContent>
         </Card>
       </div>
 
       {/* Toolbar */}
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input 
-              placeholder="Search processes..." 
-              className="pl-10 w-64"
-              aria-label="Search processes"
-            />
-          </div>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
-          <select 
-            className="h-10 px-3 border border-border rounded-md bg-background text-sm"
-            aria-label="Filter by status"
-          >
-            <option value="">All Status</option>
-            <option>Active</option>
-            <option>Completed</option>
-            <option>Paused</option>
-          </select>
-        </div>
-        <Button>
-          <ClipboardPlus className="mr-2 h-4 w-4" />
-          New Process
-        </Button>
-      </div>
-
-      {/* Process List */}
-      <h2 className="text-lg font-semibold mt-6">All Processes</h2>
-
-      <div className="mt-4 grid gap-4">
-        {processes.map((process) => (
-          <Link key={process.id} to={`/processes/${process.id}`}>
-            <Card variant="interactive" className="p-6 hover:border-primary transition-colors">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground">{process.name}</h3>
-                        <Badge variant={priorityVariants[process.priority]} className="capitalize">
-                          {process.priority}
-                        </Badge>
-                        <span className={`flex items-center gap-1 text-sm ${statusColors[process.status]}`}>
-                          {statusIcons[process.status]}
-                          <span className="capitalize">{process.status}</span>
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{process.description}</p>
-                    </div>
-                    <Button variant="ghost" size="icon">
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                {/* Stage Progress */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Stage: <span className="text-foreground font-medium">{process.stage}</span>
-                    </span>
-                    <span className="font-medium">{process.progress}%</span>
-                  </div>
-                  <Progress value={process.progress} size="sm" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    {process.stages.map((stage, index) => (
-                      <span 
-                        key={stage}
-                        className={index <= process.currentStageIndex ? "text-primary font-medium" : ""}
-                      >
-                        {stage}
-                      </span>
-                    ))}
-                  </div>
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            {/* Primary Actions Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    placeholder="Buscar por nº, assunto ou solicitante..." 
+                    className="pl-10"
+                    aria-label="Buscar processos"
+                  />
                 </div>
-
-                {/* Meta */}
-                <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{process.deadline}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <div className="flex -space-x-2">
-                      {process.assignees.slice(0, 3).map((initials, idx) => (
-                        <div 
-                          key={idx}
-                          className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-primary-foreground"
-                        >
-                          {initials}
-                        </div>
-                      ))}
-                      {process.assignees.length > 3 && (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium text-muted-foreground">
-                          +{process.assignees.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <Button 
+                  variant={showAdvancedFilters ? "default" : "outline"}
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                >
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  Filtros Avançados
+                  <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showAdvancedFilters ? "rotate-180" : ""}`} />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+                <Link to="/processes/new">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Processo
+                  </Button>
+                </Link>
               </div>
             </div>
-          </Card>
-          </Link>
-        ))}
-      </div>
+
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="pt-4 border-t border-border">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Nº do Processo</label>
+                    <Input 
+                      placeholder="PROC-2024-..." 
+                      value={filters.number}
+                      onChange={(e) => setFilters({ ...filters, number: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+                    <select 
+                      className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.type}
+                      onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                    >
+                      <option value="">Todos os tipos</option>
+                      {processTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Estado</label>
+                    <select 
+                      className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.status}
+                      onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                    >
+                      <option value="">Todos os estados</option>
+                      <option value="em_andamento">Em Andamento</option>
+                      <option value="urgente">Urgente</option>
+                      <option value="atrasado">Atrasado</option>
+                      <option value="suspenso">Suspenso</option>
+                      <option value="concluido">Concluído</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Prioridade</label>
+                    <select 
+                      className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.priority}
+                      onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                    >
+                      <option value="">Todas</option>
+                      <option value="alta">Alta</option>
+                      <option value="média">Média</option>
+                      <option value="baixa">Baixa</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Unidade</label>
+                    <select 
+                      className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
+                      value={filters.unit}
+                      onChange={(e) => setFilters({ ...filters, unit: e.target.value })}
+                    >
+                      <option value="">Todas as unidades</option>
+                      {units.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Data</label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="date" 
+                        className="flex-1"
+                        value={filters.dateFrom}
+                        onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={clearFilters}
+                    disabled={!hasActiveFilters}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Limpar Filtros
+                  </Button>
+                  <Button size="sm">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Aplicar Filtros
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Process Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[140px]">Nº</TableHead>
+                <TableHead>Assunto</TableHead>
+                <TableHead className="w-[150px]">Solicitante</TableHead>
+                <TableHead className="w-[180px]">Unidade Atual</TableHead>
+                <TableHead className="w-[120px]">SLA Restante</TableHead>
+                <TableHead className="w-[130px]">Estado</TableHead>
+                <TableHead className="w-[100px] text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {processes.map((process) => {
+                const status = statusConfig[process.status as keyof typeof statusConfig];
+                const priority = priorityConfig[process.priority as keyof typeof priorityConfig];
+                const StatusIcon = status.icon;
+                
+                return (
+                  <TableRow key={process.id} className="hover:bg-muted/50">
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Link 
+                          to={`/processes/${process.id}`}
+                          className="font-mono text-sm font-medium text-primary hover:underline"
+                        >
+                          {process.number}
+                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={priority.variant} className="text-xs px-1.5 py-0">
+                            {priority.label}
+                          </Badge>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Link 
+                          to={`/processes/${process.id}`}
+                          className="font-medium text-foreground hover:text-primary hover:underline line-clamp-1"
+                        >
+                          {process.subject}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{process.type} • {process.date}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{process.requester}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{process.currentUnit}</span>
+                    </TableCell>
+                    <TableCell>
+                      {getSlaDisplay(process.slaRemaining)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={status.variant} className="gap-1">
+                        <StatusIcon className="h-3 w-3" />
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link to={`/processes/${process.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Ver
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          Showing 1-6 of 24 processes
+          Mostrando <span className="font-medium">1-8</span> de <span className="font-medium">24</span> processos
         </p>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled>Previous</Button>
-          <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">1</Button>
-          <Button variant="outline" size="sm">2</Button>
-          <Button variant="outline" size="sm">3</Button>
-          <Button variant="outline" size="sm">4</Button>
-          <Button variant="outline" size="sm">Next</Button>
+          <select 
+            className="h-9 px-3 border border-border rounded-md bg-background text-sm"
+            aria-label="Itens por página"
+          >
+            <option value="10">10 por página</option>
+            <option value="25">25 por página</option>
+            <option value="50">50 por página</option>
+          </select>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious href="#" />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#" isActive>1</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#">2</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink href="#">3</PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext href="#" />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </div>
 
       {/* Audit Log Reference */}
       <div className="mt-6">
-        <AuditLogReference context="View process activity history" />
+        <AuditLogReference context="Ver histórico de atividades dos processos" />
       </div>
     </DashboardLayout>
   );
