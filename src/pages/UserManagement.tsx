@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,9 @@ import {
   Mail,
   Edit,
   Trash2,
-  Download
+  Download,
+  ChevronRight,
+  History
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -230,24 +233,50 @@ const UserManagement = () => {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Roles</CardTitle>
-              <Button variant="outline" size="sm">Manage Roles</Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/permissions">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Manage Roles
+                </Link>
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {roles.map((role, i) => (
-              <div key={i} className="flex items-center justify-between p-3 border border-border rounded-lg hover:border-border-strong transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 bg-primary-muted rounded-lg flex items-center justify-center">
-                    <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
+              <Link key={i} to="/permissions">
+                <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-primary-muted rounded-lg flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{role.name}</p>
+                      <p className="text-xs text-muted-foreground">{role.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{role.name}</p>
-                    <p className="text-xs text-muted-foreground">{role.description}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{role.count} users</Badge>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
-                <Badge variant="secondary">{role.count} users</Badge>
-              </div>
+              </Link>
             ))}
+            
+            {/* Audit Logs Link */}
+            <Link to="/audit-logs">
+              <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:border-info transition-colors cursor-pointer mt-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-info-muted rounded-lg flex items-center justify-center">
+                    <History className="h-5 w-5 text-info" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Audit Logs</p>
+                    <p className="text-xs text-muted-foreground">View activity history</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </Link>
           </CardContent>
         </Card>
 

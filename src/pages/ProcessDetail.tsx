@@ -1,3 +1,4 @@
+import { Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,13 @@ const assignees = [
 ];
 
 const ProcessDetail = () => {
+  const navigate = useNavigate();
+  
+  const handleAdvanceStage = () => {
+    // Navigate to approvals for workflow action
+    navigate("/approvals");
+  };
+
   return (
     <DashboardLayout 
       title="Process Detail" 
@@ -76,7 +84,7 @@ const ProcessDetail = () => {
     >
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-        <a href="/processes" className="hover:text-foreground transition-colors">Processes</a>
+        <Link to="/processes" className="hover:text-foreground transition-colors">Processes</Link>
         <ChevronRight className="h-4 w-4" aria-hidden="true" />
         <span className="text-foreground font-medium" aria-current="page">{processData.name}</span>
       </nav>
@@ -116,7 +124,7 @@ const ProcessDetail = () => {
                   <MessageSquare className="h-4 w-4 mr-2" aria-hidden="true" />
                   Comment
                 </Button>
-                <Button>
+                <Button onClick={handleAdvanceStage}>
                   <ArrowRight className="h-4 w-4 mr-2" aria-hidden="true" />
                   Advance Stage
                 </Button>
@@ -348,11 +356,13 @@ const ProcessDetail = () => {
               <CardTitle className="text-base">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                Generate Report
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/dispatches">
+                  <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Generate Report
+                </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleAdvanceStage}>
                 <Users className="h-4 w-4 mr-2" aria-hidden="true" />
                 Request Approval
               </Button>

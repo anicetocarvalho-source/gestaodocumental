@@ -11,6 +11,8 @@ import ProcessDetail from "./pages/ProcessDetail";
 import DispatchManagement from "./pages/DispatchManagement";
 import ApprovalQueue from "./pages/ApprovalQueue";
 import UserManagement from "./pages/UserManagement";
+import Permissions from "./pages/Permissions";
+import AuditLogs from "./pages/AuditLogs";
 import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Wireframes from "./pages/Wireframes";
@@ -34,12 +36,13 @@ const App = () => (
           <Route path="/dispatches" element={<DispatchManagement />} />
           <Route path="/approvals" element={<ApprovalQueue />} />
           <Route path="/users" element={<UserManagement />} />
+          <Route path="/permissions" element={<Permissions />} />
+          <Route path="/audit-logs" element={<AuditLogs />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/wireframes" element={<Wireframes />} />
           <Route path="/folders" element={<PlaceholderPage title="Folders" subtitle="Organize and manage document folders" />} />
           <Route path="/archive" element={<PlaceholderPage title="Archive" subtitle="Access archived documents and records" />} />
-          <Route path="/permissions" element={<PlaceholderPage title="Permissions" subtitle="Configure roles and permissions" />} />
           <Route path="/notifications" element={<PlaceholderPage title="Notifications" subtitle="Manage notification preferences" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

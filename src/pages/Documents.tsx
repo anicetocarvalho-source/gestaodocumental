@@ -1,8 +1,11 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { UploadModal } from "@/components/documents/UploadModal";
 import { 
   FileText, 
   Search, 
@@ -44,6 +47,8 @@ const statusMap: Record<string, "approved" | "pending" | "in-progress" | "draft"
 };
 
 const Documents = () => {
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
   return (
     <DashboardLayout 
       title="Documents" 
@@ -72,7 +77,7 @@ const Documents = () => {
               <List className="h-4 w-4" />
             </Button>
           </div>
-          <Button>
+          <Button onClick={() => setUploadModalOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Upload
           </Button>
@@ -105,12 +110,12 @@ const Documents = () => {
                       <input type="checkbox" className="rounded border-border" />
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center gap-3">
+                      <Link to={`/documents/${doc.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-muted">
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="font-medium text-foreground">{doc.name}</span>
-                      </div>
+                        <span className="font-medium text-foreground hover:text-primary transition-colors">{doc.name}</span>
+                      </Link>
                     </td>
                     <td className="table-cell text-muted-foreground">{doc.type}</td>
                     <td className="table-cell text-muted-foreground">{doc.size}</td>
@@ -129,8 +134,10 @@ const Documents = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 bg-popover">
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" /> View
+                          <DropdownMenuItem asChild>
+                            <Link to={`/documents/${doc.id}`}>
+                              <Eye className="mr-2 h-4 w-4" /> View
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Pencil className="mr-2 h-4 w-4" /> Edit
@@ -172,6 +179,9 @@ const Documents = () => {
           </Button>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      <UploadModal open={uploadModalOpen} onOpenChange={setUploadModalOpen} />
     </DashboardLayout>
   );
 };
