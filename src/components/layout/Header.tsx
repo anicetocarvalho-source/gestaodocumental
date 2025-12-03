@@ -17,12 +17,12 @@ export function Header({ title, subtitle }: HeaderProps) {
         )}
       </div>
       
-      {/* Global Search */}
+      {/* Pesquisa Global */}
       <div className="hidden md:flex flex-1 max-w-md mx-8">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input 
-            placeholder="Search documents, processes..." 
+            placeholder="Pesquisar documentos, processos..." 
             className="pl-10 bg-muted/50 border-transparent hover:border-border focus:border-primary focus:bg-background"
           />
         </div>

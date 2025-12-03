@@ -8,37 +8,37 @@ import { Button } from "@/components/ui/button";
 const processes = [
   {
     id: 1,
-    name: "Budget Approval Workflow",
-    stage: "Finance Review",
+    name: "Fluxo de Aprovação de Orçamento",
+    stage: "Revisão Financeira",
     progress: 75,
-    deadline: "Dec 15, 2024",
+    deadline: "15 Dez, 2024",
     assignees: 3,
     priority: "high",
   },
   {
     id: 2,
-    name: "Contract Renewal Process",
-    stage: "Legal Review",
+    name: "Processo de Renovação de Contrato",
+    stage: "Revisão Jurídica",
     progress: 45,
-    deadline: "Dec 20, 2024",
+    deadline: "20 Dez, 2024",
     assignees: 2,
     priority: "medium",
   },
   {
     id: 3,
-    name: "Policy Update Procedure",
-    stage: "Public Comment",
+    name: "Procedimento de Actualização de Política",
+    stage: "Comentário Público",
     progress: 90,
-    deadline: "Dec 8, 2024",
+    deadline: "8 Dez, 2024",
     assignees: 5,
     priority: "low",
   },
   {
     id: 4,
-    name: "Vendor Evaluation Review",
-    stage: "Initial Screening",
+    name: "Revisão de Avaliação de Fornecedor",
+    stage: "Triagem Inicial",
     progress: 20,
-    deadline: "Dec 30, 2024",
+    deadline: "30 Dez, 2024",
     assignees: 4,
     priority: "medium",
   },
@@ -50,13 +50,19 @@ const priorityVariants = {
   low: "info",
 } as const;
 
+const priorityLabels = {
+  high: "Alta",
+  medium: "Média",
+  low: "Baixa",
+};
+
 export function ActiveProcesses() {
   return (
     <Card variant="default" className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle>Active Processes</CardTitle>
+        <CardTitle>Processos Activos</CardTitle>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/processes">View All</Link>
+          <Link to="/processes">Ver Todos</Link>
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -70,11 +76,11 @@ export function ActiveProcesses() {
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium text-foreground">{process.name}</h4>
                     <Badge variant={priorityVariants[process.priority]} className="capitalize">
-                      {process.priority}
+                      {priorityLabels[process.priority]}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Current Stage: <span className="text-foreground">{process.stage}</span>
+                    Fase Actual: <span className="text-foreground">{process.stage}</span>
                   </p>
                 </div>
                 <Button variant="ghost" size="icon-sm">
@@ -84,7 +90,7 @@ export function ActiveProcesses() {
               
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-muted-foreground">Progresso</span>
                   <span className="font-medium text-foreground">{process.progress}%</span>
                 </div>
                 <Progress value={process.progress} className="h-2" />
@@ -97,7 +103,7 @@ export function ActiveProcesses() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  <span>{process.assignees} assignees</span>
+                  <span>{process.assignees} atribuídos</span>
                 </div>
               </div>
             </div>

@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   FilePlus, 
   FolderPlus, 
@@ -20,14 +19,14 @@ interface QuickAction {
 }
 
 const actions: QuickAction[] = [
-  { icon: FilePlus, label: "New Document", description: "Create a new document", href: "/documents/new" },
-  { icon: Upload, label: "Upload File", description: "Upload from computer", href: "/documents" },
-  { icon: ClipboardPlus, label: "Start Process", description: "Initiate new workflow", href: "/processes" },
-  { icon: FolderPlus, label: "New Folder", description: "Organize documents", href: "/folders" },
-  { icon: FileSearch, label: "Search Files", description: "Find documents", href: "/search" },
-  { icon: FileSignature, label: "Request Signature", description: "Get approvals", href: "/approvals" },
-  { icon: UserPlus, label: "Add User", description: "Invite team member", href: "/users" },
-  { icon: Send, label: "Send Report", description: "Share with stakeholders", href: "/dispatches" },
+  { icon: FilePlus, label: "Novo Documento", description: "Criar novo documento", href: "/documents/new" },
+  { icon: Upload, label: "Carregar Ficheiro", description: "Carregar do computador", href: "/documents" },
+  { icon: ClipboardPlus, label: "Iniciar Processo", description: "Iniciar novo fluxo", href: "/processes" },
+  { icon: FolderPlus, label: "Nova Pasta", description: "Organizar documentos", href: "/folders" },
+  { icon: FileSearch, label: "Pesquisar", description: "Encontrar documentos", href: "/search" },
+  { icon: FileSignature, label: "Pedir Assinatura", description: "Obter aprovações", href: "/approvals" },
+  { icon: UserPlus, label: "Adicionar Utilizador", description: "Convidar membro", href: "/users" },
+  { icon: Send, label: "Enviar Relatório", description: "Partilhar com partes", href: "/dispatches" },
 ];
 
 export function QuickActions() {
@@ -35,7 +34,7 @@ export function QuickActions() {
 
   return (
     <div className="animate-slide-up">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Quick Actions</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-4">Acções Rápidas</h3>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         {actions.map((action) => {
           const IconComponent = action.icon;

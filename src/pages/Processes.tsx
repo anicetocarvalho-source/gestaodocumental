@@ -38,14 +38,14 @@ import {
   Calendar
 } from "lucide-react";
 
-// Process data
+// Dados dos processos
 const processes = [
   {
     id: 1,
     number: "PROC-2024-0001",
     subject: "Licitação - Aquisição de Equipamentos",
     requester: "Maria Silva",
-    currentUnit: "Setor de Compras",
+    currentUnit: "Sector de Compras",
     slaRemaining: 5,
     status: "em_andamento",
     type: "Licitação",
@@ -93,7 +93,7 @@ const processes = [
     number: "PROC-2024-0005",
     subject: "Parecer Técnico - Obra Pública",
     requester: "Roberto Lima",
-    currentUnit: "Setor de Engenharia",
+    currentUnit: "Sector de Engenharia",
     slaRemaining: 0,
     status: "concluido",
     type: "Parecer",
@@ -103,12 +103,12 @@ const processes = [
   {
     id: 6,
     number: "PROC-2024-0006",
-    subject: "Convênio - Parceria Estadual",
-    requester: "Lucia Ferreira",
-    currentUnit: "Setor de Convênios",
+    subject: "Convénio - Parceria Estadual",
+    requester: "Lúcia Ferreira",
+    currentUnit: "Sector de Convénios",
     slaRemaining: -3,
     status: "atrasado",
-    type: "Convênio",
+    type: "Convénio",
     priority: "alta",
     date: "08 Nov 2024",
   },
@@ -152,8 +152,8 @@ const priorityConfig = {
   baixa: { label: "Baixa", variant: "info" as const },
 };
 
-const processTypes = ["Licitação", "Contratação", "Renovação", "Solicitação", "Parecer", "Convênio", "Auditoria", "Recurso"];
-const units = ["Setor de Compras", "Departamento Jurídico", "Gabinete", "Secretaria de Educação", "Setor de Engenharia", "Setor de Convênios", "Controladoria", "Procuradoria"];
+const processTypes = ["Licitação", "Contratação", "Renovação", "Solicitação", "Parecer", "Convénio", "Auditoria", "Recurso"];
+const units = ["Sector de Compras", "Departamento Jurídico", "Gabinete", "Secretaria de Educação", "Sector de Engenharia", "Sector de Convénios", "Controladoria", "Procuradoria"];
 
 const Processes = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -195,11 +195,11 @@ const Processes = () => {
   return (
     <DashboardLayout 
       title="Lista de Processos" 
-      subtitle="Gerenciar e acompanhar todos os processos"
+      subtitle="Gerir e acompanhar todos os processos"
     >
       <PageBreadcrumb items={[{ label: "Processos" }]} />
 
-      {/* Stats Summary */}
+      {/* Resumo de Estatísticas */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         <Card variant="stat">
           <CardContent className="p-4">
@@ -268,19 +268,19 @@ const Processes = () => {
         </Card>
       </div>
 
-      {/* Toolbar */}
+      {/* Barra de Ferramentas */}
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex flex-col gap-4">
-            {/* Primary Actions Row */}
+            {/* Linha de Acções Principais */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3 flex-1">
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input 
-                    placeholder="Buscar por nº, assunto ou solicitante..." 
+                    placeholder="Pesquisar por nº, assunto ou solicitante..." 
                     className="pl-10"
-                    aria-label="Buscar processos"
+                    aria-label="Pesquisar processos"
                   />
                 </div>
                 <Button 
@@ -306,7 +306,7 @@ const Processes = () => {
               </div>
             </div>
 
-            {/* Advanced Filters */}
+            {/* Filtros Avançados */}
             {showAdvancedFilters && (
               <div className="pt-4 border-t border-border">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -405,7 +405,7 @@ const Processes = () => {
         </CardContent>
       </Card>
 
-      {/* Process Table */}
+      {/* Tabela de Processos */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -414,10 +414,10 @@ const Processes = () => {
                 <TableHead className="w-[140px]">Nº</TableHead>
                 <TableHead>Assunto</TableHead>
                 <TableHead className="w-[150px]">Solicitante</TableHead>
-                <TableHead className="w-[180px]">Unidade Atual</TableHead>
+                <TableHead className="w-[180px]">Unidade Actual</TableHead>
                 <TableHead className="w-[120px]">SLA Restante</TableHead>
                 <TableHead className="w-[130px]">Estado</TableHead>
-                <TableHead className="w-[100px] text-right">Ações</TableHead>
+                <TableHead className="w-[100px] text-right">Acções</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -484,45 +484,35 @@ const Processes = () => {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Paginação */}
+      <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Mostrando <span className="font-medium">1-8</span> de <span className="font-medium">24</span> processos
+          A mostrar 1-8 de 24 processos
         </p>
-        <div className="flex items-center gap-2">
-          <select 
-            className="h-9 px-3 border border-border rounded-md bg-background text-sm"
-            aria-label="Itens por página"
-          >
-            <option value="10">10 por página</option>
-            <option value="25">25 por página</option>
-            <option value="50">50 por página</option>
-          </select>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious href="#" />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#" isActive>1</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#">2</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#">3</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext href="#" />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious href="#" />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink href="#" isActive>1</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink href="#">2</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink href="#">3</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext href="#" />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
 
-      {/* Audit Log Reference */}
+      {/* Referência ao Registo de Auditoria */}
       <div className="mt-6">
-        <AuditLogReference context="Ver histórico de atividades dos processos" />
+        <AuditLogReference context="Ver histórico de actividade de processos" />
       </div>
     </DashboardLayout>
   );
