@@ -40,6 +40,7 @@ import { ClassificationPanel } from "@/components/documents/ClassificationPanel"
 import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
 import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
+import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
 
 // Document metadata
 const documentInfo = {
@@ -143,6 +144,7 @@ const DocumentDetail = () => {
   const [documentSigned, setDocumentSigned] = useState(false);
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<DocumentAction | null>(null);
+  const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
 
   const getStageIcon = (status: string) => {
     switch (status) {
@@ -542,7 +544,11 @@ const DocumentDetail = () => {
                 Arquivar
               </Button>
               <Separator className="my-3" />
-              <Button className="w-full justify-start" variant="success">
+              <Button 
+                className="w-full justify-start" 
+                variant="success"
+                onClick={() => setCreateProcessModalOpen(true)}
+              >
                 <FolderPlus className="h-4 w-4 mr-3" />
                 Criar Processo
               </Button>
@@ -652,6 +658,23 @@ const DocumentDetail = () => {
           status: documentInfo.status,
         }}
         onActionComplete={handleActionComplete}
+      />
+
+      {/* Create Process from Document Modal */}
+      <CreateProcessFromDocumentModal
+        open={createProcessModalOpen}
+        onOpenChange={setCreateProcessModalOpen}
+        document={{
+          number: documentInfo.entryNumber,
+          title: documentInfo.title,
+          type: documentInfo.type,
+          origin: documentInfo.origin,
+          subject: documentInfo.subject,
+          author: documentInfo.author,
+        }}
+        onProcessCreated={(processNumber) => {
+          console.log("Process created:", processNumber);
+        }}
       />
     </DashboardLayout>
   );
