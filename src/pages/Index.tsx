@@ -101,14 +101,14 @@ const Index = () => {
       <PageBreadcrumb items={[{ label: "Dashboard" }]} />
 
       {/* Filters and Export Bar */}
-      <Card className="mb-6">
-        <CardContent className="py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4">
+      <Card variant="toolbar">
+        <CardContent className="py-3">
+          <div className="toolbar">
+            <div className="toolbar-actions">
               <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground">Período:</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Período:</Label>
                 <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-32 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -129,15 +129,15 @@ const Index = () => {
                       type="date"
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
-                      className="w-36"
+                      className="w-36 h-9"
                     />
                   </div>
-                  <span className="text-muted-foreground">até</span>
+                  <span className="text-sm text-muted-foreground">até</span>
                   <Input
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="w-36"
+                    className="w-36 h-9"
                   />
                 </>
               )}
@@ -145,7 +145,7 @@ const Index = () => {
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="toolbar-buttons">
               <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
                 <Download className="h-4 w-4 mr-2" />
                 PDF

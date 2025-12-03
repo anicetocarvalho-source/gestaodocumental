@@ -8,13 +8,14 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-border/60 shadow-card",
-        elevated: "border-border/50 shadow-md hover:shadow-lg hover:border-border",
-        flat: "border-border/40 shadow-none",
-        outline: "border-border-strong shadow-none",
-        interactive: "border-border/60 shadow-card hover:shadow-card-hover hover:border-border cursor-pointer active:scale-[0.995]",
-        stat: "border-border/60 shadow-card hover:shadow-md",
-        glass: "bg-card/80 backdrop-blur-xl border-border/40 shadow-lg",
+        default: "border-border/50 shadow-sm",
+        elevated: "border-border/40 shadow-md hover:shadow-lg hover:border-border/60",
+        flat: "border-border/30 shadow-none bg-muted/30",
+        outline: "border-border shadow-none",
+        interactive: "border-border/50 shadow-sm hover:shadow-md hover:border-border/70 cursor-pointer active:scale-[0.995]",
+        stat: "border-border/40 shadow-sm hover:shadow-md stat-card",
+        glass: "bg-card/80 backdrop-blur-xl border-border/30 shadow-lg",
+        toolbar: "border-border/40 shadow-sm",
       },
     },
     defaultVariants: {

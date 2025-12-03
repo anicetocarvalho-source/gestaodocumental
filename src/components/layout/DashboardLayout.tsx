@@ -14,8 +14,10 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header title={title} subtitle={subtitle} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto">
+          <div className="content-area page-section animate-fade-in">
+            {children}
+          </div>
         </main>
       </div>
     </div>
