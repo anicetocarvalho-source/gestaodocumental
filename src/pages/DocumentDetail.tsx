@@ -32,6 +32,7 @@ import {
   Plus
 } from "lucide-react";
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
+import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
 
 // Document metadata
 const documentInfo = {
@@ -417,6 +418,11 @@ const DocumentDetail = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Section 6: Version History */}
+          <DocumentVersionHistory 
+            documentId={documentInfo.entryNumber}
+          />
         </div>
 
         {/* Sidebar - Actions - 3 columns */}
