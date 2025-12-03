@@ -15,6 +15,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Archive as ArchiveIcon,
   Search,
   Filter,
@@ -26,8 +36,10 @@ import {
   Clock,
   Building2,
   RotateCcw,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type ArchivedDocument = {
   id: string;
@@ -41,7 +53,17 @@ type ArchivedDocument = {
   classification: string;
 };
 
-const mockArchivedDocs: ArchivedDocument[] = [
+type AuditLogEntry = {
+  id: string;
+  action: string;
+  documentId: string;
+  documentTitle: string;
+  timestamp: Date;
+  user: string;
+  details: string;
+};
+
+const initialArchivedDocs: ArchivedDocument[] = [
   {
     id: "ARQ-2024-001",
     title: "Relatório Anual de Actividades 2020",
@@ -110,8 +132,13 @@ const Archive = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [archivedDocs, setArchivedDocs] = useState<ArchivedDocument[]>(initialArchivedDocs);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<ArchivedDocument | null>(null);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
-  const filteredDocs = mockArchivedDocs.filter((doc) => {
+  const filteredDocs = archivedDocs.filter((doc) => {
     const matchesSearch =
       doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -119,6 +146,38 @@ const Archive = () => {
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
   });
+
+  const handleRestoreClick = (doc: ArchivedDocument) => {
+    setSelectedDocument(doc);
+    setRestoreDialogOpen(true);
+  };
+
+  const handleRestoreConfirm = () => {
+    if (!selectedDocument) return;
+
+    // Create audit log entry
+    const auditEntry: AuditLogEntry = {
+      id: `AUD-${Date.now()}`,
+      action: "RESTORE",
+      documentId: selectedDocument.id,
+      documentTitle: selectedDocument.title,
+      timestamp: new Date(),
+      user: "Utilizador Actual",
+      details: `Documento restaurado do arquivo para o sistema activo. Classificação: ${selectedDocument.classification}. Unidade: ${selectedDocument.unit}.`,
+    };
+
+    setAuditLogs((prev) => [auditEntry, ...prev]);
+
+    // Remove from archived documents
+    setArchivedDocs((prev) => prev.filter((doc) => doc.id !== selectedDocument.id));
+
+    toast.success("Documento restaurado com sucesso", {
+      description: `${selectedDocument.title} foi movido para o sistema activo.`,
+    });
+
+    setRestoreDialogOpen(false);
+    setSelectedDocument(null);
+  };
 
   const getStatusBadge = (status: ArchivedDocument["status"]) => {
     switch (status) {
@@ -195,9 +254,63 @@ const Archive = () => {
                 <SelectItem value="pending_destruction">Pendente Eliminação</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant={showAuditLog ? "default" : "outline"}
+              onClick={() => setShowAuditLog(!showAuditLog)}
+              className="gap-2"
+            >
+              <History className="h-4 w-4" />
+              Auditoria ({auditLogs.length})
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Audit Log Panel */}
+      {showAuditLog && (
+        <Card className="mb-6 border-info/30 bg-info/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-4 w-4 text-info" />
+              Registo de Auditoria
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {auditLogs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum registo de auditoria disponível.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                {auditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 p-3 bg-background rounded-lg border"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                      <RotateCcw className="h-4 w-4 text-success" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">
+                          {log.action === "RESTORE" ? "Documento Restaurado" : log.action}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {log.timestamp.toLocaleString("pt-PT")}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {log.documentId} - {log.documentTitle}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{log.details}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Table */}
       <Card>
@@ -264,7 +377,13 @@ const Archive = () => {
                         <Download className="h-3.5 w-3.5" />
                       </Button>
                       {doc.status === "archived" && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-success hover:text-success hover:bg-success/10"
+                          onClick={() => handleRestoreClick(doc)}
+                          title="Restaurar documento"
+                        >
                           <RotateCcw className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -276,6 +395,28 @@ const Archive = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Restore Confirmation Dialog */}
+      <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar Documento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que deseja restaurar o documento{" "}
+              <strong>{selectedDocument?.title}</strong> para o sistema activo?
+              <br />
+              <br />
+              Esta acção será registada no log de auditoria.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreConfirm} className="bg-success hover:bg-success/90">
+              Restaurar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
