@@ -31,11 +31,15 @@ import {
   Eye,
   Trash2,
   Plus,
-  FileSignature
+  FileSignature,
+  ThumbsUp,
+  ThumbsDown,
+  FileOutput
 } from "lucide-react";
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
 import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
+import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 
 // Document metadata
 const documentInfo = {
@@ -137,6 +141,8 @@ const auditLog = [
 const DocumentDetail = () => {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [documentSigned, setDocumentSigned] = useState(false);
+  const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<WorkflowAction | null>(null);
 
   const getStageIcon = (status: string) => {
     switch (status) {
@@ -152,6 +158,15 @@ const DocumentDetail = () => {
   const handleSignDocument = (signatureData: SignatureData) => {
     console.log("Documento assinado:", signatureData);
     setDocumentSigned(true);
+  };
+
+  const openActionDrawer = (action: WorkflowAction) => {
+    setSelectedAction(action);
+    setActionDrawerOpen(true);
+  };
+
+  const handleActionComplete = (action: WorkflowAction, data: Record<string, unknown>) => {
+    console.log("Action completed:", action, data);
   };
 
   return (
@@ -441,13 +456,67 @@ const DocumentDetail = () => {
           {/* Primary Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Ações</CardTitle>
+              <CardTitle className="text-base">Ações do Workflow</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full justify-start" variant="default">
-                <Forward className="h-4 w-4 mr-3" />
+              <Button 
+                className="w-full justify-start" 
+                variant="default"
+                onClick={() => openActionDrawer("despachar")}
+              >
+                <FileOutput className="h-4 w-4 mr-3" />
                 Despachar
               </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("reencaminhar")}
+              >
+                <Forward className="h-4 w-4 mr-3" />
+                Reencaminhar
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("solicitar_info")}
+              >
+                <MessageSquare className="h-4 w-4 mr-3" />
+                Solicitar Informações
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => openActionDrawer("atribuir")}
+              >
+                <UserPlus className="h-4 w-4 mr-3" />
+                Atribuir Responsável
+              </Button>
+              <Separator className="my-3" />
+              <Button 
+                className="w-full justify-start" 
+                variant="success"
+                onClick={() => openActionDrawer("aprovar")}
+              >
+                <ThumbsUp className="h-4 w-4 mr-3" />
+                Aprovar
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="destructive"
+                onClick={() => openActionDrawer("rejeitar")}
+              >
+                <ThumbsDown className="h-4 w-4 mr-3" />
+                Rejeitar
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Secondary Actions */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Outras Ações</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
               <Button 
                 className="w-full justify-start" 
                 variant={documentSigned ? "success" : "outline"}
@@ -455,10 +524,6 @@ const DocumentDetail = () => {
               >
                 <FileSignature className="h-4 w-4 mr-3" />
                 {documentSigned ? "Documento Assinado" : "Assinar Documento"}
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <UserPlus className="h-4 w-4 mr-3" />
-                Reatribuir
               </Button>
               <Button className="w-full justify-start" variant="outline">
                 <Archive className="h-4 w-4 mr-3" />
@@ -560,6 +625,21 @@ const DocumentDetail = () => {
         documentTitle={documentInfo.title}
         documentId={documentInfo.entryNumber}
         onSign={handleSignDocument}
+      />
+
+      {/* Workflow Action Drawer */}
+      <WorkflowActionDrawer
+        open={actionDrawerOpen}
+        onOpenChange={setActionDrawerOpen}
+        action={selectedAction}
+        processSummary={{
+          number: documentInfo.entryNumber,
+          title: documentInfo.title,
+          unit: documentInfo.department,
+          slaRemaining: 15,
+          status: documentInfo.status,
+        }}
+        onActionComplete={handleActionComplete}
       />
     </DashboardLayout>
   );
