@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Wireframes from "./pages/Wireframes";
 import Repository from "./pages/Repository";
+import DigitizationCenter from "./pages/DigitizationCenter";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/search" element={<SearchResults />} />
           <Route path="/wireframes" element={<Wireframes />} />
           <Route path="/folders" element={<Repository />} />
+          <Route path="/digitization" element={<DigitizationCenter />} />
           <Route path="/archive" element={<PlaceholderPage title="Archive" subtitle="Access archived documents and records" />} />
           <Route path="/notifications" element={<PlaceholderPage title="Notifications" subtitle="Manage notification preferences" />} />
           <Route path="*" element={<NotFound />} />
