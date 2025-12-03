@@ -21,6 +21,7 @@ import {
   GitBranch,
   Layers,
   FileCheck,
+  BarChart3,
 } from "lucide-react";
 
 const navigation = [
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Approvals", href: "/approvals", icon: CheckSquare },
   { name: "Digitization", href: "/digitization", icon: ScanLine },
   { name: "Quality Review", href: "/quality-review", icon: FileCheck },
+  { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Folders", href: "/folders", icon: FolderOpen },
   { name: "Archive", href: "/archive", icon: Archive },
 ];
