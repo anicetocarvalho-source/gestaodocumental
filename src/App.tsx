@@ -22,6 +22,7 @@ import Wireframes from "./pages/Wireframes";
 import Repository from "./pages/Repository";
 import DigitizationCenter from "./pages/DigitizationCenter";
 import QualityReview from "./pages/QualityReview";
+import CreateDispatch from "./pages/CreateDispatch";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/processes/new" element={<CreateProcess />} />
           <Route path="/processes/:id" element={<ProcessDetail />} />
           <Route path="/dispatches" element={<DispatchManagement />} />
+          <Route path="/dispatches/new" element={<CreateDispatch />} />
           <Route path="/approvals" element={<ApprovalQueue />} />
           <Route path="/users" element={<UserManagement />} />
           <Route path="/permissions" element={<Permissions />} />

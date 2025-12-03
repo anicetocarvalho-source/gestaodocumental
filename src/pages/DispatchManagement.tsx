@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 
 const stats = [
   { icon: Package, label: "Pending", value: 24, color: "text-warning" },
@@ -82,6 +83,8 @@ const recentDispatches = [
 ];
 
 const DispatchManagement = () => {
+  const navigate = useNavigate();
+  
   return (
     <DashboardLayout 
       title="Dispatch Management" 
@@ -140,7 +143,7 @@ const DispatchManagement = () => {
             <Button variant="outline">
               Export
             </Button>
-            <Button>
+            <Button onClick={() => navigate("/dispatches/new")}>
               <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
               New Dispatch
             </Button>
