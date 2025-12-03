@@ -18,12 +18,14 @@ import {
   Package,
   CheckSquare,
   ScanLine,
+  GitBranch,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Processes", href: "/processes", icon: ClipboardList },
+  { name: "Workflow Builder", href: "/workflow-builder", icon: GitBranch },
   { name: "Dispatches", href: "/dispatches", icon: Package },
   { name: "Approvals", href: "/approvals", icon: CheckSquare },
   { name: "Digitization", href: "/digitization", icon: ScanLine },
