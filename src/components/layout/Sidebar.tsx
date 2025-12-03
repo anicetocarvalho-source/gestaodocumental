@@ -24,6 +24,7 @@ import {
   BarChart3,
   FileSearch,
   Tags,
+  Bot,
 } from "lucide-react";
 
 const navigation = [
@@ -32,6 +33,7 @@ const navigation = [
   { name: "Processos", href: "/processes", icon: ClipboardList },
   { name: "Expedições", href: "/dispatches", icon: Package },
   { name: "Aprovações", href: "/approvals", icon: CheckSquare },
+  { name: "Assistente IA", href: "/assistant", icon: Bot },
   { name: "Digitalização", href: "/digitization", icon: ScanLine },
   { name: "Processamento OCR", href: "/ocr-processing", icon: FileSearch },
   { name: "Classificação", href: "/classification", icon: Tags },

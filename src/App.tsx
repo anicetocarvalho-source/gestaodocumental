@@ -35,6 +35,7 @@ import WorkflowVisualization from "./pages/WorkflowVisualization";
 import DocumentIntelligence from "./pages/DocumentIntelligence";
 import IntelligentSearch from "./pages/IntelligentSearch";
 import ProcedureGuide from "./pages/ProcedureGuide";
+import InstitutionalAssistant from "./pages/InstitutionalAssistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,7 @@ const App = () => (
           <Route path="/document-intelligence" element={<DocumentIntelligence />} />
           <Route path="/intelligent-search" element={<IntelligentSearch />} />
           <Route path="/procedure-guide" element={<ProcedureGuide />} />
+          <Route path="/assistant" element={<InstitutionalAssistant />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
