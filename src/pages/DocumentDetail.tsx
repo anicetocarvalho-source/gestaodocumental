@@ -664,14 +664,14 @@ const DocumentDetail = () => {
       <CreateProcessFromDocumentModal
         open={createProcessModalOpen}
         onOpenChange={setCreateProcessModalOpen}
-        document={{
+        documents={[{
           number: documentInfo.entryNumber,
           title: documentInfo.title,
           type: documentInfo.type,
           origin: documentInfo.origin,
           subject: documentInfo.subject,
           author: documentInfo.author,
-        }}
+        }]}
         onProcessCreated={(processNumber) => {
           console.log("Process created:", processNumber);
         }}

@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { UploadModal } from "@/components/documents/UploadModal";
-import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
+import { CreateProcessFromDocumentModal, DocumentInfo } from "@/components/documents/CreateProcessFromDocumentModal";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   FileText, 
   Search, 
@@ -22,7 +23,8 @@ import {
   Pencil,
   Trash2,
   Plus,
-  FolderPlus
+  FolderPlus,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -62,12 +64,55 @@ const statusLabels: Record<string, string> = {
 const Documents = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
-  const [selectedDocumentForProcess, setSelectedDocumentForProcess] = useState<typeof documents[0] | null>(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
 
-  const handleCreateProcess = (doc: typeof documents[0]) => {
-    setSelectedDocumentForProcess(doc);
+  const handleSelectDocument = (docId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedDocuments(prev => [...prev, docId]);
+    } else {
+      setSelectedDocuments(prev => prev.filter(id => id !== docId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedDocuments(documents.map(doc => doc.id));
+    } else {
+      setSelectedDocuments([]);
+    }
+  };
+
+  const handleCreateProcessFromSelection = () => {
+    if (selectedDocuments.length > 0) {
+      setCreateProcessModalOpen(true);
+    }
+  };
+
+  const handleCreateProcessFromSingleDoc = (doc: typeof documents[0]) => {
+    setSelectedDocuments([doc.id]);
     setCreateProcessModalOpen(true);
   };
+
+  const clearSelection = () => {
+    setSelectedDocuments([]);
+  };
+
+  const getSelectedDocumentsInfo = (): DocumentInfo[] => {
+    return selectedDocuments.map(id => {
+      const doc = documents.find(d => d.id === id)!;
+      return {
+        number: `DOC-2024-${String(doc.id).padStart(6, '0')}`,
+        title: doc.name,
+        type: doc.type,
+        origin: "Interno",
+        subject: doc.name,
+        author: doc.author,
+      };
+    });
+  };
+
+  const isAllSelected = selectedDocuments.length === documents.length;
+  const hasSelection = selectedDocuments.length > 0;
 
   return (
     <DashboardLayout 
@@ -75,6 +120,25 @@ const Documents = () => {
       subtitle="Gerir e organizar todos os documentos"
     >
       <PageBreadcrumb items={[{ label: "Documentos" }]} />
+
+      {/* Selection Bar */}
+      {hasSelection && (
+        <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <Badge variant="default" className="font-medium">
+              {selectedDocuments.length} documento{selectedDocuments.length > 1 ? 's' : ''} selecionado{selectedDocuments.length > 1 ? 's' : ''}
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+              <X className="h-4 w-4 mr-1" />
+              Limpar seleção
+            </Button>
+          </div>
+          <Button size="sm" onClick={handleCreateProcessFromSelection}>
+            <FolderPlus className="mr-2 h-4 w-4" />
+            Criar Processo com Seleção
+          </Button>
+        </div>
+      )}
 
       {/* Barra de Ferramentas */}
       <Card variant="toolbar" className="mb-6">
@@ -124,7 +188,10 @@ const Documents = () => {
               <thead>
                 <tr>
                   <th className="w-12">
-                    <input type="checkbox" className="rounded border-border" />
+                    <Checkbox 
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                    />
                   </th>
                   <th>Documento</th>
                   <th className="w-20">Tipo</th>
@@ -137,9 +204,12 @@ const Documents = () => {
               </thead>
               <tbody>
                 {documents.map((doc) => (
-                  <tr key={doc.id}>
+                  <tr key={doc.id} className={selectedDocuments.includes(doc.id) ? "bg-primary/5" : ""}>
                     <td>
-                      <input type="checkbox" className="rounded border-border" />
+                      <Checkbox 
+                        checked={selectedDocuments.includes(doc.id)}
+                        onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                      />
                     </td>
                     <td>
                       <Link to={`/documents/${doc.id}`} className="flex items-center gap-3 group">
@@ -178,7 +248,7 @@ const Documents = () => {
                             <Download className="mr-2 h-4 w-4" /> Descarregar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleCreateProcess(doc)}>
+                          <DropdownMenuItem onClick={() => handleCreateProcessFromSingleDoc(doc)}>
                             <FolderPlus className="mr-2 h-4 w-4" /> Criar Processo
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -225,18 +295,16 @@ const Documents = () => {
       <UploadModal open={uploadModalOpen} onOpenChange={setUploadModalOpen} />
 
       {/* Modal de Criar Processo */}
-      {selectedDocumentForProcess && (
+      {selectedDocuments.length > 0 && (
         <CreateProcessFromDocumentModal
           open={createProcessModalOpen}
-          onOpenChange={setCreateProcessModalOpen}
-          document={{
-            number: `DOC-2024-${String(selectedDocumentForProcess.id).padStart(6, '0')}`,
-            title: selectedDocumentForProcess.name,
-            type: selectedDocumentForProcess.type,
-            origin: "Interno",
-            subject: selectedDocumentForProcess.name,
-            author: selectedDocumentForProcess.author,
+          onOpenChange={(open) => {
+            setCreateProcessModalOpen(open);
+            if (!open) {
+              setSelectedDocuments([]);
+            }
           }}
+          documents={getSelectedDocumentsInfo()}
         />
       )}
     </DashboardLayout>

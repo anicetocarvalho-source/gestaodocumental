@@ -21,19 +21,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   FileText,
   FolderPlus,
-  Building2,
-  Tag,
-  Calendar,
-  AlertTriangle,
   Check,
   Link2,
+  X,
 } from "lucide-react";
 
-interface DocumentInfo {
+export interface DocumentInfo {
   number: string;
   title: string;
   type: string;
@@ -45,7 +43,7 @@ interface DocumentInfo {
 interface CreateProcessFromDocumentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  document: DocumentInfo;
+  documents: DocumentInfo[];
   onProcessCreated?: (processNumber: string) => void;
 }
 
@@ -85,14 +83,14 @@ const priorities = [
 export function CreateProcessFromDocumentModal({
   open,
   onOpenChange,
-  document,
+  documents,
   onProcessCreated,
 }: CreateProcessFromDocumentModalProps) {
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     type: "",
-    subject: document.subject || "",
+    subject: documents.length === 1 ? documents[0]?.subject || "" : "",
     description: "",
     unit: "",
     priority: "media",
@@ -122,8 +120,9 @@ export function CreateProcessFromDocumentModal({
 
     const processNumber = generateProcessNumber();
 
+    const docCount = documents.length;
     toast.success("Processo criado com sucesso!", {
-      description: `${processNumber} - Documento ${document.number} vinculado automaticamente.`,
+      description: `${processNumber} - ${docCount} documento${docCount > 1 ? 's' : ''} vinculado${docCount > 1 ? 's' : ''} automaticamente.`,
     });
 
     onProcessCreated?.(processNumber);
@@ -133,7 +132,7 @@ export function CreateProcessFromDocumentModal({
     // Reset form
     setFormData({
       type: "",
-      subject: document.subject || "",
+      subject: "",
       description: "",
       unit: "",
       priority: "media",
@@ -150,161 +149,201 @@ export function CreateProcessFromDocumentModal({
     }
   };
 
+  const isSingleDocument = documents.length === 1;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderPlus className="h-5 w-5 text-primary" />
-            Criar Processo a partir do Documento
+            Criar Processo {isSingleDocument ? "a partir do Documento" : `com ${documents.length} Documentos`}
           </DialogTitle>
           <DialogDescription>
-            Um novo processo será criado com este documento automaticamente vinculado.
+            {isSingleDocument 
+              ? "Um novo processo será criado com este documento automaticamente vinculado."
+              : `Um novo processo será criado com ${documents.length} documentos automaticamente vinculados.`
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Document Info */}
-          <div className="p-4 rounded-lg bg-muted/50 border border-border">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary-muted flex items-center justify-center shrink-0">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {document.number}
-                  </Badge>
-                  <Badge variant="secondary">{document.type}</Badge>
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-6 py-4">
+            {/* Document Info */}
+            {isSingleDocument ? (
+              <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary-muted flex items-center justify-center shrink-0">
+                    <FileText className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {documents[0].number}
+                      </Badge>
+                      <Badge variant="secondary">{documents[0].type}</Badge>
+                    </div>
+                    <p className="text-sm font-medium truncate">{documents[0].title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Origem: {documents[0].origin} • Autor: {documents[0].author}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 text-success">
+                    <Link2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">Será vinculado</span>
+                  </div>
                 </div>
-                <p className="text-sm font-medium truncate">{document.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  Origem: {document.origin} • Autor: {document.author}
-                </p>
               </div>
-              <div className="flex items-center gap-1 text-success">
-                <Link2 className="h-4 w-4" />
-                <span className="text-xs font-medium">Será vinculado</span>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Process Form */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            ) : (
               <div className="space-y-2">
-                <Label htmlFor="process-type">Tipo de Processo *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => handleInputChange("type", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {processTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="process-unit">Unidade Responsável *</Label>
-                <Select
-                  value={formData.unit}
-                  onValueChange={(value) => handleInputChange("unit", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a unidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((unit) => (
-                      <SelectItem key={unit.value} value={unit.value}>
-                        {unit.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="process-subject">Assunto do Processo *</Label>
-              <Input
-                id="process-subject"
-                placeholder="Digite o assunto do processo"
-                value={formData.subject}
-                onChange={(e) => handleInputChange("subject", e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="process-description">Descrição</Label>
-              <Textarea
-                id="process-description"
-                placeholder="Descreva o objetivo e contexto do processo..."
-                className="min-h-[80px]"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="process-priority">Prioridade</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value) => handleInputChange("priority", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {priorities.map((priority) => (
-                      <SelectItem key={priority.value} value={priority.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${priority.color}`} />
-                          {priority.label}
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Documentos a vincular</Label>
+                  <Badge variant="secondary">{documents.length} selecionados</Badge>
+                </div>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="max-h-[180px] overflow-y-auto">
+                    {documents.map((doc, index) => (
+                      <div 
+                        key={doc.number} 
+                        className={`flex items-center gap-3 p-3 ${index !== documents.length - 1 ? 'border-b border-border' : ''}`}
+                      >
+                        <div className="h-8 w-8 rounded-lg bg-primary-muted flex items-center justify-center shrink-0">
+                          <FileText className="h-4 w-4 text-primary" />
                         </div>
-                      </SelectItem>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {doc.number}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">{doc.type}</Badge>
+                          </div>
+                          <p className="text-sm truncate">{doc.title}</p>
+                        </div>
+                        <Link2 className="h-4 w-4 text-success shrink-0" />
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Process Form */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="process-type">Tipo de Processo *</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => handleInputChange("type", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {processTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="process-unit">Unidade Responsável *</Label>
+                  <Select
+                    value={formData.unit}
+                    onValueChange={(value) => handleInputChange("unit", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a unidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.value} value={unit.value}>
+                          {unit.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="process-deadline">Prazo</Label>
+                <Label htmlFor="process-subject">Assunto do Processo *</Label>
                 <Input
-                  id="process-deadline"
-                  type="date"
-                  value={formData.deadline}
-                  onChange={(e) => handleInputChange("deadline", e.target.value)}
+                  id="process-subject"
+                  placeholder="Digite o assunto do processo"
+                  value={formData.subject}
+                  onChange={(e) => handleInputChange("subject", e.target.value)}
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Info Box */}
-          <div className="rounded-lg border border-primary/20 bg-primary-muted/30 p-4">
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-primary mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">O que será feito:</p>
-                <ul className="text-xs text-muted-foreground mt-1 space-y-1">
-                  <li>• Novo processo será criado com número automático</li>
-                  <li>• Documento {document.number} será vinculado automaticamente</li>
-                  <li>• Histórico de auditoria será registrado</li>
-                  <li>• Fluxo de trabalho será iniciado na unidade selecionada</li>
-                </ul>
+              <div className="space-y-2">
+                <Label htmlFor="process-description">Descrição</Label>
+                <Textarea
+                  id="process-description"
+                  placeholder="Descreva o objetivo e contexto do processo..."
+                  className="min-h-[80px]"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="process-priority">Prioridade</Label>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(value) => handleInputChange("priority", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorities.map((priority) => (
+                        <SelectItem key={priority.value} value={priority.value}>
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${priority.color}`} />
+                            {priority.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="process-deadline">Prazo</Label>
+                  <Input
+                    id="process-deadline"
+                    type="date"
+                    value={formData.deadline}
+                    onChange={(e) => handleInputChange("deadline", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="rounded-lg border border-primary/20 bg-primary-muted/30 p-4">
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">O que será feito:</p>
+                  <ul className="text-xs text-muted-foreground mt-1 space-y-1">
+                    <li>• Novo processo será criado com número automático</li>
+                    <li>• {documents.length} documento{documents.length > 1 ? 's serão vinculados' : ' será vinculado'} automaticamente</li>
+                    <li>• Histórico de auditoria será registrado</li>
+                    <li>• Fluxo de trabalho será iniciado na unidade selecionada</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isCreating}>
