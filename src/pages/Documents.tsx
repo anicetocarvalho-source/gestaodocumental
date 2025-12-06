@@ -10,6 +10,17 @@ import { CreateProcessFromDocumentModal, DocumentInfo } from "@/components/docum
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   FileText, 
   Search, 
@@ -24,7 +35,9 @@ import {
   Trash2,
   Plus,
   FolderPlus,
-  X
+  X,
+  Archive,
+  Loader2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,6 +78,8 @@ const Documents = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSelectDocument = (docId: number, checked: boolean) => {
     if (checked) {
@@ -111,6 +126,46 @@ const Documents = () => {
     });
   };
 
+  const handleBulkDownload = async () => {
+    setIsProcessing(true);
+    // Simulate download preparation
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const count = selectedDocuments.length;
+    toast.success(`${count} documento${count > 1 ? 's' : ''} preparado${count > 1 ? 's' : ''} para download`, {
+      description: "O download iniciará automaticamente.",
+    });
+    setIsProcessing(false);
+    clearSelection();
+  };
+
+  const handleBulkArchive = async () => {
+    setIsProcessing(true);
+    // Simulate archive operation
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const count = selectedDocuments.length;
+    toast.success(`${count} documento${count > 1 ? 's' : ''} arquivado${count > 1 ? 's' : ''}`, {
+      description: "Os documentos foram movidos para o arquivo.",
+    });
+    setIsProcessing(false);
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    setIsProcessing(true);
+    // Simulate delete operation
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const count = selectedDocuments.length;
+    toast.success(`${count} documento${count > 1 ? 's' : ''} eliminado${count > 1 ? 's' : ''}`, {
+      description: "Os documentos foram removidos permanentemente.",
+    });
+    setIsProcessing(false);
+    setDeleteDialogOpen(false);
+    clearSelection();
+  };
+
   const isAllSelected = selectedDocuments.length === documents.length;
   const hasSelection = selectedDocuments.length > 0;
 
@@ -128,15 +183,46 @@ const Documents = () => {
             <Badge variant="default" className="font-medium">
               {selectedDocuments.length} documento{selectedDocuments.length > 1 ? 's' : ''} selecionado{selectedDocuments.length > 1 ? 's' : ''}
             </Badge>
-            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2" disabled={isProcessing}>
               <X className="h-4 w-4 mr-1" />
-              Limpar seleção
+              Limpar
             </Button>
           </div>
-          <Button size="sm" onClick={handleCreateProcessFromSelection}>
-            <FolderPlus className="mr-2 h-4 w-4" />
-            Criar Processo com Seleção
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleBulkDownload}
+              disabled={isProcessing}
+            >
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Descarregar
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleBulkArchive}
+              disabled={isProcessing}
+            >
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />}
+              Arquivar
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={isProcessing}
+              className="text-error hover:text-error hover:bg-error/10 border-error/30"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Eliminar
+            </Button>
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button size="sm" onClick={handleCreateProcessFromSelection} disabled={isProcessing}>
+              <FolderPlus className="mr-2 h-4 w-4" />
+              Criar Processo
+            </Button>
+          </div>
         </div>
       )}
 
@@ -307,6 +393,39 @@ const Documents = () => {
           documents={getSelectedDocumentsInfo()}
         />
       )}
+
+      {/* Dialog de Confirmação de Eliminação */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar documentos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Está prestes a eliminar {selectedDocuments.length} documento{selectedDocuments.length > 1 ? 's' : ''}. 
+              Esta ação não pode ser desfeita e os documentos serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkDelete}
+              disabled={isProcessing}
+              className="bg-error hover:bg-error/90"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  A eliminar...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
