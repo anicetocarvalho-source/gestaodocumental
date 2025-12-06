@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { DemoAuthProvider } from "@/contexts/DemoAuthContext";
 import Index from "./pages/Index";
 import Documents from "./pages/Documents";
 import DocumentDetail from "./pages/DocumentDetail";
@@ -38,55 +39,59 @@ import IntelligentSearch from "./pages/IntelligentSearch";
 import ProcedureGuide from "./pages/ProcedureGuide";
 import InstitutionalAssistant from "./pages/InstitutionalAssistant";
 import Auth from "./pages/Auth";
+import DemoLogin from "./pages/DemoLogin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/documents/new" element={<RegisterDocument />} />
-          <Route path="/documents/:id" element={<DocumentDetail />} />
-          <Route path="/documents/:id/view" element={<DocumentViewer />} />
-          <Route path="/processes" element={<Processes />} />
-          <Route path="/processes/new" element={<CreateProcess />} />
-          <Route path="/processes/:id" element={<ProcessDetail />} />
-          <Route path="/dispatches" element={<DispatchManagement />} />
-          <Route path="/dispatches/new" element={<CreateDispatch />} />
-          <Route path="/approvals" element={<ApprovalQueue />} />
-          <Route path="/users" element={<UserManagement />} />
-          <Route path="/permissions" element={<Permissions />} />
-          <Route path="/audit-logs" element={<AuditLogs />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="/wireframes" element={<Wireframes />} />
-          <Route path="/folders" element={<Repository />} />
-          <Route path="/digitization" element={<DigitizationCenter />} />
-          <Route path="/quality-review" element={<QualityReview />} />
-          <Route path="/ocr-processing" element={<OCRProcessing />} />
-          <Route path="/classification" element={<DocumentClassification />} />
-          <Route path="/workflow-builder" element={<WorkflowBuilder />} />
-          <Route path="/process-templates" element={<ProcessTemplates />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/archive" element={<Archive />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/sla-configuration" element={<SLAConfiguration />} />
-          <Route path="/workflow-visualization" element={<WorkflowVisualization />} />
-          <Route path="/document-intelligence" element={<DocumentIntelligence />} />
-          <Route path="/intelligent-search" element={<IntelligentSearch />} />
-          <Route path="/procedure-guide" element={<ProcedureGuide />} />
-          <Route path="/assistant" element={<InstitutionalAssistant />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <DemoAuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/demo-login" element={<DemoLogin />} />
+            <Route path="/documents" element={<Documents />} />
+            <Route path="/documents/new" element={<RegisterDocument />} />
+            <Route path="/documents/:id" element={<DocumentDetail />} />
+            <Route path="/documents/:id/view" element={<DocumentViewer />} />
+            <Route path="/processes" element={<Processes />} />
+            <Route path="/processes/new" element={<CreateProcess />} />
+            <Route path="/processes/:id" element={<ProcessDetail />} />
+            <Route path="/dispatches" element={<DispatchManagement />} />
+            <Route path="/dispatches/new" element={<CreateDispatch />} />
+            <Route path="/approvals" element={<ApprovalQueue />} />
+            <Route path="/users" element={<UserManagement />} />
+            <Route path="/permissions" element={<Permissions />} />
+            <Route path="/audit-logs" element={<AuditLogs />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/wireframes" element={<Wireframes />} />
+            <Route path="/folders" element={<Repository />} />
+            <Route path="/digitization" element={<DigitizationCenter />} />
+            <Route path="/quality-review" element={<QualityReview />} />
+            <Route path="/ocr-processing" element={<OCRProcessing />} />
+            <Route path="/classification" element={<DocumentClassification />} />
+            <Route path="/workflow-builder" element={<WorkflowBuilder />} />
+            <Route path="/process-templates" element={<ProcessTemplates />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/archive" element={<Archive />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/sla-configuration" element={<SLAConfiguration />} />
+            <Route path="/workflow-visualization" element={<WorkflowVisualization />} />
+            <Route path="/document-intelligence" element={<DocumentIntelligence />} />
+            <Route path="/intelligent-search" element={<IntelligentSearch />} />
+            <Route path="/procedure-guide" element={<ProcedureGuide />} />
+            <Route path="/assistant" element={<InstitutionalAssistant />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </DemoAuthProvider>
   </QueryClientProvider>
 );
 
