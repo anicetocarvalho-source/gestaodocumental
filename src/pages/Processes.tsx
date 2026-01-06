@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -35,143 +36,79 @@ import {
   AlertCircle,
   Pause,
   X,
-  Calendar
+  FileText,
+  Loader2
 } from "lucide-react";
+import { 
+  useProcesses, 
+  useProcessTypes, 
+  useProcessStats,
+  useRealtimeProcesses,
+  Process
+} from "@/hooks/useProcesses";
+import { useOrganizationalUnits } from "@/hooks/useReferenceData";
+import { format, differenceInDays } from "date-fns";
+import { pt } from "date-fns/locale";
 
-// Dados dos processos
-const processes = [
-  {
-    id: 1,
-    number: "PROC-2024-0001",
-    subject: "Licitação - Aquisição de Equipamentos",
-    requester: "Maria Silva",
-    currentUnit: "Sector de Compras",
-    slaRemaining: 5,
-    status: "em_andamento",
-    type: "Licitação",
-    priority: "alta",
-    date: "15 Nov 2024",
-  },
-  {
-    id: 2,
-    number: "PROC-2024-0002",
-    subject: "Contratação de Serviços de TI",
-    requester: "Carlos Mendes",
-    currentUnit: "Departamento Jurídico",
-    slaRemaining: 12,
-    status: "em_andamento",
-    type: "Contratação",
-    priority: "média",
-    date: "14 Nov 2024",
-  },
-  {
-    id: 3,
-    number: "PROC-2024-0003",
-    subject: "Renovação de Contrato - Limpeza",
-    requester: "Ana Costa",
-    currentUnit: "Gabinete",
-    slaRemaining: 2,
-    status: "urgente",
-    type: "Renovação",
-    priority: "alta",
-    date: "13 Nov 2024",
-  },
-  {
-    id: 4,
-    number: "PROC-2024-0004",
-    subject: "Solicitação de Recursos - Educação",
-    requester: "João Santos",
-    currentUnit: "Secretaria de Educação",
-    slaRemaining: 20,
-    status: "em_andamento",
-    type: "Solicitação",
-    priority: "baixa",
-    date: "12 Nov 2024",
-  },
-  {
-    id: 5,
-    number: "PROC-2024-0005",
-    subject: "Parecer Técnico - Obra Pública",
-    requester: "Roberto Lima",
-    currentUnit: "Sector de Engenharia",
-    slaRemaining: 0,
-    status: "concluido",
-    type: "Parecer",
-    priority: "média",
-    date: "10 Nov 2024",
-  },
-  {
-    id: 6,
-    number: "PROC-2024-0006",
-    subject: "Convénio - Parceria Estadual",
-    requester: "Lúcia Ferreira",
-    currentUnit: "Sector de Convénios",
-    slaRemaining: -3,
-    status: "atrasado",
-    type: "Convénio",
-    priority: "alta",
-    date: "08 Nov 2024",
-  },
-  {
-    id: 7,
-    number: "PROC-2024-0007",
-    subject: "Auditoria Interna - Financeiro",
-    requester: "Paulo Ribeiro",
-    currentUnit: "Controladoria",
-    slaRemaining: 8,
-    status: "suspenso",
-    type: "Auditoria",
-    priority: "média",
-    date: "05 Nov 2024",
-  },
-  {
-    id: 8,
-    number: "PROC-2024-0008",
-    subject: "Recurso Administrativo - Multa",
-    requester: "Fernanda Oliveira",
-    currentUnit: "Procuradoria",
-    slaRemaining: 15,
-    status: "em_andamento",
-    type: "Recurso",
-    priority: "baixa",
-    date: "01 Nov 2024",
-  },
-];
-
-const statusConfig = {
-  em_andamento: { label: "Em Andamento", variant: "info" as const, icon: Clock },
-  concluido: { label: "Concluído", variant: "success" as const, icon: CheckCircle },
-  urgente: { label: "Urgente", variant: "warning" as const, icon: AlertCircle },
-  atrasado: { label: "Atrasado", variant: "error" as const, icon: AlertCircle },
-  suspenso: { label: "Suspenso", variant: "secondary" as const, icon: Pause },
+const statusConfig: Record<string, { label: string; variant: "info" | "success" | "warning" | "error" | "secondary"; icon: typeof Clock }> = {
+  rascunho: { label: "Rascunho", variant: "secondary", icon: FileText },
+  em_andamento: { label: "Em Andamento", variant: "info", icon: Clock },
+  aguardando_aprovacao: { label: "Aguardando Aprovação", variant: "warning", icon: Clock },
+  aprovado: { label: "Aprovado", variant: "success", icon: CheckCircle },
+  rejeitado: { label: "Rejeitado", variant: "error", icon: AlertCircle },
+  suspenso: { label: "Suspenso", variant: "secondary", icon: Pause },
+  arquivado: { label: "Arquivado", variant: "secondary", icon: FileText },
+  concluido: { label: "Concluído", variant: "success", icon: CheckCircle },
 };
 
-const priorityConfig = {
-  alta: { label: "Alta", variant: "error" as const },
-  média: { label: "Média", variant: "warning" as const },
-  baixa: { label: "Baixa", variant: "info" as const },
+const priorityConfig: Record<string, { label: string; variant: "error" | "warning" | "info" | "secondary" }> = {
+  urgente: { label: "Urgente", variant: "error" },
+  alta: { label: "Alta", variant: "error" },
+  normal: { label: "Normal", variant: "warning" },
+  baixa: { label: "Baixa", variant: "info" },
 };
 
-const processTypes = ["Licitação", "Contratação", "Renovação", "Solicitação", "Parecer", "Convénio", "Auditoria", "Recurso"];
-const units = ["Sector de Compras", "Departamento Jurídico", "Gabinete", "Secretaria de Educação", "Sector de Engenharia", "Sector de Convénios", "Controladoria", "Procuradoria"];
+const ITEMS_PER_PAGE = 10;
 
 const Processes = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
-    number: "",
     type: "",
     status: "",
     priority: "",
     unit: "",
-    dateFrom: "",
-    dateTo: "",
   });
 
-  const getSlaDisplay = (days: number) => {
+  // Subscribe to realtime updates
+  useRealtimeProcesses();
+
+  // Fetch data
+  const { data: processes, isLoading: loadingProcesses } = useProcesses({
+    status: filters.status || undefined,
+    priority: filters.priority || undefined,
+    type_id: filters.type || undefined,
+    unit_id: filters.unit || undefined,
+    search: searchTerm || undefined,
+  });
+  const { data: processTypes } = useProcessTypes();
+  const { data: stats, isLoading: loadingStats } = useProcessStats();
+  const { data: units } = useOrganizationalUnits();
+
+  const getSlaDisplay = (process: Process) => {
+    if (!process.deadline) {
+      return <span className="text-muted-foreground">Sem prazo</span>;
+    }
+    
+    const days = differenceInDays(new Date(process.deadline), new Date());
+    
+    if (process.status === 'concluido' || process.status === 'arquivado') {
+      return <span className="text-success font-medium">Concluído</span>;
+    }
+    
     if (days < 0) {
       return <span className="text-error font-medium">{Math.abs(days)} dias atrasado</span>;
-    } else if (days === 0) {
-      return <span className="text-success font-medium">Concluído</span>;
     } else if (days <= 3) {
       return <span className="text-warning font-medium">{days} dias</span>;
     }
@@ -180,17 +117,23 @@ const Processes = () => {
 
   const clearFilters = () => {
     setFilters({
-      number: "",
       type: "",
       status: "",
       priority: "",
       unit: "",
-      dateFrom: "",
-      dateTo: "",
     });
+    setSearchTerm("");
   };
 
-  const hasActiveFilters = Object.values(filters).some(v => v !== "");
+  const hasActiveFilters = Object.values(filters).some(v => v !== "") || searchTerm !== "";
+
+  // Pagination
+  const totalProcesses = processes?.length || 0;
+  const totalPages = Math.ceil(totalProcesses / ITEMS_PER_PAGE);
+  const paginatedProcesses = processes?.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  ) || [];
 
   return (
     <DashboardLayout 
@@ -205,7 +148,11 @@ const Processes = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">24</p>
+                {loadingStats ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats?.total || 0}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-primary-muted flex items-center justify-center">
@@ -218,7 +165,11 @@ const Processes = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-info">15</p>
+                {loadingStats ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold text-info">{stats?.em_andamento || 0}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Em Andamento</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-info-muted flex items-center justify-center">
@@ -231,7 +182,11 @@ const Processes = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-warning">3</p>
+                {loadingStats ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold text-warning">{stats?.urgentes || 0}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Urgentes</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-warning-muted flex items-center justify-center">
@@ -244,7 +199,11 @@ const Processes = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-error">2</p>
+                {loadingStats ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold text-error">{stats?.atrasados || 0}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Atrasados</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-error-muted flex items-center justify-center">
@@ -257,7 +216,11 @@ const Processes = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-success">4</p>
+                {loadingStats ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold text-success">{stats?.concluidos || 0}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Concluídos</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-success-muted flex items-center justify-center">
@@ -280,6 +243,8 @@ const Processes = () => {
                   <Input 
                     placeholder="Pesquisar por nº, assunto ou solicitante..." 
                     className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     aria-label="Pesquisar processos"
                   />
                 </div>
@@ -309,15 +274,7 @@ const Processes = () => {
             {/* Filtros Avançados */}
             {showAdvancedFilters && (
               <div className="pt-4 border-t border-border">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Nº do Processo</label>
-                    <Input 
-                      placeholder="PROC-2024-..." 
-                      value={filters.number}
-                      onChange={(e) => setFilters({ ...filters, number: e.target.value })}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">Tipo</label>
                     <select 
@@ -326,8 +283,8 @@ const Processes = () => {
                       onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                     >
                       <option value="">Todos os tipos</option>
-                      {processTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
+                      {processTypes?.map(type => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
                       ))}
                     </select>
                   </div>
@@ -339,9 +296,10 @@ const Processes = () => {
                       onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                     >
                       <option value="">Todos os estados</option>
+                      <option value="rascunho">Rascunho</option>
                       <option value="em_andamento">Em Andamento</option>
-                      <option value="urgente">Urgente</option>
-                      <option value="atrasado">Atrasado</option>
+                      <option value="aguardando_aprovacao">Aguardando Aprovação</option>
+                      <option value="aprovado">Aprovado</option>
                       <option value="suspenso">Suspenso</option>
                       <option value="concluido">Concluído</option>
                     </select>
@@ -354,8 +312,9 @@ const Processes = () => {
                       onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
                     >
                       <option value="">Todas</option>
+                      <option value="urgente">Urgente</option>
                       <option value="alta">Alta</option>
-                      <option value="média">Média</option>
+                      <option value="normal">Normal</option>
                       <option value="baixa">Baixa</option>
                     </select>
                   </div>
@@ -367,21 +326,10 @@ const Processes = () => {
                       onChange={(e) => setFilters({ ...filters, unit: e.target.value })}
                     >
                       <option value="">Todas as unidades</option>
-                      {units.map(unit => (
-                        <option key={unit} value={unit}>{unit}</option>
+                      {units?.map(unit => (
+                        <option key={unit.id} value={unit.id}>{unit.name}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Data</label>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        type="date" 
-                        className="flex-1"
-                        value={filters.dateFrom}
-                        onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                      />
-                    </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
@@ -394,10 +342,6 @@ const Processes = () => {
                     <X className="h-4 w-4 mr-2" />
                     Limpar Filtros
                   </Button>
-                  <Button size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Aplicar Filtros
-                  </Button>
                 </div>
               </div>
             )}
@@ -408,107 +352,152 @@ const Processes = () => {
       {/* Tabela de Processos */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[140px]">Nº</TableHead>
-                <TableHead>Assunto</TableHead>
-                <TableHead className="w-[150px]">Solicitante</TableHead>
-                <TableHead className="w-[180px]">Unidade Actual</TableHead>
-                <TableHead className="w-[120px]">SLA Restante</TableHead>
-                <TableHead className="w-[130px]">Estado</TableHead>
-                <TableHead className="w-[100px] text-right">Acções</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {processes.map((process) => {
-                const status = statusConfig[process.status as keyof typeof statusConfig];
-                const priority = priorityConfig[process.priority as keyof typeof priorityConfig];
-                const StatusIcon = status.icon;
-                
-                return (
-                  <TableRow key={process.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Link 
-                          to={`/processes/${process.id}`}
-                          className="font-mono text-sm font-medium text-primary hover:underline"
-                        >
-                          {process.number}
-                        </Link>
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant={priority.variant} className="text-xs px-1.5 py-0">
-                            {priority.label}
-                          </Badge>
+          {loadingProcesses ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : paginatedProcesses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">Nenhum processo encontrado</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {hasActiveFilters 
+                  ? "Tente ajustar os filtros de pesquisa" 
+                  : "Comece criando um novo processo"}
+              </p>
+              {!hasActiveFilters && (
+                <Link to="/processes/new">
+                  <Button className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Processo
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[140px]">Nº</TableHead>
+                  <TableHead>Assunto</TableHead>
+                  <TableHead className="w-[150px]">Solicitante</TableHead>
+                  <TableHead className="w-[180px]">Unidade Actual</TableHead>
+                  <TableHead className="w-[120px]">SLA Restante</TableHead>
+                  <TableHead className="w-[130px]">Estado</TableHead>
+                  <TableHead className="w-[100px] text-right">Acções</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedProcesses.map((process) => {
+                  const status = statusConfig[process.status] || statusConfig.rascunho;
+                  const priority = priorityConfig[process.priority] || priorityConfig.normal;
+                  const StatusIcon = status.icon;
+                  
+                  return (
+                    <TableRow key={process.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Link 
+                            to={`/processes/${process.id}`}
+                            className="font-mono text-sm font-medium text-primary hover:underline"
+                          >
+                            {process.process_number}
+                          </Link>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={priority.variant} className="text-xs px-1.5 py-0">
+                              {priority.label}
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Link 
-                          to={`/processes/${process.id}`}
-                          className="font-medium text-foreground hover:text-primary hover:underline line-clamp-1"
-                        >
-                          {process.subject}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Link 
+                            to={`/processes/${process.id}`}
+                            className="font-medium text-foreground hover:text-primary hover:underline line-clamp-1"
+                          >
+                            {process.subject}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            {process.process_type?.name || 'Sem tipo'} • {format(new Date(process.created_at), "dd MMM yyyy", { locale: pt })}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{process.requester_name || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {process.current_unit?.name || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {getSlaDisplay(process)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant} className="gap-1">
+                          <StatusIcon className="h-3 w-3" />
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link to={`/processes/${process.id}`}>
+                          <Button variant="ghost" size="sm">
+                            Ver
+                          </Button>
                         </Link>
-                        <p className="text-xs text-muted-foreground">{process.type} • {process.date}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{process.requester}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">{process.currentUnit}</span>
-                    </TableCell>
-                    <TableCell>
-                      {getSlaDisplay(process.slaRemaining)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={status.variant} className="gap-1">
-                        <StatusIcon className="h-3 w-3" />
-                        {status.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link to={`/processes/${process.id}`}>
-                        <Button variant="ghost" size="sm">
-                          Ver
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
       {/* Paginação */}
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          A mostrar 1-8 de 24 processos
-        </p>
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#" isActive>1</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">2</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink href="#">3</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext href="#" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+      {totalProcesses > 0 && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            A mostrar {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, totalProcesses)} de {totalProcesses} processos
+          </p>
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href="#" 
+                    onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                  const page = i + 1;
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationLink 
+                        href="#" 
+                        isActive={currentPage === page}
+                        onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#" 
+                    onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      )}
 
       {/* Referência ao Registo de Auditoria */}
       <div className="mt-6">

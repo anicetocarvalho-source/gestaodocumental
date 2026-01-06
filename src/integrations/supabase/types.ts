@@ -665,6 +665,505 @@ export type Database = {
           },
         ]
       }
+      process_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          performed_by: string | null
+          process_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+          process_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+          process_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_audit_log_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_comments: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean | null
+          process_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          process_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean | null
+          process_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_comments_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          document_id: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          process_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          document_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          process_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          document_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          process_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_documents_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_movements: {
+        Row: {
+          action_type: string
+          created_at: string
+          created_by: string | null
+          dispatch_text: string | null
+          from_unit_id: string | null
+          from_user_id: string | null
+          id: string
+          is_read: boolean | null
+          notes: string | null
+          process_id: string
+          read_at: string | null
+          to_unit_id: string | null
+          to_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          created_by?: string | null
+          dispatch_text?: string | null
+          from_unit_id?: string | null
+          from_user_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          notes?: string | null
+          process_id: string
+          read_at?: string | null
+          to_unit_id?: string | null
+          to_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          dispatch_text?: string | null
+          from_unit_id?: string | null
+          from_user_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          notes?: string | null
+          process_id?: string
+          read_at?: string | null
+          to_unit_id?: string | null
+          to_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_movements_from_unit_id_fkey"
+            columns: ["from_unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_movements_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_movements_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_movements_to_unit_id_fkey"
+            columns: ["to_unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_movements_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_opinions: {
+        Row: {
+          author_id: string | null
+          content: string | null
+          created_at: string
+          decision: string | null
+          id: string
+          opinion_number: string
+          opinion_type: string
+          process_id: string
+          summary: string
+          unit_id: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          opinion_number: string
+          opinion_type: string
+          process_id: string
+          summary: string
+          unit_id?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          opinion_number?: string
+          opinion_type?: string
+          process_id?: string
+          summary?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_opinions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_opinions_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_opinions_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_stages: {
+        Row: {
+          assigned_user_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          duration_days: number | null
+          id: string
+          name: string
+          notes: string | null
+          process_id: string
+          stage_order: number
+          started_at: string | null
+          status: string
+          unit_id: string | null
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          duration_days?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          process_id: string
+          stage_order: number
+          started_at?: string | null
+          status?: string
+          unit_id?: string | null
+        }
+        Update: {
+          assigned_user_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          duration_days?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          process_id?: string
+          stage_order?: number
+          started_at?: string | null
+          status?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_stages_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_stages_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_stages_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "process_stages_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      process_types: {
+        Row: {
+          code: string
+          created_at: string
+          default_sla_days: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          requires_approval: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_sla_days?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          requires_approval?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_sla_days?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          requires_approval?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      processes: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          current_unit_id: string | null
+          deadline: string | null
+          description: string | null
+          external_requester_info: Json | null
+          id: string
+          origin: string | null
+          priority: Database["public"]["Enums"]["process_priority"]
+          process_number: string
+          process_type_id: string | null
+          requester_name: string | null
+          requester_unit_id: string | null
+          responsible_user_id: string | null
+          sla_days: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["process_status"]
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_unit_id?: string | null
+          deadline?: string | null
+          description?: string | null
+          external_requester_info?: Json | null
+          id?: string
+          origin?: string | null
+          priority?: Database["public"]["Enums"]["process_priority"]
+          process_number: string
+          process_type_id?: string | null
+          requester_name?: string | null
+          requester_unit_id?: string | null
+          responsible_user_id?: string | null
+          sla_days?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["process_status"]
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_unit_id?: string | null
+          deadline?: string | null
+          description?: string | null
+          external_requester_info?: Json | null
+          id?: string
+          origin?: string | null
+          priority?: Database["public"]["Enums"]["process_priority"]
+          process_number?: string
+          process_type_id?: string | null
+          requester_name?: string | null
+          requester_unit_id?: string | null
+          responsible_user_id?: string | null
+          sla_days?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["process_status"]
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processes_current_unit_id_fkey"
+            columns: ["current_unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processes_process_type_id_fkey"
+            columns: ["process_type_id"]
+            isOneToOne: false
+            referencedRelation: "process_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processes_requester_unit_id_fkey"
+            columns: ["requester_unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processes_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -723,7 +1222,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      process_priority: "baixa" | "normal" | "alta" | "urgente"
+      process_status:
+        | "rascunho"
+        | "em_andamento"
+        | "aguardando_aprovacao"
+        | "aprovado"
+        | "rejeitado"
+        | "suspenso"
+        | "arquivado"
+        | "concluido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -850,6 +1358,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      process_priority: ["baixa", "normal", "alta", "urgente"],
+      process_status: [
+        "rascunho",
+        "em_andamento",
+        "aguardando_aprovacao",
+        "aprovado",
+        "rejeitado",
+        "suspenso",
+        "arquivado",
+        "concluido",
+      ],
+    },
   },
 } as const
