@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { RecentDocuments } from "@/components/dashboard/RecentDocuments";
 import { ActiveProcesses } from "@/components/dashboard/ActiveProcesses";
@@ -56,6 +57,9 @@ const Index = () => {
   const [dateFrom, setDateFrom] = useState("2024-01-01");
   const [dateTo, setDateTo] = useState("2024-01-15");
   const [selectedPeriod, setSelectedPeriod] = useState("mes");
+
+  // Enable realtime notifications
+  useRealtimeNotifications();
 
   // Fetch real data from database
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
