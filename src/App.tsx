@@ -41,6 +41,8 @@ import InstitutionalAssistant from "./pages/InstitutionalAssistant";
 import Auth from "./pages/Auth";
 import DemoLogin from "./pages/DemoLogin";
 import NotFound from "./pages/NotFound";
+import AccessDenied from "./pages/AccessDenied";
+import ProtectedRoute from "./components/common/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -52,41 +54,46 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* Rotas públicas */}
             <Route path="/demo-login" element={<DemoLogin />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/documents/new" element={<RegisterDocument />} />
-            <Route path="/documents/:id" element={<DocumentDetail />} />
-            <Route path="/documents/:id/view" element={<DocumentViewer />} />
-            <Route path="/processes" element={<Processes />} />
-            <Route path="/processes/new" element={<CreateProcess />} />
-            <Route path="/processes/:id" element={<ProcessDetail />} />
-            <Route path="/dispatches" element={<DispatchManagement />} />
-            <Route path="/dispatches/new" element={<CreateDispatch />} />
-            <Route path="/approvals" element={<ApprovalQueue />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/permissions" element={<Permissions />} />
-            <Route path="/audit-logs" element={<AuditLogs />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/search" element={<SearchResults />} />
-            <Route path="/wireframes" element={<Wireframes />} />
-            <Route path="/folders" element={<Repository />} />
-            <Route path="/digitization" element={<DigitizationCenter />} />
-            <Route path="/quality-review" element={<QualityReview />} />
-            <Route path="/ocr-processing" element={<OCRProcessing />} />
-            <Route path="/classification" element={<DocumentClassification />} />
-            <Route path="/workflow-builder" element={<WorkflowBuilder />} />
-            <Route path="/process-templates" element={<ProcessTemplates />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/archive" element={<Archive />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/sla-configuration" element={<SLAConfiguration />} />
-            <Route path="/workflow-visualization" element={<WorkflowVisualization />} />
-            <Route path="/document-intelligence" element={<DocumentIntelligence />} />
-            <Route path="/intelligent-search" element={<IntelligentSearch />} />
-            <Route path="/procedure-guide" element={<ProcedureGuide />} />
-            <Route path="/assistant" element={<InstitutionalAssistant />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/access-denied" element={<AccessDenied />} />
+            
+            {/* Rotas protegidas */}
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+            <Route path="/documents/new" element={<ProtectedRoute><RegisterDocument /></ProtectedRoute>} />
+            <Route path="/documents/:id" element={<ProtectedRoute><DocumentDetail /></ProtectedRoute>} />
+            <Route path="/documents/:id/view" element={<ProtectedRoute><DocumentViewer /></ProtectedRoute>} />
+            <Route path="/processes" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
+            <Route path="/processes/new" element={<ProtectedRoute><CreateProcess /></ProtectedRoute>} />
+            <Route path="/processes/:id" element={<ProtectedRoute><ProcessDetail /></ProtectedRoute>} />
+            <Route path="/dispatches" element={<ProtectedRoute><DispatchManagement /></ProtectedRoute>} />
+            <Route path="/dispatches/new" element={<ProtectedRoute><CreateDispatch /></ProtectedRoute>} />
+            <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+            <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
+            <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
+            <Route path="/wireframes" element={<ProtectedRoute><Wireframes /></ProtectedRoute>} />
+            <Route path="/folders" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
+            <Route path="/digitization" element={<ProtectedRoute><DigitizationCenter /></ProtectedRoute>} />
+            <Route path="/quality-review" element={<ProtectedRoute><QualityReview /></ProtectedRoute>} />
+            <Route path="/ocr-processing" element={<ProtectedRoute><OCRProcessing /></ProtectedRoute>} />
+            <Route path="/classification" element={<ProtectedRoute><DocumentClassification /></ProtectedRoute>} />
+            <Route path="/workflow-builder" element={<ProtectedRoute><WorkflowBuilder /></ProtectedRoute>} />
+            <Route path="/process-templates" element={<ProtectedRoute><ProcessTemplates /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/archive" element={<ProtectedRoute><Archive /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+            <Route path="/sla-configuration" element={<ProtectedRoute><SLAConfiguration /></ProtectedRoute>} />
+            <Route path="/workflow-visualization" element={<ProtectedRoute><WorkflowVisualization /></ProtectedRoute>} />
+            <Route path="/document-intelligence" element={<ProtectedRoute><DocumentIntelligence /></ProtectedRoute>} />
+            <Route path="/intelligent-search" element={<ProtectedRoute><IntelligentSearch /></ProtectedRoute>} />
+            <Route path="/procedure-guide" element={<ProtectedRoute><ProcedureGuide /></ProtectedRoute>} />
+            <Route path="/assistant" element={<ProtectedRoute><InstitutionalAssistant /></ProtectedRoute>} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
