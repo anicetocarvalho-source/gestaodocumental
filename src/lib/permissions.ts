@@ -52,6 +52,17 @@ export const actionPermissions = {
     archive: ["admin", "gestor"] as DemoRole[],
     download: ["admin", "gestor", "tecnico", "consulta"] as DemoRole[],
     classify: ["admin", "gestor", "tecnico"] as DemoRole[],
+    // Ações de workflow de documentos
+    validate: ["admin", "gestor"] as DemoRole[],
+    reject: ["admin", "gestor"] as DemoRole[],
+    dispatch: ["admin", "gestor", "tecnico"] as DemoRole[],
+    requestCorrection: ["admin", "gestor", "tecnico"] as DemoRole[],
+    attachToProcess: ["admin", "gestor", "tecnico"] as DemoRole[],
+    returnToOrigin: ["admin", "gestor"] as DemoRole[],
+    sign: ["admin", "gestor", "tecnico"] as DemoRole[],
+    createProcess: ["admin", "gestor", "tecnico"] as DemoRole[],
+    addAttachment: ["admin", "gestor", "tecnico"] as DemoRole[],
+    addComment: ["admin", "gestor", "tecnico"] as DemoRole[],
   },
   processes: {
     view: ["admin", "gestor", "tecnico", "consulta"] as DemoRole[],
