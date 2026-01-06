@@ -99,6 +99,55 @@ export function useDispatchDocument() {
   });
 }
 
+export function useForwardDocument() {
+  const queryClient = useQueryClient();
+  const createMovement = useCreateMovement();
+
+  return useMutation({
+    mutationFn: async ({
+      documentId,
+      toUnitId,
+      toUserId,
+      notes,
+      fromUnitId,
+      fromUserId,
+    }: {
+      documentId: string;
+      toUnitId: string;
+      toUserId?: string;
+      notes?: string;
+      fromUnitId?: string;
+      fromUserId?: string;
+    }) => {
+      // 1. Atualizar documento - mover para nova unidade mantendo status
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({
+          current_unit_id: toUnitId,
+          responsible_user_id: toUserId || null,
+          status: 'in_progress',
+        })
+        .eq('id', documentId);
+
+      if (updateError) throw updateError;
+
+      // 2. Criar movimento de reencaminhamento
+      await createMovement.mutateAsync({
+        document_id: documentId,
+        from_unit_id: fromUnitId,
+        to_unit_id: toUnitId,
+        from_user_id: fromUserId,
+        to_user_id: toUserId,
+        action_type: 'forward',
+        notes,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    },
+  });
+}
+
 export function useValidateDocument() {
   const queryClient = useQueryClient();
   const createMovement = useCreateMovement();
