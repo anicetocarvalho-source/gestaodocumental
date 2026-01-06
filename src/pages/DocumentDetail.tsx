@@ -41,6 +41,8 @@ import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHi
 import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
+import { ProtectedContent } from "@/components/common/ProtectedContent";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // Document metadata
 const documentInfo = {
@@ -145,6 +147,8 @@ const DocumentDetail = () => {
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<DocumentAction | null>(null);
   const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
+  
+  const { canDo } = usePermissions();
 
   const getStageIcon = (status: string) => {
     switch (status) {
@@ -310,10 +314,12 @@ const DocumentDetail = () => {
                   <Paperclip className="h-4 w-4" />
                   Documentos Anexos
                 </CardTitle>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Anexo
-                </Button>
+                <ProtectedContent permission={{ module: "documents", action: "addAttachment" }} showDisabled>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Anexo
+                  </Button>
+                </ProtectedContent>
               </div>
             </CardHeader>
             <CardContent>
@@ -341,9 +347,11 @@ const DocumentDetail = () => {
                       <Button variant="ghost" size="icon-sm" aria-label="Baixar">
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label="Remover">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled>
+                        <Button variant="ghost" size="icon-sm" aria-label="Remover">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </ProtectedContent>
                     </div>
                   </div>
                 ))}
@@ -386,27 +394,31 @@ const DocumentDetail = () => {
                 </div>
               ))}
               
-              {/* Add Comment/Note */}
-              <Separator />
-              <div className="space-y-3">
-                <Textarea 
-                  placeholder="Adicionar comentário ou nota interna..." 
-                  className="min-h-[80px]"
-                  aria-label="Adicionar comentário"
-                />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="internal-note" className="rounded border-border" />
-                    <label htmlFor="internal-note" className="text-sm text-muted-foreground">
-                      Marcar como nota interna
-                    </label>
+              {/* Add Comment/Note - Only for users with edit permissions */}
+              {canDo("documents", "addComment") ? (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <Textarea 
+                      placeholder="Adicionar comentário ou nota interna..." 
+                      className="min-h-[80px]"
+                      aria-label="Adicionar comentário"
+                    />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" id="internal-note" className="rounded border-border" />
+                        <label htmlFor="internal-note" className="text-sm text-muted-foreground">
+                          Marcar como nota interna
+                        </label>
+                      </div>
+                      <Button size="sm">
+                        <Send className="h-4 w-4 mr-2" />
+                        Enviar
+                      </Button>
+                    </div>
                   </div>
-                  <Button size="sm">
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar
-                  </Button>
-                </div>
-              </div>
+                </>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -461,55 +473,67 @@ const DocumentDetail = () => {
               <CardTitle className="text-base">Ações do Documento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button 
-                className="w-full justify-start" 
-                variant="success"
-                onClick={() => openActionDrawer("validar")}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-3" />
-                Validar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="destructive"
-                onClick={() => openActionDrawer("rejeitar_validacao")}
-              >
-                <XCircle className="h-4 w-4 mr-3" />
-                Rejeitar Validação
-              </Button>
+              <ProtectedContent permission={{ module: "documents", action: "validate" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="success"
+                  onClick={() => openActionDrawer("validar")}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-3" />
+                  Validar
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "documents", action: "reject" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="destructive"
+                  onClick={() => openActionDrawer("rejeitar_validacao")}
+                >
+                  <XCircle className="h-4 w-4 mr-3" />
+                  Rejeitar Validação
+                </Button>
+              </ProtectedContent>
               <Separator className="my-3" />
-              <Button 
-                className="w-full justify-start" 
-                variant="default"
-                onClick={() => openActionDrawer("despachar")}
-              >
-                <Forward className="h-4 w-4 mr-3" />
-                Despachar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("solicitar_correcao")}
-              >
-                <FileSearch className="h-4 w-4 mr-3" />
-                Solicitar Correção
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("anexar_processo")}
-              >
-                <FolderInput className="h-4 w-4 mr-3" />
-                Anexar a Processo
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("devolver")}
-              >
-                <RotateCcw className="h-4 w-4 mr-3" />
-                Devolver à Origem
-              </Button>
+              <ProtectedContent permission={{ module: "documents", action: "dispatch" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="default"
+                  onClick={() => openActionDrawer("despachar")}
+                >
+                  <Forward className="h-4 w-4 mr-3" />
+                  Despachar
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "documents", action: "requestCorrection" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("solicitar_correcao")}
+                >
+                  <FileSearch className="h-4 w-4 mr-3" />
+                  Solicitar Correção
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "documents", action: "attachToProcess" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("anexar_processo")}
+                >
+                  <FolderInput className="h-4 w-4 mr-3" />
+                  Anexar a Processo
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "documents", action: "returnToOrigin" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("devolver")}
+                >
+                  <RotateCcw className="h-4 w-4 mr-3" />
+                  Devolver à Origem
+                </Button>
+              </ProtectedContent>
             </CardContent>
           </Card>
 
@@ -519,39 +543,47 @@ const DocumentDetail = () => {
               <CardTitle className="text-base">Outras Ações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button 
-                className="w-full justify-start" 
-                variant={documentSigned ? "success" : "outline"}
-                onClick={() => setSignatureModalOpen(true)}
-              >
-                <FileSignature className="h-4 w-4 mr-3" />
-                {documentSigned ? "Documento Assinado" : "Assinar Documento"}
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("classificar")}
-              >
-                <Tag className="h-4 w-4 mr-3" />
-                Classificar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("arquivar")}
-              >
-                <Archive className="h-4 w-4 mr-3" />
-                Arquivar
-              </Button>
+              <ProtectedContent permission={{ module: "documents", action: "sign" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant={documentSigned ? "success" : "outline"}
+                  onClick={() => setSignatureModalOpen(true)}
+                >
+                  <FileSignature className="h-4 w-4 mr-3" />
+                  {documentSigned ? "Documento Assinado" : "Assinar Documento"}
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "documents", action: "classify" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("classificar")}
+                >
+                  <Tag className="h-4 w-4 mr-3" />
+                  Classificar
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "documents", action: "archive" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("arquivar")}
+                >
+                  <Archive className="h-4 w-4 mr-3" />
+                  Arquivar
+                </Button>
+              </ProtectedContent>
               <Separator className="my-3" />
-              <Button 
-                className="w-full justify-start" 
-                variant="success"
-                onClick={() => setCreateProcessModalOpen(true)}
-              >
-                <FolderPlus className="h-4 w-4 mr-3" />
-                Criar Processo
-              </Button>
+              <ProtectedContent permission={{ module: "documents", action: "createProcess" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="success"
+                  onClick={() => setCreateProcessModalOpen(true)}
+                >
+                  <FolderPlus className="h-4 w-4 mr-3" />
+                  Criar Processo
+                </Button>
+              </ProtectedContent>
             </CardContent>
           </Card>
 
