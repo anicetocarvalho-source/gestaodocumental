@@ -36,6 +36,8 @@ import {
   UserPlus,
 } from "lucide-react";
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
+import { ProtectedContent } from "@/components/common/ProtectedContent";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // Process data
 const processData = {
@@ -211,6 +213,8 @@ const ProcessDetail = () => {
   const [activeTab, setActiveTab] = useState("workflow");
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<WorkflowAction | null>(null);
+  
+  const { canDo } = usePermissions();
   
   const status = statusConfig[processData.status as keyof typeof statusConfig];
   const priority = priorityConfig[processData.priority as keyof typeof priorityConfig];
@@ -389,16 +393,18 @@ const ProcessDetail = () => {
             <TabsContent value="documentos" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Paperclip className="h-4 w-4" />
-                      Documentos Anexos
-                    </CardTitle>
-                    <Button variant="outline" size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Anexar Documento
-                    </Button>
-                  </div>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  Documentos Anexos
+                </CardTitle>
+                <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Anexar Documento
+                  </Button>
+                </ProtectedContent>
+              </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -425,9 +431,11 @@ const ProcessDetail = () => {
                           <Button variant="ghost" size="icon-sm">
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon-sm">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <ProtectedContent permission={{ module: "processes", action: "edit" }} showDisabled>
+                            <Button variant="ghost" size="icon-sm">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </ProtectedContent>
                         </div>
                       </div>
                     ))}
@@ -440,16 +448,18 @@ const ProcessDetail = () => {
             <TabsContent value="pareceres" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <FileOutput className="h-4 w-4" />
-                      Pareceres e Despachos
-                    </CardTitle>
-                    <Button variant="outline" size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Novo Parecer
-                    </Button>
-                  </div>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileOutput className="h-4 w-4" />
+                  Pareceres e Despachos
+                </CardTitle>
+                <ProtectedContent permission={{ module: "processes", action: "addParecer" }} showDisabled>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Parecer
+                  </Button>
+                </ProtectedContent>
+              </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -532,27 +542,30 @@ const ProcessDetail = () => {
                     </div>
                   ))}
 
-                  <Separator />
-
-                  {/* Add Comment */}
-                  <div className="space-y-3">
-                    <Textarea 
-                      placeholder="Adicionar comentário..." 
-                      className="min-h-[80px]"
-                    />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <input type="checkbox" id="internal" className="rounded" />
-                        <label htmlFor="internal" className="text-sm text-muted-foreground">
-                          Marcar como nota interna
-                        </label>
+                  {/* Add Comment - Only for users with edit permissions */}
+                  {canDo("processes", "addComment") ? (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <Textarea 
+                          placeholder="Adicionar comentário..." 
+                          className="min-h-[80px]"
+                        />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <input type="checkbox" id="internal" className="rounded" />
+                            <label htmlFor="internal" className="text-sm text-muted-foreground">
+                              Marcar como nota interna
+                            </label>
+                          </div>
+                          <Button size="sm">
+                            <Send className="h-4 w-4 mr-2" />
+                            Enviar
+                          </Button>
+                        </div>
                       </div>
-                      <Button size="sm">
-                        <Send className="h-4 w-4 mr-2" />
-                        Enviar
-                      </Button>
-                    </div>
-                  </div>
+                    </>
+                  ) : null}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -609,64 +622,78 @@ const ProcessDetail = () => {
               <CardTitle className="text-base">Ações do Workflow</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button 
-                className="w-full justify-start" 
-                variant="default"
-                onClick={() => openActionDrawer("despachar")}
-              >
-                <FileOutput className="h-4 w-4 mr-3" />
-                Despachar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("reencaminhar")}
-              >
-                <Forward className="h-4 w-4 mr-3" />
-                Reencaminhar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("solicitar_info")}
-              >
-                <MessageSquare className="h-4 w-4 mr-3" />
-                Solicitar Informações
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("atribuir")}
-              >
-                <UserPlus className="h-4 w-4 mr-3" />
-                Atribuir Responsável
-              </Button>
+              <ProtectedContent permission={{ module: "processes", action: "dispatch" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="default"
+                  onClick={() => openActionDrawer("despachar")}
+                >
+                  <FileOutput className="h-4 w-4 mr-3" />
+                  Despachar
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "processes", action: "forward" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("reencaminhar")}
+                >
+                  <Forward className="h-4 w-4 mr-3" />
+                  Reencaminhar
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "processes", action: "requestInfo" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("solicitar_info")}
+                >
+                  <MessageSquare className="h-4 w-4 mr-3" />
+                  Solicitar Informações
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "processes", action: "assign" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("atribuir")}
+                >
+                  <UserPlus className="h-4 w-4 mr-3" />
+                  Atribuir Responsável
+                </Button>
+              </ProtectedContent>
               <Separator className="my-3" />
-              <Button 
-                className="w-full justify-start" 
-                variant="success"
-                onClick={() => openActionDrawer("aprovar")}
-              >
-                <ThumbsUp className="h-4 w-4 mr-3" />
-                Aprovar
-              </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="destructive"
-                onClick={() => openActionDrawer("rejeitar")}
-              >
-                <ThumbsDown className="h-4 w-4 mr-3" />
-                Rejeitar
-              </Button>
+              <ProtectedContent permission={{ module: "processes", action: "approve" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="success"
+                  onClick={() => openActionDrawer("aprovar")}
+                >
+                  <ThumbsUp className="h-4 w-4 mr-3" />
+                  Aprovar
+                </Button>
+              </ProtectedContent>
+              <ProtectedContent permission={{ module: "processes", action: "reject" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="destructive"
+                  onClick={() => openActionDrawer("rejeitar")}
+                >
+                  <ThumbsDown className="h-4 w-4 mr-3" />
+                  Rejeitar
+                </Button>
+              </ProtectedContent>
               <Separator className="my-3" />
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => openActionDrawer("encerrar")}
-              >
-                <XCircle className="h-4 w-4 mr-3" />
-                Encerrar Processo
-              </Button>
+              <ProtectedContent permission={{ module: "processes", action: "close" }} showDisabled>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => openActionDrawer("encerrar")}
+                >
+                  <XCircle className="h-4 w-4 mr-3" />
+                  Encerrar Processo
+                </Button>
+              </ProtectedContent>
             </CardContent>
           </Card>
 
