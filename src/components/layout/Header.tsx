@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate, Link } from "react-router-dom";
 import { useDemoAuth, roleLabels } from "@/contexts/DemoAuthContext";
+import { useUnreadCount } from "@/hooks/useNotifications";
 
 interface HeaderProps {
   title: string;
@@ -29,6 +30,7 @@ const roleBadgeVariants: Record<string, "error" | "info" | "success" | "warning"
 export function Header({ title, subtitle }: HeaderProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useDemoAuth();
+  const { data: unreadCount = 0 } = useUnreadCount();
 
   const handleLogout = () => {
     logout();
@@ -71,10 +73,11 @@ export function Header({ title, subtitle }: HeaderProps) {
         <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" asChild>
           <Link to="/notifications">
             <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </Link>
         </Button>
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" asChild>

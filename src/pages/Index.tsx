@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { useRealtimeNotificationsSubscription } from "@/hooks/useNotifications";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { RecentDocuments } from "@/components/dashboard/RecentDocuments";
 import { ActiveProcesses } from "@/components/dashboard/ActiveProcesses";
@@ -59,7 +59,7 @@ const Index = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("mes");
 
   // Enable realtime notifications
-  useRealtimeNotifications();
+  useRealtimeNotificationsSubscription();
 
   // Fetch real data from database
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
