@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,19 @@ import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDocuments, useDeleteDocument } from "@/hooks/useDocuments";
+import { useArchiveDocument } from "@/hooks/useDocumentActions";
+import { useDocumentTypes } from "@/hooks/useReferenceData";
+import { 
+  DocumentStatus, 
+  DocumentPriority,
+  documentStatusLabels,
+  documentStatusVariants,
+  documentPriorityLabels
+} from "@/types/database";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +52,9 @@ import {
   X,
   Archive,
   Loader2,
-  Lock
+  Lock,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,45 +68,77 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-const documents = [
-  { id: 1, name: "Relatório Orçamental Anual 2024", type: "PDF", size: "2,4 MB", status: "approved", date: "1 Dez, 2024", author: "Sara Ferreira" },
-  { id: 2, name: "Plano de Desenvolvimento de Infra-estruturas", type: "DOCX", size: "1,8 MB", status: "pending", date: "28 Nov, 2024", author: "Miguel Costa" },
-  { id: 3, name: "Avaliação de Impacto Ambiental", type: "PDF", size: "5,2 MB", status: "in-progress", date: "25 Nov, 2024", author: "Ana Rodrigues" },
-  { id: 4, name: "Proposta de Iniciativa de Saúde Pública", type: "DOCX", size: "890 KB", status: "draft", date: "22 Nov, 2024", author: "David Mendes" },
-  { id: 5, name: "Alteração à Política de Transportes", type: "PDF", size: "1,2 MB", status: "rejected", date: "20 Nov, 2024", author: "Lígia Santos" },
-  { id: 6, name: "Directrizes de Reforma Educativa", type: "PDF", size: "3,1 MB", status: "approved", date: "18 Nov, 2024", author: "Tiago Oliveira" },
-  { id: 7, name: "Análise de Receita Fiscal T3", type: "XLSX", size: "756 KB", status: "approved", date: "15 Nov, 2024", author: "Maria Garcia" },
-  { id: 8, name: "Protocolo de Resposta a Emergências", type: "PDF", size: "2,8 MB", status: "pending", date: "12 Nov, 2024", author: "Roberto Silva" },
-];
-
-const statusMap: Record<string, "approved" | "pending" | "in-progress" | "draft" | "rejected"> = {
-  approved: "approved",
-  pending: "pending",
-  "in-progress": "in-progress",
-  draft: "draft",
-  rejected: "rejected",
-};
-
-const statusLabels: Record<string, string> = {
-  approved: "Aprovado",
-  pending: "Pendente",
-  "in-progress": "Em Curso",
-  draft: "Rascunho",
-  rejected: "Rejeitado",
-};
+const ITEMS_PER_PAGE = 10;
 
 const Documents = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
-  const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  // Filtros
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<DocumentStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<DocumentPriority | "all">("all");
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Permissões do utilizador
-  const { canDo, canEdit, isManagerOrAbove, role } = usePermissions();
+  const { canDo } = usePermissions();
 
-  const handleSelectDocument = (docId: number, checked: boolean) => {
+  // Dados da base de dados
+  const { data: documentsResult, isLoading, error, refetch } = useDocuments(
+    {
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      document_type_id: typeFilter !== "all" ? typeFilter : undefined,
+      priority: priorityFilter !== "all" ? priorityFilter : undefined,
+      search: searchQuery || undefined,
+    },
+    { page: currentPage, pageSize: ITEMS_PER_PAGE }
+  );
+
+  const { data: documentTypes } = useDocumentTypes({ activeOnly: true });
+  const deleteDocument = useDeleteDocument();
+  const archiveDocument = useArchiveDocument();
+
+  // Extrair dados do resultado paginado
+  const documents = documentsResult?.data || [];
+  const totalPages = documentsResult?.totalPages || 1;
+  const totalCount = documentsResult?.total || 0;
+
+  // Filtrar documentos localmente para pesquisa mais responsiva
+  const filteredDocuments = useMemo(() => {
+    let result = documents;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(doc => 
+        doc.title.toLowerCase().includes(query) ||
+        doc.entry_number.toLowerCase().includes(query) ||
+        doc.description?.toLowerCase().includes(query) ||
+        doc.subject?.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [documents, searchQuery]);
+
+  const handleSelectDocument = (docId: string, checked: boolean) => {
     if (checked) {
       setSelectedDocuments(prev => [...prev, docId]);
     } else {
@@ -101,7 +148,7 @@ const Documents = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedDocuments(documents.map(doc => doc.id));
+      setSelectedDocuments(filteredDocuments.map(doc => doc.id));
     } else {
       setSelectedDocuments([]);
     }
@@ -113,8 +160,8 @@ const Documents = () => {
     }
   };
 
-  const handleCreateProcessFromSingleDoc = (doc: typeof documents[0]) => {
-    setSelectedDocuments([doc.id]);
+  const handleCreateProcessFromSingleDoc = (docId: string) => {
+    setSelectedDocuments([docId]);
     setCreateProcessModalOpen(true);
   };
 
@@ -125,20 +172,20 @@ const Documents = () => {
   const getSelectedDocumentsInfo = (): DocumentInfo[] => {
     return selectedDocuments.map(id => {
       const doc = documents.find(d => d.id === id)!;
+      const docType = documentTypes?.find(t => t.id === doc.document_type_id);
       return {
-        number: `DOC-2024-${String(doc.id).padStart(6, '0')}`,
-        title: doc.name,
-        type: doc.type,
-        origin: "Interno",
-        subject: doc.name,
-        author: doc.author,
+        number: doc.entry_number,
+        title: doc.title,
+        type: docType?.name || "Documento",
+        origin: doc.origin || "Interno",
+        subject: doc.subject || doc.title,
+        author: doc.sender_name || "Sistema",
       };
     });
   };
 
   const handleBulkDownload = async () => {
     setIsProcessing(true);
-    // Simulate download preparation
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     const count = selectedDocuments.length;
@@ -151,33 +198,87 @@ const Documents = () => {
 
   const handleBulkArchive = async () => {
     setIsProcessing(true);
-    // Simulate archive operation
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    const count = selectedDocuments.length;
-    toast.success(`${count} documento${count > 1 ? 's' : ''} arquivado${count > 1 ? 's' : ''}`, {
-      description: "Os documentos foram movidos para o arquivo.",
-    });
-    setIsProcessing(false);
-    clearSelection();
+    try {
+      // Para arquivar, precisamos de uma unidade de arquivo - usar a primeira unidade disponível por enquanto
+      for (const docId of selectedDocuments) {
+        const doc = documents.find(d => d.id === docId);
+        if (doc) {
+          await archiveDocument.mutateAsync({
+            documentId: docId,
+            archiveUnitId: doc.current_unit_id || '',
+          });
+        }
+      }
+      
+      const count = selectedDocuments.length;
+      toast.success(`${count} documento${count > 1 ? 's' : ''} arquivado${count > 1 ? 's' : ''}`, {
+        description: "Os documentos foram movidos para o arquivo.",
+      });
+      clearSelection();
+    } catch (error) {
+      toast.error("Erro ao arquivar documentos");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleBulkDelete = async () => {
     setIsProcessing(true);
-    // Simulate delete operation
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    const count = selectedDocuments.length;
-    toast.success(`${count} documento${count > 1 ? 's' : ''} eliminado${count > 1 ? 's' : ''}`, {
-      description: "Os documentos foram removidos permanentemente.",
-    });
-    setIsProcessing(false);
-    setDeleteDialogOpen(false);
-    clearSelection();
+    try {
+      for (const docId of selectedDocuments) {
+        await deleteDocument.mutateAsync(docId);
+      }
+      
+      const count = selectedDocuments.length;
+      toast.success(`${count} documento${count > 1 ? 's' : ''} eliminado${count > 1 ? 's' : ''}`, {
+        description: "Os documentos foram removidos permanentemente.",
+      });
+      clearSelection();
+    } catch (error) {
+      toast.error("Erro ao eliminar documentos");
+    } finally {
+      setIsProcessing(false);
+      setDeleteDialogOpen(false);
+    }
   };
 
-  const isAllSelected = selectedDocuments.length === documents.length;
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setPriorityFilter("all");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all" || priorityFilter !== "all" || searchQuery !== "";
+  const isAllSelected = filteredDocuments.length > 0 && selectedDocuments.length === filteredDocuments.length;
   const hasSelection = selectedDocuments.length > 0;
+
+  const getDocumentTypeName = (typeId: string | null) => {
+    if (!typeId) return "—";
+    return documentTypes?.find(t => t.id === typeId)?.name || "—";
+  };
+
+  if (error) {
+    return (
+      <DashboardLayout title="Documentos" subtitle="Gerir e organizar todos os documentos">
+        <PageBreadcrumb items={[{ label: "Documentos" }]} />
+        <Card className="mt-6">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar documentos</h3>
+            <p className="text-muted-foreground mb-4">Não foi possível obter a lista de documentos.</p>
+            <Button onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout 
@@ -256,11 +357,95 @@ const Documents = () => {
                 <Input 
                   placeholder="Pesquisar documentos..." 
                   className="pl-10 h-9"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
                 />
               </div>
-              <Button variant="outline" size="icon-sm">
-                <Filter className="h-4 w-4" />
-              </Button>
+              <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon-sm" className={hasActiveFilters ? "border-primary text-primary" : ""}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="start">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Filtros</h4>
+                      {hasActiveFilters && (
+                        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 text-xs">
+                          Limpar filtros
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Estado</label>
+                      <Select 
+                        value={statusFilter} 
+                        onValueChange={(value) => { 
+                          setStatusFilter(value as DocumentStatus | "all"); 
+                          setCurrentPage(1); 
+                        }}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Todos os estados" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os estados</SelectItem>
+                          {Object.entries(documentStatusLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tipo de Documento</label>
+                      <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); setCurrentPage(1); }}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Todos os tipos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os tipos</SelectItem>
+                          {documentTypes?.map(type => (
+                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Prioridade</label>
+                      <Select 
+                        value={priorityFilter} 
+                        onValueChange={(value) => { 
+                          setPriorityFilter(value as DocumentPriority | "all"); 
+                          setCurrentPage(1); 
+                        }}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Todas as prioridades" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as prioridades</SelectItem>
+                          {Object.entries(documentPriorityLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-muted-foreground">
+                  <X className="mr-1 h-3 w-3" />
+                  Limpar
+                </Button>
+              )}
             </div>
             <div className="toolbar-buttons">
               <div className="flex rounded-lg border border-border/60 p-0.5 bg-muted/30">
@@ -315,87 +500,141 @@ const Documents = () => {
                     <Checkbox 
                       checked={isAllSelected}
                       onCheckedChange={handleSelectAll}
+                      disabled={isLoading || filteredDocuments.length === 0}
                     />
                   </th>
-                  <th>Documento</th>
-                  <th className="w-20">Tipo</th>
-                  <th className="w-24">Tamanho</th>
+                  <th>Nº Entrada</th>
+                  <th>Título</th>
+                  <th className="w-32">Tipo</th>
                   <th className="w-28">Estado</th>
-                  <th className="w-36">Autor</th>
-                  <th className="w-28">Data</th>
+                  <th className="w-24">Prioridade</th>
+                  <th className="w-32">Data</th>
                   <th className="w-20 text-right">Acções</th>
                 </tr>
               </thead>
               <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id} className={selectedDocuments.includes(doc.id) ? "bg-primary/5" : ""}>
-                    <td>
-                      <Checkbox 
-                        checked={selectedDocuments.includes(doc.id)}
-                        onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
-                      />
-                    </td>
-                    <td>
-                      <Link to={`/documents/${doc.id}`} className="flex items-center gap-3 group">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors">
-                          <FileText className="h-4 w-4 text-primary" />
-                        </div>
-                        <span className="font-medium text-foreground group-hover:text-primary transition-colors">{doc.name}</span>
-                      </Link>
-                    </td>
-                    <td className="text-muted-foreground">{doc.type}</td>
-                    <td className="text-muted-foreground">{doc.size}</td>
-                    <td>
-                      <Badge variant={statusMap[doc.status]}>
-                        {statusLabels[doc.status]}
-                      </Badge>
-                    </td>
-                    <td className="text-muted-foreground">{doc.author}</td>
-                    <td className="text-muted-foreground">{doc.date}</td>
-                    <td className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem asChild>
-                            <Link to={`/documents/${doc.id}`}>
-                              <Eye className="mr-2 h-4 w-4" /> Ver
-                            </Link>
-                          </DropdownMenuItem>
-                          {canDo("documents", "edit") && (
-                            <DropdownMenuItem>
-                              <Pencil className="mr-2 h-4 w-4" /> Editar
-                            </DropdownMenuItem>
-                          )}
-                          {canDo("documents", "download") && (
-                            <DropdownMenuItem>
-                              <Download className="mr-2 h-4 w-4" /> Descarregar
-                            </DropdownMenuItem>
-                          )}
-                          {canDo("processes", "create") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleCreateProcessFromSingleDoc(doc)}>
-                                <FolderPlus className="mr-2 h-4 w-4" /> Criar Processo
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {canDo("documents", "delete") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-error focus:text-error">
-                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td><Skeleton className="h-4 w-4" /></td>
+                      <td><Skeleton className="h-4 w-32" /></td>
+                      <td><Skeleton className="h-4 w-full" /></td>
+                      <td><Skeleton className="h-4 w-20" /></td>
+                      <td><Skeleton className="h-5 w-16" /></td>
+                      <td><Skeleton className="h-4 w-16" /></td>
+                      <td><Skeleton className="h-4 w-24" /></td>
+                      <td><Skeleton className="h-8 w-8 ml-auto" /></td>
+                    </tr>
+                  ))
+                ) : filteredDocuments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">
+                      <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                      <p className="text-muted-foreground">
+                        {hasActiveFilters 
+                          ? "Nenhum documento encontrado com os filtros aplicados." 
+                          : "Ainda não existem documentos registados."
+                        }
+                      </p>
+                      {hasActiveFilters && (
+                        <Button variant="link" onClick={clearFilters} className="mt-2">
+                          Limpar filtros
+                        </Button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredDocuments.map((doc) => (
+                    <tr key={doc.id} className={selectedDocuments.includes(doc.id) ? "bg-primary/5" : ""}>
+                      <td>
+                        <Checkbox 
+                          checked={selectedDocuments.includes(doc.id)}
+                          onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
+                        />
+                      </td>
+                      <td className="font-mono text-sm text-muted-foreground">{doc.entry_number}</td>
+                      <td>
+                        <Link to={`/documents/${doc.id}`} className="flex items-center gap-3 group">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors flex-shrink-0">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-medium text-foreground group-hover:text-primary transition-colors block truncate">
+                              {doc.title}
+                            </span>
+                            {doc.subject && (
+                              <span className="text-xs text-muted-foreground truncate block">{doc.subject}</span>
+                            )}
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="text-muted-foreground">{getDocumentTypeName(doc.document_type_id)}</td>
+                      <td>
+                        <Badge variant={documentStatusVariants[doc.status] || "secondary"}>
+                          {documentStatusLabels[doc.status] || doc.status}
+                        </Badge>
+                      </td>
+                      <td>
+                        <span className={`text-sm ${doc.priority === 'urgent' ? 'text-destructive font-medium' : doc.priority === 'high' ? 'text-warning' : 'text-muted-foreground'}`}>
+                          {documentPriorityLabels[doc.priority] || doc.priority}
+                        </span>
+                      </td>
+                      <td className="text-muted-foreground">
+                        {format(new Date(doc.entry_date), "d MMM, yyyy", { locale: pt })}
+                      </td>
+                      <td className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/documents/${doc.id}`}>
+                                <Eye className="mr-2 h-4 w-4" /> Ver
+                              </Link>
+                            </DropdownMenuItem>
+                            {canDo("documents", "edit") && (
+                              <DropdownMenuItem asChild>
+                                <Link to={`/documents/${doc.id}/edit`}>
+                                  <Pencil className="mr-2 h-4 w-4" /> Editar
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {canDo("documents", "download") && (
+                              <DropdownMenuItem>
+                                <Download className="mr-2 h-4 w-4" /> Descarregar
+                              </DropdownMenuItem>
+                            )}
+                            {canDo("processes", "create") && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleCreateProcessFromSingleDoc(doc.id)}>
+                                  <FolderPlus className="mr-2 h-4 w-4" /> Criar Processo
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {canDo("documents", "delete") && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => {
+                                    setSelectedDocuments([doc.id]);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -405,21 +644,53 @@ const Documents = () => {
       {/* Paginação */}
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          A mostrar 1-8 de 156 documentos
+          {totalCount === 0 
+            ? "Nenhum documento" 
+            : `A mostrar ${((currentPage - 1) * ITEMS_PER_PAGE) + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} de ${totalCount} documentos`
+          }
         </p>
-        <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="sm" disabled>
-            Anterior
-          </Button>
-          <Button variant="default" size="sm">
-            1
-          </Button>
-          <Button variant="outline" size="sm">2</Button>
-          <Button variant="outline" size="sm">3</Button>
-          <Button variant="outline" size="sm">
-            Seguinte
-          </Button>
-        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1.5">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
+              Anterior
+            </Button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <Button 
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            <Button 
+              variant="outline" 
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
+              Seguinte
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Referência ao Registo de Auditoria */}
@@ -451,15 +722,15 @@ const Documents = () => {
             <AlertDialogTitle>Eliminar documentos?</AlertDialogTitle>
             <AlertDialogDescription>
               Está prestes a eliminar {selectedDocuments.length} documento{selectedDocuments.length > 1 ? 's' : ''}. 
-              Esta ação não pode ser desfeita e os documentos serão removidos permanentemente.
+              Esta acção não pode ser revertida. Todos os ficheiros associados serão permanentemente eliminados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleBulkDelete}
               disabled={isProcessing}
-              className="bg-error hover:bg-error/90"
+              className="bg-destructive hover:bg-destructive/90"
             >
               {isProcessing ? (
                 <>
