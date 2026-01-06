@@ -14,6 +14,7 @@ import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
+import { NotificationPreferencesPanel } from "@/components/notifications/NotificationPreferencesPanel";
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -1085,36 +1086,6 @@ const SegurancaSection = () => {
 
 // ========== SECÇÃO NOTIFICAÇÕES ==========
 const NotificacoesSection = () => {
-  const [isSaving, setIsSaving] = useState(false);
-  
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    toast({
-      title: "Preferências guardadas",
-      description: "As suas preferências de notificação foram actualizadas.",
-    });
-  };
-
-  const notifications = [
-    { category: "Documentos", items: [
-      { label: "Novo documento recebido", email: true, push: true, sms: false },
-      { label: "Documento requer aprovação", email: true, push: true, sms: true },
-      { label: "Documento assinado", email: true, push: false, sms: false },
-    ]},
-    { category: "Processos", items: [
-      { label: "Processo atribuído", email: true, push: true, sms: false },
-      { label: "Prazo a expirar", email: true, push: true, sms: true },
-      { label: "Processo concluído", email: true, push: false, sms: false },
-    ]},
-    { category: "Sistema", items: [
-      { label: "Actualizações de segurança", email: true, push: false, sms: false },
-      { label: "Manutenção programada", email: true, push: true, sms: false },
-      { label: "Relatórios semanais", email: true, push: false, sms: false },
-    ]},
-  ];
-
   return (
     <>
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1122,66 +1093,11 @@ const NotificacoesSection = () => {
           <h2 className="text-lg font-semibold text-foreground">Notificações</h2>
           <p className="text-sm text-muted-foreground">Escolha como deseja ser notificado</p>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2"
-              />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-            )}
-            {isSaving ? "A guardar..." : "Guardar Preferências"}
-          </Button>
-        </motion.div>
       </motion.div>
 
-      {notifications.map((group, groupIndex) => (
-        <motion.div 
-          key={group.category} 
-          variants={itemVariants}
-          custom={groupIndex}
-        >
-          <motion.div variants={cardHoverVariants} initial="rest" whileHover="hover">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{group.category}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  <div className="grid grid-cols-4 gap-4 pb-2 border-b border-border text-sm font-medium text-muted-foreground">
-                    <div className="col-span-1">Notificação</div>
-                    <div className="text-center">Email</div>
-                    <div className="text-center">Push</div>
-                    <div className="text-center">SMS</div>
-                  </div>
-                  {group.items.map((item, i) => (
-                    <motion.div 
-                      key={i} 
-                      className="grid grid-cols-4 gap-4 py-3 border-b border-border last:border-0 items-center"
-                      whileHover={{ backgroundColor: "hsl(var(--muted) / 0.3)" }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <div className="col-span-1 text-sm">{item.label}</div>
-                      <div className="flex justify-center">
-                        <Switch defaultChecked={item.email} aria-label={`${item.label} por email`} />
-                      </div>
-                      <div className="flex justify-center">
-                        <Switch defaultChecked={item.push} aria-label={`${item.label} por push`} />
-                      </div>
-                      <div className="flex justify-center">
-                        <Switch defaultChecked={item.sms} aria-label={`${item.label} por SMS`} />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-      ))}
+      <motion.div variants={itemVariants}>
+        <NotificationPreferencesPanel />
+      </motion.div>
     </>
   );
 };

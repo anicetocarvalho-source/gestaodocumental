@@ -163,7 +163,7 @@ export function NotificationPreferencesPanel() {
           
           {movementTypes.map((type) => {
             const Icon = type.icon;
-            const isEnabled = localPrefs[type.key as keyof NotificationPreferences] ?? true;
+            const isEnabled = Boolean(localPrefs[type.key as keyof NotificationPreferences] ?? true);
             
             return (
               <div 
