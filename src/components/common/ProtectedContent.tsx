@@ -1,6 +1,12 @@
 import { ReactNode } from "react";
 import { DemoRole } from "@/contexts/DemoAuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ProtectedContentProps {
   children: ReactNode;
@@ -15,6 +21,8 @@ interface ProtectedContentProps {
   fallback?: ReactNode;
   /** Se true, mostra conteúdo desabilitado em vez de esconder */
   showDisabled?: boolean;
+  /** Tooltip a mostrar quando desabilitado */
+  disabledTooltip?: string;
 }
 
 /**
@@ -27,6 +35,7 @@ export function ProtectedContent({
   permission,
   fallback = null,
   showDisabled = false,
+  disabledTooltip = "Não tem permissão para executar esta ação",
 }: ProtectedContentProps) {
   const { hasRole, canDo } = usePermissions();
 
@@ -47,12 +56,23 @@ export function ProtectedContent({
     return <>{children}</>;
   }
 
-  // Se deve mostrar desabilitado
+  // Se deve mostrar desabilitado com tooltip
   if (showDisabled) {
     return (
-      <div className="opacity-50 pointer-events-none cursor-not-allowed">
-        {children}
-      </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="opacity-50 pointer-events-auto cursor-not-allowed inline-block">
+              <div className="pointer-events-none">
+                {children}
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{disabledTooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
@@ -78,9 +98,15 @@ export function ProtectedButton({
   children,
   roles,
   permission,
+  disabledTooltip,
 }: ProtectedButtonProps) {
   return (
-    <ProtectedContent roles={roles} permission={permission}>
+    <ProtectedContent 
+      roles={roles} 
+      permission={permission} 
+      showDisabled 
+      disabledTooltip={disabledTooltip}
+    >
       {children}
     </ProtectedContent>
   );
