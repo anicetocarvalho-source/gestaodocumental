@@ -11,6 +11,7 @@ import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +38,8 @@ import {
   FolderPlus,
   X,
   Archive,
-  Loader2
+  Loader2,
+  Lock
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +48,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const documents = [
   { id: 1, name: "Relatório Orçamental Anual 2024", type: "PDF", size: "2,4 MB", status: "approved", date: "1 Dez, 2024", author: "Sara Ferreira" },
@@ -80,6 +87,9 @@ const Documents = () => {
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Permissões do utilizador
+  const { canDo, canEdit, isManagerOrAbove, role } = usePermissions();
 
   const handleSelectDocument = (docId: number, checked: boolean) => {
     if (checked) {
@@ -189,39 +199,49 @@ const Documents = () => {
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleBulkDownload}
-              disabled={isProcessing}
-            >
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              Descarregar
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleBulkArchive}
-              disabled={isProcessing}
-            >
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />}
-              Arquivar
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={isProcessing}
-              className="text-error hover:text-error hover:bg-error/10 border-error/30"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
-            </Button>
-            <div className="w-px h-6 bg-border mx-1" />
-            <Button size="sm" onClick={handleCreateProcessFromSelection} disabled={isProcessing}>
-              <FolderPlus className="mr-2 h-4 w-4" />
-              Criar Processo
-            </Button>
+            {canDo("documents", "download") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleBulkDownload}
+                disabled={isProcessing}
+              >
+                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Descarregar
+              </Button>
+            )}
+            {canDo("documents", "archive") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleBulkArchive}
+                disabled={isProcessing}
+              >
+                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />}
+                Arquivar
+              </Button>
+            )}
+            {canDo("documents", "delete") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={isProcessing}
+                className="text-error hover:text-error hover:bg-error/10 border-error/30"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </Button>
+            )}
+            {canDo("processes", "create") && (
+              <>
+                <div className="w-px h-6 bg-border mx-1" />
+                <Button size="sm" onClick={handleCreateProcessFromSelection} disabled={isProcessing}>
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  Criar Processo
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -251,16 +271,34 @@ const Documents = () => {
                   <List className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setUploadModalOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Carregar
-              </Button>
-              <Button size="sm" asChild>
-                <Link to="/documents/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo Documento
-                </Link>
-              </Button>
+              {canDo("documents", "create") ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setUploadModalOpen(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Carregar
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link to="/documents/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Novo Documento
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button variant="outline" size="sm" disabled>
+                        <Lock className="mr-2 h-4 w-4" />
+                        Sem permissão
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    O seu perfil não permite criar documentos
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </CardContent>
@@ -327,20 +365,32 @@ const Documents = () => {
                               <Eye className="mr-2 h-4 w-4" /> Ver
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 h-4 w-4" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="mr-2 h-4 w-4" /> Descarregar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleCreateProcessFromSingleDoc(doc)}>
-                            <FolderPlus className="mr-2 h-4 w-4" /> Criar Processo
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-error focus:text-error">
-                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                          </DropdownMenuItem>
+                          {canDo("documents", "edit") && (
+                            <DropdownMenuItem>
+                              <Pencil className="mr-2 h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                          )}
+                          {canDo("documents", "download") && (
+                            <DropdownMenuItem>
+                              <Download className="mr-2 h-4 w-4" /> Descarregar
+                            </DropdownMenuItem>
+                          )}
+                          {canDo("processes", "create") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleCreateProcessFromSingleDoc(doc)}>
+                                <FolderPlus className="mr-2 h-4 w-4" /> Criar Processo
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {canDo("documents", "delete") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-error focus:text-error">
+                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
