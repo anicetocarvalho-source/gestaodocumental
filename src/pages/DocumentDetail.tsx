@@ -314,7 +314,7 @@ const DocumentDetail = () => {
                   <Paperclip className="h-4 w-4" />
                   Documentos Anexos
                 </CardTitle>
-                <ProtectedContent permission={{ module: "documents", action: "addAttachment" }} showDisabled>
+                <ProtectedContent permission={{ module: "documents", action: "addAttachment" }} showDisabled disabledTooltip="Requer permissão de edição para adicionar anexos">
                   <Button variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Anexo
@@ -347,7 +347,7 @@ const DocumentDetail = () => {
                       <Button variant="ghost" size="icon-sm" aria-label="Baixar">
                         <Download className="h-4 w-4" />
                       </Button>
-                      <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled>
+                      <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover anexos">
                         <Button variant="ghost" size="icon-sm" aria-label="Remover">
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -473,7 +473,7 @@ const DocumentDetail = () => {
               <CardTitle className="text-base">Ações do Documento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <ProtectedContent permission={{ module: "documents", action: "validate" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "validate" }} showDisabled disabledTooltip="Apenas validadores podem validar documentos">
                 <Button 
                   className="w-full justify-start" 
                   variant="success"
@@ -483,7 +483,7 @@ const DocumentDetail = () => {
                   Validar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "reject" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "reject" }} showDisabled disabledTooltip="Apenas validadores podem rejeitar documentos">
                 <Button 
                   className="w-full justify-start" 
                   variant="destructive"
@@ -494,7 +494,7 @@ const DocumentDetail = () => {
                 </Button>
               </ProtectedContent>
               <Separator className="my-3" />
-              <ProtectedContent permission={{ module: "documents", action: "dispatch" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "dispatch" }} showDisabled disabledTooltip="Requer permissão de tramitação para despachar">
                 <Button 
                   className="w-full justify-start" 
                   variant="default"
@@ -504,7 +504,7 @@ const DocumentDetail = () => {
                   Despachar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "requestCorrection" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "requestCorrection" }} showDisabled disabledTooltip="Requer permissão de edição para solicitar correção">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -514,7 +514,7 @@ const DocumentDetail = () => {
                   Solicitar Correção
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "attachToProcess" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "attachToProcess" }} showDisabled disabledTooltip="Requer permissão de edição para anexar a processo">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -524,7 +524,7 @@ const DocumentDetail = () => {
                   Anexar a Processo
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "returnToOrigin" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "returnToOrigin" }} showDisabled disabledTooltip="Requer permissão de tramitação para devolver">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -543,7 +543,7 @@ const DocumentDetail = () => {
               <CardTitle className="text-base">Outras Ações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <ProtectedContent permission={{ module: "documents", action: "sign" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "sign" }} showDisabled disabledTooltip="Requer permissão de assinatura digital">
                 <Button 
                   className="w-full justify-start" 
                   variant={documentSigned ? "success" : "outline"}
@@ -553,7 +553,7 @@ const DocumentDetail = () => {
                   {documentSigned ? "Documento Assinado" : "Assinar Documento"}
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "classify" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "classify" }} showDisabled disabledTooltip="Requer permissão de classificação documental">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -563,7 +563,7 @@ const DocumentDetail = () => {
                   Classificar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "archive" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "archive" }} showDisabled disabledTooltip="Requer permissão de arquivo para arquivar documentos">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -574,7 +574,7 @@ const DocumentDetail = () => {
                 </Button>
               </ProtectedContent>
               <Separator className="my-3" />
-              <ProtectedContent permission={{ module: "documents", action: "createProcess" }} showDisabled>
+              <ProtectedContent permission={{ module: "documents", action: "createProcess" }} showDisabled disabledTooltip="Requer permissão para criar processos">
                 <Button 
                   className="w-full justify-start" 
                   variant="success"
