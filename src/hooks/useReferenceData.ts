@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   OrganizationalUnit, 
   ClassificationCode, 
-  DocumentType 
+  DocumentType,
+  Profile
 } from '@/types/database';
 
 // =============================================
@@ -155,5 +156,56 @@ export function useClassificationTree() {
 
       return roots;
     },
+  });
+}
+
+// =============================================
+// Perfis / Utilizadores
+// =============================================
+
+export function useProfiles(options?: { activeOnly?: boolean; unitId?: string }) {
+  return useQuery({
+    queryKey: ['profiles', options],
+    queryFn: async (): Promise<Profile[]> => {
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .order('full_name');
+
+      if (options?.activeOnly) {
+        query = query.eq('is_active', true);
+      }
+
+      if (options?.unitId) {
+        query = query.eq('unit_id', options.unitId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return data as Profile[];
+    },
+  });
+}
+
+export function useProfilesByUnit(unitId: string | undefined) {
+  return useQuery({
+    queryKey: ['profiles-by-unit', unitId],
+    queryFn: async (): Promise<Profile[]> => {
+      if (!unitId) return [];
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('unit_id', unitId)
+        .eq('is_active', true)
+        .order('full_name');
+
+      if (error) throw error;
+
+      return data as Profile[];
+    },
+    enabled: !!unitId,
   });
 }
