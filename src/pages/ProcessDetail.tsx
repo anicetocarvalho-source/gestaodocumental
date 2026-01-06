@@ -40,7 +40,7 @@ import {
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions } from "@/hooks/useProcesses";
+import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment } from "@/hooks/useProcesses";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -72,6 +72,8 @@ const ProcessDetail = () => {
   const [activeTab, setActiveTab] = useState("workflow");
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<WorkflowAction | null>(null);
+  const [newComment, setNewComment] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
   
   const { canDo } = usePermissions();
   
@@ -81,6 +83,9 @@ const ProcessDetail = () => {
   const { data: movements = [] } = useProcessMovements(id);
   const { data: comments = [] } = useProcessComments(id);
   const { data: opinions = [] } = useProcessOpinions(id);
+  
+  // Mutation for adding comments
+  const addComment = useAddProcessComment();
   
   // Calculate SLA remaining
   const getSlaRemaining = () => {
@@ -141,6 +146,21 @@ const ProcessDetail = () => {
   const handleActionComplete = (action: WorkflowAction, data: Record<string, unknown>) => {
     console.log("Action completed:", action, data);
     // Here you would update the workflow timeline
+  };
+  
+  const handleAddComment = () => {
+    if (!id || !newComment.trim()) return;
+    
+    addComment.mutate({
+      process_id: id,
+      content: newComment.trim(),
+      is_internal: isInternal,
+    }, {
+      onSuccess: () => {
+        setNewComment("");
+        setIsInternal(false);
+      }
+    });
   };
 
   const getStageIcon = (stageStatus: string) => {
@@ -500,17 +520,35 @@ const ProcessDetail = () => {
                         <Textarea 
                           placeholder="Adicionar comentário..." 
                           className="min-h-[80px]"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          disabled={addComment.isPending}
                         />
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <input type="checkbox" id="internal" className="rounded" />
+                            <input 
+                              type="checkbox" 
+                              id="internal" 
+                              className="rounded" 
+                              checked={isInternal}
+                              onChange={(e) => setIsInternal(e.target.checked)}
+                              disabled={addComment.isPending}
+                            />
                             <label htmlFor="internal" className="text-sm text-muted-foreground">
                               Marcar como nota interna
                             </label>
                           </div>
-                          <Button size="sm">
-                            <Send className="h-4 w-4 mr-2" />
-                            Enviar
+                          <Button 
+                            size="sm" 
+                            onClick={handleAddComment}
+                            disabled={!newComment.trim() || addComment.isPending}
+                          >
+                            {addComment.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            {addComment.isPending ? "A enviar..." : "Enviar"}
                           </Button>
                         </div>
                       </div>
