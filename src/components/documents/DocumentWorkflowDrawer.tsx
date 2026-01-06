@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +29,14 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import {
+  useOrganizationalUnits,
+  useClassificationCodes,
+  useProfilesByUnit,
+} from "@/hooks/useReferenceData";
+import { useDispatchDocument } from "@/hooks/useDocumentActions";
 import {
   CheckCircle2,
   XCircle,
@@ -42,7 +49,8 @@ import {
   Tag,
   Check,
   Building2,
-  Clock,
+  User,
+  Loader2,
 } from "lucide-react";
 
 export type DocumentAction =
@@ -68,6 +76,9 @@ interface DocumentWorkflowDrawerProps {
   onOpenChange: (open: boolean) => void;
   action: DocumentAction | null;
   documentSummary: DocumentSummary;
+  documentId?: string;
+  currentUnitId?: string;
+  currentUserId?: string;
   onActionComplete: (action: DocumentAction, data: Record<string, unknown>) => void;
 }
 
@@ -148,16 +159,6 @@ const actionConfig: Record<
   },
 };
 
-const units = [
-  { id: "gabinete", name: "Gabinete" },
-  { id: "secretaria", name: "Secretaria Geral" },
-  { id: "arquivo", name: "Arquivo Central" },
-  { id: "juridico", name: "Assessoria Jurídica" },
-  { id: "financeiro", name: "Departamento Financeiro" },
-  { id: "rh", name: "Recursos Humanos" },
-  { id: "ti", name: "Tecnologia da Informação" },
-];
-
 const processes = [
   { id: "proc-001", number: "PROC-2024-0001", subject: "Licitação - Equipamentos TI" },
   { id: "proc-002", number: "PROC-2024-0015", subject: "Contratação de Serviços" },
@@ -165,23 +166,45 @@ const processes = [
   { id: "new", number: "Novo Processo", subject: "Criar novo processo a partir deste documento" },
 ];
 
-const classifications = [
-  { code: "100.10", name: "Correspondência Oficial" },
-  { code: "100.20", name: "Documentos Administrativos" },
-  { code: "200.10", name: "Recursos Humanos - Pessoal" },
-  { code: "300.10", name: "Financeiro - Orçamento" },
-  { code: "400.10", name: "Jurídico - Contratos" },
-];
-
 export function DocumentWorkflowDrawer({
   open,
   onOpenChange,
   action,
   documentSummary,
+  documentId,
+  currentUnitId,
+  currentUserId,
   onActionComplete,
 }: DocumentWorkflowDrawerProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [selectedUnitId, setSelectedUnitId] = useState<string | undefined>(undefined);
+
+  // Fetch real data from database
+  const { data: units = [], isLoading: unitsLoading } = useOrganizationalUnits({ activeOnly: true });
+  const { data: classifications = [], isLoading: classificationsLoading } = useClassificationCodes({ activeOnly: true });
+  const { data: unitUsers = [], isLoading: usersLoading } = useProfilesByUnit(selectedUnitId);
+
+  // Dispatch mutation
+  const dispatchDocument = useDispatchDocument();
+
+  // Reset form when drawer closes or action changes
+  useEffect(() => {
+    if (!open) {
+      setFormData({});
+      setSelectedUnitId(undefined);
+    }
+  }, [open, action]);
+
+  // Update selectedUnitId when destino changes
+  useEffect(() => {
+    const destino = formData.destino as string | undefined;
+    if (destino && destino !== selectedUnitId) {
+      setSelectedUnitId(destino);
+      // Clear user selection when unit changes
+      setFormData(prev => ({ ...prev, destinatario: undefined }));
+    }
+  }, [formData.destino, selectedUnitId]);
 
   if (!action) return null;
 
@@ -201,7 +224,7 @@ export function DocumentWorkflowDrawer({
     if (action === "despachar" && !formData.destino) {
       toast({
         title: "Destino obrigatório",
-        description: "Selecione o destino do despacho.",
+        description: "Selecione a unidade de destino do despacho.",
         variant: "destructive",
       });
       return;
@@ -225,20 +248,57 @@ export function DocumentWorkflowDrawer({
       return;
     }
 
+    if (action === "classificar" && !formData.classificacao) {
+      toast({
+        title: "Classificação obrigatória",
+        description: "Selecione o código de classificação.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setConfirmOpen(true);
   };
 
-  const handleConfirm = () => {
-    onActionComplete(action, formData);
+  const handleConfirm = async () => {
+    try {
+      if (action === "despachar" && documentId) {
+        await dispatchDocument.mutateAsync({
+          documentId,
+          toUnitId: formData.destino as string,
+          toUserId: formData.destinatario as string | undefined,
+          dispatchText: formData.despacho as string | undefined,
+          notes: formData.observacao as string | undefined,
+          fromUnitId: currentUnitId,
+          fromUserId: currentUserId,
+        });
 
-    toast({
-      title: "Ação realizada com sucesso",
-      description: `${config.title} concluído para ${documentSummary.number}.`,
-    });
+        toast({
+          title: "Documento despachado",
+          description: `Documento ${documentSummary.number} foi encaminhado com sucesso.`,
+        });
+      } else {
+        // For other actions, call the parent callback
+        onActionComplete(action, formData);
+        
+        toast({
+          title: "Ação realizada com sucesso",
+          description: `${config.title} concluído para ${documentSummary.number}.`,
+        });
+      }
 
-    setConfirmOpen(false);
-    onOpenChange(false);
-    setFormData({});
+      setConfirmOpen(false);
+      onOpenChange(false);
+      setFormData({});
+      setSelectedUnitId(undefined);
+    } catch (error) {
+      console.error('Error executing action:', error);
+      toast({
+        title: "Erro ao executar ação",
+        description: "Ocorreu um erro ao processar a ação. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const renderActionFields = () => {
@@ -300,33 +360,93 @@ export function DocumentWorkflowDrawer({
       case "despachar":
         return (
           <div className="space-y-4">
+            {/* Destination Unit */}
             <div className="space-y-2">
-              <Label htmlFor="destino">Unidade de Destino *</Label>
-              <Select
-                value={(formData.destino as string) || ""}
-                onValueChange={(value) => setFormData({ ...formData, destino: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {units.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="destino">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Unidade de Destino *
+                </div>
+              </Label>
+              {unitsLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select
+                  value={(formData.destino as string) || ""}
+                  onValueChange={(value) => setFormData({ ...formData, destino: value, destinatario: undefined })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units.map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">{unit.code}</span>
+                          <span>{unit.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+
+            {/* Destination User (optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="destinatario">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Responsável (opcional)
+                </div>
+              </Label>
+              {!selectedUnitId ? (
+                <p className="text-sm text-muted-foreground italic">
+                  Selecione uma unidade para ver os utilizadores disponíveis
+                </p>
+              ) : usersLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : unitUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  Nenhum utilizador encontrado nesta unidade
+                </p>
+              ) : (
+                <Select
+                  value={(formData.destinatario as string) || ""}
+                  onValueChange={(value) => setFormData({ ...formData, destinatario: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um responsável (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitUsers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{user.full_name}</span>
+                          {user.position && (
+                            <span className="text-xs text-muted-foreground">{user.position}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Dispatch Text */}
             <div className="space-y-2">
               <Label htmlFor="despacho">Texto do Despacho</Label>
               <Textarea
                 id="despacho"
                 placeholder="Instruções ou observações para o destinatário..."
-                className="min-h-[100px]"
+                className="min-h-[120px]"
                 value={(formData.despacho as string) || ""}
                 onChange={(e) => setFormData({ ...formData, despacho: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                Descreva as instruções ou ações a serem tomadas pelo destinatário.
+              </p>
             </div>
           </div>
         );
@@ -336,21 +456,25 @@ export function DocumentWorkflowDrawer({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="classificacao">Código de Classificação *</Label>
-              <Select
-                value={(formData.classificacao as string) || ""}
-                onValueChange={(value) => setFormData({ ...formData, classificacao: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a classificação" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classifications.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.code} - {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {classificationsLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select
+                  value={(formData.classificacao as string) || ""}
+                  onValueChange={(value) => setFormData({ ...formData, classificacao: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a classificação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classifications.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="font-mono text-xs">{c.code}</span> - {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="justificativa_class">Justificativa (opcional)</Label>
@@ -493,6 +617,8 @@ export function DocumentWorkflowDrawer({
     }
   };
 
+  const isSubmitting = dispatchDocument.isPending;
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -546,14 +672,22 @@ export function DocumentWorkflowDrawer({
           </div>
 
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
             <Button
               variant={config.variant === "destructive" ? "destructive" : config.variant === "success" ? "success" : "default"}
               onClick={handleSubmit}
+              disabled={isSubmitting}
             >
-              Confirmar
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  A processar...
+                </>
+              ) : (
+                "Confirmar"
+              )}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -567,12 +701,20 @@ export function DocumentWorkflowDrawer({
             <AlertDialogDescription>{config.confirmDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
+              disabled={isSubmitting}
               className={config.variant === "destructive" ? "bg-destructive hover:bg-destructive/90" : ""}
             >
-              Confirmar
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  A processar...
+                </>
+              ) : (
+                "Confirmar"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
