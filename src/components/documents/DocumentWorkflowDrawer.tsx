@@ -36,7 +36,7 @@ import {
   useClassificationCodes,
   useProfilesByUnit,
 } from "@/hooks/useReferenceData";
-import { useDispatchDocument } from "@/hooks/useDocumentActions";
+import { useDispatchDocument, useForwardDocument } from "@/hooks/useDocumentActions";
 import {
   CheckCircle2,
   XCircle,
@@ -51,12 +51,14 @@ import {
   Building2,
   User,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 export type DocumentAction =
   | "validar"
   | "rejeitar_validacao"
   | "despachar"
+  | "reencaminhar"
   | "classificar"
   | "solicitar_correcao"
   | "anexar_processo"
@@ -115,6 +117,14 @@ const actionConfig: Record<
     icon: <Forward className="h-5 w-5" />,
     confirmTitle: "Confirmar Despacho",
     confirmDescription: "O documento será encaminhado para o destino selecionado.",
+    variant: "default",
+  },
+  reencaminhar: {
+    title: "Reencaminhar Documento",
+    description: "Transferir o documento para outra unidade para continuidade do tratamento.",
+    icon: <RefreshCw className="h-5 w-5" />,
+    confirmTitle: "Confirmar Reencaminhamento",
+    confirmDescription: "O documento será transferido para a unidade selecionada.",
     variant: "default",
   },
   classificar: {
@@ -185,8 +195,9 @@ export function DocumentWorkflowDrawer({
   const { data: classifications = [], isLoading: classificationsLoading } = useClassificationCodes({ activeOnly: true });
   const { data: unitUsers = [], isLoading: usersLoading } = useProfilesByUnit(selectedUnitId);
 
-  // Dispatch mutation
+  // Mutations
   const dispatchDocument = useDispatchDocument();
+  const forwardDocument = useForwardDocument();
 
   // Reset form when drawer closes or action changes
   useEffect(() => {
@@ -221,10 +232,10 @@ export function DocumentWorkflowDrawer({
       return;
     }
 
-    if (action === "despachar" && !formData.destino) {
+    if ((action === "despachar" || action === "reencaminhar") && !formData.destino) {
       toast({
         title: "Destino obrigatório",
-        description: "Selecione a unidade de destino do despacho.",
+        description: "Selecione a unidade de destino.",
         variant: "destructive",
       });
       return;
@@ -276,6 +287,20 @@ export function DocumentWorkflowDrawer({
         toast({
           title: "Documento despachado",
           description: `Documento ${documentSummary.number} foi encaminhado com sucesso.`,
+        });
+      } else if (action === "reencaminhar" && documentId) {
+        await forwardDocument.mutateAsync({
+          documentId,
+          toUnitId: formData.destino as string,
+          toUserId: formData.destinatario as string | undefined,
+          notes: formData.motivo as string | undefined,
+          fromUnitId: currentUnitId,
+          fromUserId: currentUserId,
+        });
+
+        toast({
+          title: "Documento reencaminhado",
+          description: `Documento ${documentSummary.number} foi transferido com sucesso.`,
         });
       } else {
         // For other actions, call the parent callback
@@ -451,6 +476,116 @@ export function DocumentWorkflowDrawer({
           </div>
         );
 
+      case "reencaminhar":
+        return (
+          <div className="space-y-4">
+            {/* Info box */}
+            <div className="rounded-lg border border-primary/20 bg-primary-muted p-4">
+              <div className="flex items-start gap-3">
+                <RefreshCw className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Reencaminhamento de Documento</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O documento será transferido para outra unidade para continuidade do tratamento. 
+                    O histórico de movimentações será mantido.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Destination Unit */}
+            <div className="space-y-2">
+              <Label htmlFor="destino">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Unidade de Destino *
+                </div>
+              </Label>
+              {unitsLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select
+                  value={(formData.destino as string) || ""}
+                  onValueChange={(value) => setFormData({ ...formData, destino: value, destinatario: undefined })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units
+                      .filter(unit => unit.id !== currentUnitId) // Exclude current unit
+                      .map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground">{unit.code}</span>
+                            <span>{unit.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Destination User (optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="destinatario">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Responsável (opcional)
+                </div>
+              </Label>
+              {!selectedUnitId ? (
+                <p className="text-sm text-muted-foreground italic">
+                  Selecione uma unidade para ver os utilizadores disponíveis
+                </p>
+              ) : usersLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : unitUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  Nenhum utilizador encontrado nesta unidade
+                </p>
+              ) : (
+                <Select
+                  value={(formData.destinatario as string) || ""}
+                  onValueChange={(value) => setFormData({ ...formData, destinatario: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um responsável (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitUsers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{user.full_name}</span>
+                          {user.position && (
+                            <span className="text-xs text-muted-foreground">{user.position}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Reason for forwarding */}
+            <div className="space-y-2">
+              <Label htmlFor="motivo">Motivo do Reencaminhamento</Label>
+              <Textarea
+                id="motivo"
+                placeholder="Descreva o motivo do reencaminhamento..."
+                className="min-h-[100px]"
+                value={(formData.motivo as string) || ""}
+                onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Explique por que o documento está sendo transferido para outra unidade.
+              </p>
+            </div>
+          </div>
+        );
+
       case "classificar":
         return (
           <div className="space-y-4">
@@ -617,7 +752,7 @@ export function DocumentWorkflowDrawer({
     }
   };
 
-  const isSubmitting = dispatchDocument.isPending;
+  const isSubmitting = dispatchDocument.isPending || forwardDocument.isPending;
 
   return (
     <>
