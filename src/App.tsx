@@ -38,6 +38,7 @@ import DocumentIntelligence from "./pages/DocumentIntelligence";
 import IntelligentSearch from "./pages/IntelligentSearch";
 import ProcedureGuide from "./pages/ProcedureGuide";
 import InstitutionalAssistant from "./pages/InstitutionalAssistant";
+import MovementHistory from "./pages/MovementHistory";
 import Auth from "./pages/Auth";
 import DemoLogin from "./pages/DemoLogin";
 import NotFound from "./pages/NotFound";
@@ -93,6 +94,7 @@ const App = () => (
             <Route path="/intelligent-search" element={<ProtectedRoute><IntelligentSearch /></ProtectedRoute>} />
             <Route path="/procedure-guide" element={<ProtectedRoute><ProcedureGuide /></ProtectedRoute>} />
             <Route path="/assistant" element={<ProtectedRoute><InstitutionalAssistant /></ProtectedRoute>} />
+            <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

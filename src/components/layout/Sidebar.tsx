@@ -29,6 +29,7 @@ import {
   FileSearch,
   Tags,
   Bot,
+  History,
   LucideIcon,
   LogOut,
   UserCircle,
@@ -58,6 +59,7 @@ const navigation: NavItem[] = [
   { name: "Classificação", href: "/classification", icon: Tags, roles: ["admin", "gestor", "tecnico"] },
   { name: "Revisão Qualidade", href: "/quality-review", icon: FileCheck, roles: ["admin", "gestor"] },
   { name: "Relatórios", href: "/reports", icon: BarChart3, roles: ["admin", "gestor"] },
+  { name: "Movimentações", href: "/movement-history", icon: History, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Pastas", href: "/folders", icon: FolderOpen, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Arquivo", href: "/archive", icon: Archive, roles: ["admin", "gestor", "tecnico", "consulta"] },
 ];
