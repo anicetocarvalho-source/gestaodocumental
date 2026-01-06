@@ -109,6 +109,27 @@ export interface ProcessOpinion {
   unit?: { id: string; name: string };
 }
 
+export interface ProcessDocument {
+  id: string;
+  process_id: string;
+  document_id: string | null;
+  file_name: string | null;
+  file_path: string | null;
+  file_size: number | null;
+  mime_type: string | null;
+  description: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  // Joined data
+  document?: {
+    id: string;
+    entry_number: string;
+    title: string;
+    status: string;
+  };
+  uploader?: { id: string; full_name: string };
+}
+
 export interface CreateProcessInput {
   process_type_id?: string;
   subject: string;
@@ -305,6 +326,36 @@ export function useProcessOpinions(processId: string | undefined) {
 
       if (error) throw error;
       return data as ProcessOpinion[];
+    },
+    enabled: !!processId,
+  });
+}
+
+// Fetch process documents
+export function useProcessDocuments(processId: string | undefined) {
+  return useQuery({
+    queryKey: ['process-documents', processId],
+    queryFn: async () => {
+      if (!processId) return [];
+
+      const { data, error } = await supabase
+        .from('process_documents')
+        .select(`
+          *,
+          document:documents(id, entry_number, title, status)
+        `)
+        .eq('process_id', processId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Fetch uploader info separately if needed
+      const result = data.map(doc => ({
+        ...doc,
+        uploader: undefined
+      }));
+      
+      return result as ProcessDocument[];
     },
     enabled: !!processId,
   });

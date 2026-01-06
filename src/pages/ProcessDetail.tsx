@@ -40,14 +40,9 @@ import {
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment } from "@/hooks/useProcesses";
+import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment, useProcessDocuments } from "@/hooks/useProcesses";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
-
-// Static mock documents for now - TODO: fetch from database
-const mockDocuments = [
-  { id: 1, name: "Documento anexado", size: "1.2 MB", type: "PDF", date: "2024-01-15", author: "Sistema" },
-];
 
 const statusConfig: Record<string, { label: string; variant: "info" | "success" | "warning" | "error" | "secondary" }> = {
   rascunho: { label: "Rascunho", variant: "secondary" },
@@ -83,6 +78,7 @@ const ProcessDetail = () => {
   const { data: movements = [] } = useProcessMovements(id);
   const { data: comments = [] } = useProcessComments(id);
   const { data: opinions = [] } = useProcessOpinions(id);
+  const { data: processDocuments = [] } = useProcessDocuments(id);
   
   // Mutation for adding comments
   const addComment = useAddProcessComment();
@@ -352,7 +348,7 @@ const ProcessDetail = () => {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Paperclip className="h-4 w-4" />
-                  Documentos Anexos
+                  Documentos Anexos ({processDocuments.length})
                 </CardTitle>
                 <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled disabledTooltip="Requer permissão de edição para anexar documentos">
                   <Button variant="outline" size="sm">
@@ -364,37 +360,65 @@ const ProcessDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {mockDocuments.map((doc) => (
-                      <div 
-                        key={doc.id}
-                        className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 bg-primary-muted rounded-lg flex items-center justify-center">
-                            <FileText className="h-6 w-6 text-primary" />
+                    {processDocuments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Nenhum documento anexado a este processo.
+                      </p>
+                    ) : (
+                      processDocuments.map((doc) => {
+                        const formatFileSize = (bytes: number | null) => {
+                          if (!bytes) return "-";
+                          if (bytes < 1024) return `${bytes} B`;
+                          if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                          return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                        };
+                        
+                        const displayName = doc.document?.title || doc.file_name || "Documento sem nome";
+                        const docNumber = doc.document?.entry_number;
+                        
+                        return (
+                          <div 
+                            key={doc.id}
+                            className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="h-12 w-12 bg-primary-muted rounded-lg flex items-center justify-center">
+                                <FileText className="h-6 w-6 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{displayName}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {docNumber && <span className="font-mono">{docNumber} • </span>}
+                                  {doc.mime_type?.split('/')[1]?.toUpperCase() || "DOC"} • {formatFileSize(doc.file_size)} • {format(new Date(doc.created_at), "dd MMM yyyy", { locale: pt })}
+                                </p>
+                                {doc.description && (
+                                  <p className="text-xs text-muted-foreground mt-1">{doc.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {doc.document && (
+                                <Link to={`/documents/${doc.document.id}`}>
+                                  <Button variant="ghost" size="icon-sm" title="Ver documento">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              )}
+                              {doc.file_path && (
+                                <Button variant="ghost" size="icon-sm" title="Baixar ficheiro">
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <ProtectedContent permission={{ module: "processes", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover documentos">
+                                <Button variant="ghost" size="icon-sm">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </ProtectedContent>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{doc.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {doc.type} • {doc.size} • {doc.date} • {doc.author}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon-sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <ProtectedContent permission={{ module: "processes", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover documentos">
-                            <Button variant="ghost" size="icon-sm">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </ProtectedContent>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })
+                    )}
                   </div>
                 </CardContent>
               </Card>
