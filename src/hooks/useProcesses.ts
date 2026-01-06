@@ -120,6 +120,7 @@ export interface CreateProcessInput {
   current_unit_id?: string;
   sla_days?: number;
   deadline?: string;
+  linked_document_ids?: string[];
 }
 
 // Fetch process types
@@ -368,6 +369,24 @@ export function useCreateProcess() {
         .single();
 
       if (error) throw error;
+
+      // Link documents if provided
+      if (input.linked_document_ids && input.linked_document_ids.length > 0) {
+        const documentLinks = input.linked_document_ids.map(docId => ({
+          process_id: data.id,
+          document_id: docId,
+        }));
+
+        const { error: linkError } = await supabase
+          .from('process_documents')
+          .insert(documentLinks);
+
+        if (linkError) {
+          console.error('Error linking documents:', linkError);
+          // Don't throw - process was created successfully
+        }
+      }
+
       return data;
     },
     onSuccess: () => {

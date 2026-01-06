@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import { 
   FileText,
   Upload,
@@ -17,48 +18,17 @@ import {
   ChevronRight,
   ChevronLeft,
   Building2,
-  User,
-  Calendar,
   Clock,
   AlertTriangle,
   Paperclip,
   Eye,
   Trash2,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
-
-// Mock data
-const processTypes = [
-  "Licitação",
-  "Contratação", 
-  "Renovação",
-  "Solicitação",
-  "Parecer",
-  "Convênio",
-  "Auditoria",
-  "Recurso",
-  "Denúncia",
-  "Consulta"
-];
-
-const units = [
-  "Gabinete",
-  "Setor de Compras",
-  "Departamento Jurídico",
-  "Secretaria de Educação",
-  "Setor de Engenharia",
-  "Setor de Convênios",
-  "Controladoria",
-  "Procuradoria",
-  "Recursos Humanos",
-  "Financeiro"
-];
-
-const existingDocuments = [
-  { id: "DOC-2024-001234", title: "Ofício nº 123/2024", type: "Ofício" },
-  { id: "DOC-2024-001230", title: "Memorando Interno", type: "Memorando" },
-  { id: "DOC-2024-001228", title: "Relatório Técnico", type: "Relatório" },
-];
+import { useProcessTypes, useCreateProcess } from "@/hooks/useProcesses";
+import { useOrganizationalUnits } from "@/hooks/useReferenceData";
+import { useDocuments } from "@/hooks/useDocuments";
 
 interface UploadedFile {
   id: string;
@@ -83,20 +53,28 @@ const CreateProcess = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Fetch data from database
+  const { data: processTypes = [], isLoading: isLoadingTypes } = useProcessTypes();
+  const { data: units = [], isLoading: isLoadingUnits } = useOrganizationalUnits({ activeOnly: true });
+  const { data: documentsResult, isLoading: isLoadingDocs } = useDocuments({});
+  const existingDocuments = documentsResult?.data || [];
+  const createProcess = useCreateProcess();
   
   // Form state
   const [formData, setFormData] = useState({
     // Step 1: Identificação
-    type: "",
+    processTypeId: "",
     subject: "",
     description: "",
     origin: "interno",
-    requester: "",
-    requesterUnit: "",
+    requesterName: "",
+    requesterUnitId: "",
     // Step 3: Workflow
-    initialUnit: "",
+    currentUnitId: "",
     deadline: "",
-    priority: "média",
+    priority: "normal" as "baixa" | "normal" | "alta" | "urgente",
   });
 
   // Step 2: Documents
@@ -144,9 +122,13 @@ const CreateProcess = () => {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
-  const linkDocument = (doc: typeof existingDocuments[0]) => {
+  const linkDocument = (doc: { id: string; title: string; document_type?: { name: string } | null }) => {
     if (!linkedDocuments.find(d => d.id === doc.id)) {
-      setLinkedDocuments(prev => [...prev, doc]);
+      setLinkedDocuments(prev => [...prev, {
+        id: doc.id,
+        title: doc.title,
+        type: doc.document_type?.name || 'Documento'
+      }]);
     }
     setShowDocumentSearch(false);
   };
@@ -163,14 +145,44 @@ const CreateProcess = () => {
     if (currentStep > 1) setCurrentStep(prev => prev - 1);
   };
 
-  const handleSubmit = () => {
-    // In production, this would submit to API
-    console.log("Submitting process:", { formData, uploadedFiles, linkedDocuments });
-    navigate("/processes");
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      // Calculate SLA days from deadline
+      const deadlineDate = new Date(formData.deadline);
+      const today = new Date();
+      const slaDays = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      await createProcess.mutateAsync({
+        process_type_id: formData.processTypeId || undefined,
+        subject: formData.subject,
+        description: formData.description || undefined,
+        origin: formData.origin,
+        requester_name: formData.requesterName,
+        requester_unit_id: formData.origin === "interno" && formData.requesterUnitId ? formData.requesterUnitId : undefined,
+        current_unit_id: formData.currentUnitId || undefined,
+        priority: formData.priority,
+        deadline: formData.deadline ? deadlineDate.toISOString() : undefined,
+        sla_days: slaDays > 0 ? slaDays : undefined,
+        linked_document_ids: linkedDocuments.map(d => d.id),
+      });
+
+      toast.success("Processo criado com sucesso!");
+      navigate("/processes");
+    } catch (error) {
+      console.error("Erro ao criar processo:", error);
+      toast.error("Erro ao criar processo. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const isStep1Valid = formData.type && formData.subject && formData.requester;
-  const isStep3Valid = formData.initialUnit && formData.deadline && formData.priority;
+  const selectedProcessType = processTypes.find(pt => pt.id === formData.processTypeId);
+  const isStep1Valid = formData.processTypeId && formData.subject && formData.requesterName;
+  const isStep3Valid = formData.currentUnitId && formData.deadline && formData.priority;
+
+  const isLoading = isLoadingTypes || isLoadingUnits;
 
   return (
     <DashboardLayout 
@@ -247,14 +259,18 @@ const CreateProcess = () => {
                       <select
                         id="type"
                         className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
-                        value={formData.type}
-                        onChange={(e) => handleInputChange("type", e.target.value)}
+                        value={formData.processTypeId}
+                        onChange={(e) => handleInputChange("processTypeId", e.target.value)}
+                        disabled={isLoadingTypes}
                       >
                         <option value="">Selecione o tipo</option>
                         {processTypes.map(type => (
-                          <option key={type} value={type}>{type}</option>
+                          <option key={type.id} value={type.id}>{type.name}</option>
                         ))}
                       </select>
+                      {selectedProcessType?.description && (
+                        <p className="text-xs text-muted-foreground">{selectedProcessType.description}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="subject">Assunto *</Label>
@@ -323,8 +339,8 @@ const CreateProcess = () => {
                       <Input
                         id="requester"
                         placeholder={formData.origin === "interno" ? "Nome do servidor" : "Nome do requerente"}
-                        value={formData.requester}
-                        onChange={(e) => handleInputChange("requester", e.target.value)}
+                        value={formData.requesterName}
+                        onChange={(e) => handleInputChange("requesterName", e.target.value)}
                       />
                     </div>
                     {formData.origin === "interno" && (
@@ -333,12 +349,13 @@ const CreateProcess = () => {
                         <select
                           id="requesterUnit"
                           className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
-                          value={formData.requesterUnit}
-                          onChange={(e) => handleInputChange("requesterUnit", e.target.value)}
+                          value={formData.requesterUnitId}
+                          onChange={(e) => handleInputChange("requesterUnitId", e.target.value)}
+                          disabled={isLoadingUnits}
                         >
                           <option value="">Selecione a unidade</option>
                           {units.map(unit => (
-                            <option key={unit} value={unit}>{unit}</option>
+                            <option key={unit.id} value={unit.id}>{unit.name}</option>
                           ))}
                         </select>
                       </div>
@@ -364,7 +381,7 @@ const CreateProcess = () => {
                   <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                       isDragging 
-                        ? "border-primary bg-primary-muted" 
+                        ? "border-primary bg-primary/5" 
                         : "border-border hover:border-primary/50"
                     }`}
                     onDragOver={handleDragOver}
@@ -372,7 +389,7 @@ const CreateProcess = () => {
                     onDrop={handleDrop}
                   >
                     <div className="flex flex-col items-center gap-3">
-                      <div className="h-12 w-12 rounded-full bg-primary-muted flex items-center justify-center">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <Upload className="h-6 w-6 text-primary" />
                       </div>
                       <div>
@@ -407,7 +424,7 @@ const CreateProcess = () => {
                           className="flex items-center justify-between p-3 rounded-lg border border-border"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-primary-muted flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                               <FileText className="h-5 w-5 text-primary" />
                             </div>
                             <div>
@@ -457,24 +474,36 @@ const CreateProcess = () => {
                   {showDocumentSearch && (
                     <div className="mb-4 p-4 border border-border rounded-lg bg-muted/30">
                       <p className="text-sm font-medium mb-3">Selecione um documento para vincular:</p>
-                      <div className="space-y-2">
-                        {existingDocuments.map(doc => (
-                          <div 
-                            key={doc.id}
-                            className="flex items-center justify-between p-3 rounded-lg border border-border bg-background hover:border-primary cursor-pointer transition-colors"
-                            onClick={() => linkDocument(doc)}
-                          >
-                            <div className="flex items-center gap-3">
-                              <FileText className="h-5 w-5 text-muted-foreground" />
-                              <div>
-                                <p className="text-sm font-medium">{doc.title}</p>
-                                <p className="text-xs text-muted-foreground">{doc.id} • {doc.type}</p>
+                      {isLoadingDocs ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : existingDocuments.length > 0 ? (
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {existingDocuments.slice(0, 10).map(doc => (
+                            <div 
+                              key={doc.id}
+                              className="flex items-center justify-between p-3 rounded-lg border border-border bg-background hover:border-primary cursor-pointer transition-colors"
+                              onClick={() => linkDocument(doc)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <FileText className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm font-medium">{doc.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {doc.entry_number} • {doc.document_type?.name || 'Documento'}
+                                  </p>
+                                </div>
                               </div>
+                              <Plus className="h-4 w-4 text-primary" />
                             </div>
-                            <Plus className="h-4 w-4 text-primary" />
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhum documento disponível
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -487,12 +516,12 @@ const CreateProcess = () => {
                           className="flex items-center justify-between p-3 rounded-lg border border-border"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-info-muted flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center">
                               <Paperclip className="h-5 w-5 text-info" />
                             </div>
                             <div>
                               <p className="text-sm font-medium">{doc.title}</p>
-                              <p className="text-xs text-muted-foreground">{doc.id} • {doc.type}</p>
+                              <p className="text-xs text-muted-foreground">{doc.id.slice(0, 8)}... • {doc.type}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -540,12 +569,13 @@ const CreateProcess = () => {
                     <select
                       id="initialUnit"
                       className="h-10 w-full px-3 border border-border rounded-md bg-background text-sm"
-                      value={formData.initialUnit}
-                      onChange={(e) => handleInputChange("initialUnit", e.target.value)}
+                      value={formData.currentUnitId}
+                      onChange={(e) => handleInputChange("currentUnitId", e.target.value)}
+                      disabled={isLoadingUnits}
                     >
                       <option value="">Selecione a unidade</option>
                       {units.map(unit => (
-                        <option key={unit} value={unit}>{unit}</option>
+                        <option key={unit.id} value={unit.id}>{unit.name}</option>
                       ))}
                     </select>
                     <p className="text-xs text-muted-foreground">
@@ -559,6 +589,7 @@ const CreateProcess = () => {
                       type="date"
                       value={formData.deadline}
                       onChange={(e) => handleInputChange("deadline", e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
                     />
                     <p className="text-xs text-muted-foreground">
                       Data limite para conclusão do processo
@@ -570,18 +601,19 @@ const CreateProcess = () => {
 
                 <div className="space-y-3">
                   <Label>Nível de Prioridade *</Label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     {[
                       { value: "baixa", label: "Baixa", color: "info", description: "Prazo flexível" },
-                      { value: "média", label: "Média", color: "warning", description: "Prazo padrão" },
-                      { value: "alta", label: "Alta", color: "error", description: "Urgente" },
+                      { value: "normal", label: "Normal", color: "secondary", description: "Prazo padrão" },
+                      { value: "alta", label: "Alta", color: "warning", description: "Urgente" },
+                      { value: "urgente", label: "Urgente", color: "error", description: "Crítico" },
                     ].map(priority => (
                       <label
                         key={priority.value}
                         className={`flex flex-col items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
                           formData.priority === priority.value
-                            ? `border-${priority.color} bg-${priority.color}-muted`
-                            : "border-border hover:border-border-strong"
+                            ? `border-primary bg-primary/5`
+                            : "border-border hover:border-primary/50"
                         }`}
                       >
                         <input
@@ -594,9 +626,10 @@ const CreateProcess = () => {
                         />
                         <AlertTriangle className={`h-6 w-6 mb-2 ${
                           priority.color === "info" ? "text-info" :
-                          priority.color === "warning" ? "text-warning" : "text-error"
+                          priority.color === "secondary" ? "text-muted-foreground" :
+                          priority.color === "warning" ? "text-warning" : "text-destructive"
                         }`} />
-                        <span className="font-medium">{priority.label}</span>
+                        <span className="font-medium text-sm">{priority.label}</span>
                         <span className="text-xs text-muted-foreground">{priority.description}</span>
                       </label>
                     ))}
@@ -611,7 +644,7 @@ const CreateProcess = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Tipo:</span>
-                      <span className="ml-2 font-medium">{formData.type || "-"}</span>
+                      <span className="ml-2 font-medium">{selectedProcessType?.name || "-"}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Assunto:</span>
@@ -623,7 +656,7 @@ const CreateProcess = () => {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Requerente:</span>
-                      <span className="ml-2 font-medium">{formData.requester || "-"}</span>
+                      <span className="ml-2 font-medium">{formData.requesterName || "-"}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Documentos:</span>
@@ -635,8 +668,9 @@ const CreateProcess = () => {
                       <span className="text-muted-foreground">Prioridade:</span>
                       <Badge 
                         variant={
-                          formData.priority === "alta" ? "error" :
-                          formData.priority === "média" ? "warning" : "info"
+                          formData.priority === "urgente" ? "destructive" :
+                          formData.priority === "alta" ? "warning" :
+                          formData.priority === "normal" ? "secondary" : "info"
                         }
                         className="ml-2"
                       >
@@ -654,14 +688,14 @@ const CreateProcess = () => {
             <Button
               variant="outline"
               onClick={prevStep}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isSubmitting}
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               Anterior
             </Button>
             <div className="flex items-center gap-3">
               <Link to="/processes">
-                <Button variant="ghost">Cancelar</Button>
+                <Button variant="ghost" disabled={isSubmitting}>Cancelar</Button>
               </Link>
               {currentStep < 3 ? (
                 <Button
@@ -674,10 +708,19 @@ const CreateProcess = () => {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={!isStep3Valid}
+                  disabled={!isStep3Valid || isSubmitting}
                 >
-                  <Check className="h-4 w-4 mr-2" />
-                  Criar Processo
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Criar Processo
+                    </>
+                  )}
                 </Button>
               )}
             </div>
@@ -741,12 +784,12 @@ const CreateProcess = () => {
             <CardContent>
               <ul className="text-sm space-y-2">
                 <li className="flex items-center gap-2">
-                  {formData.type ? (
+                  {formData.processTypeId ? (
                     <Check className="h-4 w-4 text-success" />
                   ) : (
                     <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
                   )}
-                  <span className={formData.type ? "text-muted-foreground" : ""}>Tipo de processo</span>
+                  <span className={formData.processTypeId ? "text-muted-foreground" : ""}>Tipo de processo</span>
                 </li>
                 <li className="flex items-center gap-2">
                   {formData.subject ? (
@@ -757,20 +800,20 @@ const CreateProcess = () => {
                   <span className={formData.subject ? "text-muted-foreground" : ""}>Assunto</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  {formData.requester ? (
+                  {formData.requesterName ? (
                     <Check className="h-4 w-4 text-success" />
                   ) : (
                     <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
                   )}
-                  <span className={formData.requester ? "text-muted-foreground" : ""}>Requerente</span>
+                  <span className={formData.requesterName ? "text-muted-foreground" : ""}>Requerente</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  {formData.initialUnit ? (
+                  {formData.currentUnitId ? (
                     <Check className="h-4 w-4 text-success" />
                   ) : (
                     <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
                   )}
-                  <span className={formData.initialUnit ? "text-muted-foreground" : ""}>Unidade inicial</span>
+                  <span className={formData.currentUnitId ? "text-muted-foreground" : ""}>Unidade inicial</span>
                 </li>
                 <li className="flex items-center gap-2">
                   {formData.deadline ? (
@@ -783,6 +826,17 @@ const CreateProcess = () => {
               </ul>
             </CardContent>
           </Card>
+
+          {isLoading && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando dados...
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>
