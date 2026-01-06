@@ -398,7 +398,7 @@ const ProcessDetail = () => {
                   <Paperclip className="h-4 w-4" />
                   Documentos Anexos
                 </CardTitle>
-                <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled>
+                <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled disabledTooltip="Requer permissão de edição para anexar documentos">
                   <Button variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Anexar Documento
@@ -431,7 +431,7 @@ const ProcessDetail = () => {
                           <Button variant="ghost" size="icon-sm">
                             <Download className="h-4 w-4" />
                           </Button>
-                          <ProtectedContent permission={{ module: "processes", action: "edit" }} showDisabled>
+                          <ProtectedContent permission={{ module: "processes", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover documentos">
                             <Button variant="ghost" size="icon-sm">
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -453,7 +453,7 @@ const ProcessDetail = () => {
                   <FileOutput className="h-4 w-4" />
                   Pareceres e Despachos
                 </CardTitle>
-                <ProtectedContent permission={{ module: "processes", action: "addParecer" }} showDisabled>
+                <ProtectedContent permission={{ module: "processes", action: "addParecer" }} showDisabled disabledTooltip="Requer permissão para emitir pareceres">
                   <Button variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Parecer
@@ -622,7 +622,7 @@ const ProcessDetail = () => {
               <CardTitle className="text-base">Ações do Workflow</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <ProtectedContent permission={{ module: "processes", action: "dispatch" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "dispatch" }} showDisabled disabledTooltip="Requer permissão de tramitação para despachar">
                 <Button 
                   className="w-full justify-start" 
                   variant="default"
@@ -632,7 +632,7 @@ const ProcessDetail = () => {
                   Despachar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "processes", action: "forward" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "forward" }} showDisabled disabledTooltip="Requer permissão de tramitação para reencaminhar">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -642,7 +642,7 @@ const ProcessDetail = () => {
                   Reencaminhar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "processes", action: "requestInfo" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "requestInfo" }} showDisabled disabledTooltip="Requer permissão de edição para solicitar informações">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -652,7 +652,7 @@ const ProcessDetail = () => {
                   Solicitar Informações
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "processes", action: "assign" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "assign" }} showDisabled disabledTooltip="Apenas gestores podem atribuir responsáveis">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
@@ -663,7 +663,7 @@ const ProcessDetail = () => {
                 </Button>
               </ProtectedContent>
               <Separator className="my-3" />
-              <ProtectedContent permission={{ module: "processes", action: "approve" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "approve" }} showDisabled disabledTooltip="Apenas aprovadores podem aprovar processos">
                 <Button 
                   className="w-full justify-start" 
                   variant="success"
@@ -673,7 +673,7 @@ const ProcessDetail = () => {
                   Aprovar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "processes", action: "reject" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "reject" }} showDisabled disabledTooltip="Apenas aprovadores podem rejeitar processos">
                 <Button 
                   className="w-full justify-start" 
                   variant="destructive"
@@ -684,7 +684,7 @@ const ProcessDetail = () => {
                 </Button>
               </ProtectedContent>
               <Separator className="my-3" />
-              <ProtectedContent permission={{ module: "processes", action: "close" }} showDisabled>
+              <ProtectedContent permission={{ module: "processes", action: "close" }} showDisabled disabledTooltip="Requer permissão administrativa para encerrar processos">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
