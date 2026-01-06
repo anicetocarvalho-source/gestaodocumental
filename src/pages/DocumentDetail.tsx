@@ -1,13 +1,27 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useDocument } from "@/hooks/useDocuments";
+import { useCreateComment } from "@/hooks/useDocumentActions";
+import { useDownloadFile, useUploadDocumentFile } from "@/hooks/useFileUpload";
+import { 
+  documentStatusLabels, 
+  documentStatusVariants, 
+  documentPriorityLabels,
+  confidentialityLabels,
+  movementActionLabels
+} from "@/types/database";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
+import { toast } from "sonner";
 import { 
   FileText, 
   Download, 
@@ -34,7 +48,12 @@ import {
   FileSearch,
   FolderInput,
   RotateCcw,
-  Hash
+  Hash,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+  Shield,
+  Upload
 } from "lucide-react";
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
@@ -44,111 +63,25 @@ import { CreateProcessFromDocumentModal } from "@/components/documents/CreatePro
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
 
-// Document metadata
-const documentInfo = {
-  entryNumber: "DOC-2024-001234",
-  title: "Ofício nº 123/2024 - Secretaria de Educação",
-  type: "Ofício",
-  origin: "Secretaria de Educação",
-  subject: "Solicitação de Recursos",
-  description: "Solicitação de recursos adicionais para reforma das escolas municipais do distrito norte.",
-  status: "Em Análise",
-  author: "Maria Silva",
-  department: "Gabinete",
-  created: "15 Nov 2024",
-  modified: "01 Dez 2024",
-  priority: "Alta",
-  classification: "Público",
-};
-
-// Workflow timeline stages
-const workflowStages = [
-  { 
-    id: 1, 
-    stage: "Recebido", 
-    status: "completed", 
-    date: "15 Nov 2024, 09:30",
-    user: "Sistema",
-    description: "Documento registrado no sistema"
-  },
-  { 
-    id: 2, 
-    stage: "Validado", 
-    status: "completed", 
-    date: "15 Nov 2024, 10:15",
-    user: "Ana Costa",
-    description: "Documento validado e classificado"
-  },
-  { 
-    id: 3, 
-    stage: "Atribuído", 
-    status: "current", 
-    date: "15 Nov 2024, 14:00",
-    user: "Carlos Mendes",
-    description: "Atribuído para análise técnica"
-  },
-  { 
-    id: 4, 
-    stage: "Arquivado", 
-    status: "pending", 
-    date: null,
-    user: null,
-    description: "Aguardando conclusão"
-  },
-];
-
-// Attached documents
-const attachments = [
-  { id: 1, name: "Ofício Original.pdf", size: "2.4 MB", type: "PDF", date: "15 Nov 2024" },
-  { id: 2, name: "Planilha Orçamentária.xlsx", size: "456 KB", type: "XLSX", date: "15 Nov 2024" },
-  { id: 3, name: "Projeto Arquitetônico.dwg", size: "12.8 MB", type: "DWG", date: "16 Nov 2024" },
-];
-
-// Comments and internal notes
-const comments = [
-  { 
-    id: 1,
-    author: "Carlos Mendes", 
-    avatar: "CM", 
-    date: "01 Dez 2024, 14:30",
-    type: "comment",
-    text: "Verificado orçamento disponível. Aguardando parecer da área técnica." 
-  },
-  { 
-    id: 2,
-    author: "Ana Costa", 
-    avatar: "AC", 
-    date: "28 Nov 2024, 09:15",
-    type: "note",
-    text: "NOTA INTERNA: Prioridade alta conforme determinação do gabinete." 
-  },
-  { 
-    id: 3,
-    author: "Maria Silva", 
-    avatar: "MS", 
-    date: "15 Nov 2024, 10:00",
-    type: "comment",
-    text: "Documento recebido e protocolado. Encaminhado para validação." 
-  },
-];
-
-// Audit log entries
-const auditLog = [
-  { action: "Visualização", user: "Carlos Mendes", date: "01 Dez 2024, 14:35", ip: "192.168.1.45" },
-  { action: "Comentário adicionado", user: "Carlos Mendes", date: "01 Dez 2024, 14:30", ip: "192.168.1.45" },
-  { action: "Atribuição alterada", user: "Ana Costa", date: "15 Nov 2024, 14:00", ip: "192.168.1.22" },
-  { action: "Documento validado", user: "Ana Costa", date: "15 Nov 2024, 10:15", ip: "192.168.1.22" },
-  { action: "Documento criado", user: "Sistema", date: "15 Nov 2024, 09:30", ip: "Sistema" },
-];
-
 const DocumentDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [documentSigned, setDocumentSigned] = useState(false);
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<DocumentAction | null>(null);
   const [createProcessModalOpen, setCreateProcessModalOpen] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [isInternalNote, setIsInternalNote] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
   const { canDo } = usePermissions();
+  
+  // Carregar dados do documento
+  const { data: document, isLoading, error, refetch } = useDocument(id);
+  const createComment = useCreateComment();
+  const downloadFile = useDownloadFile();
+  const uploadFile = useUploadDocumentFile();
 
   const getStageIcon = (status: string) => {
     switch (status) {
@@ -164,6 +97,7 @@ const DocumentDetail = () => {
   const handleSignDocument = (signatureData: SignatureData) => {
     console.log("Documento assinado:", signatureData);
     setDocumentSigned(true);
+    toast.success("Documento assinado com sucesso");
   };
 
   const openActionDrawer = (action: DocumentAction) => {
@@ -173,17 +107,182 @@ const DocumentDetail = () => {
 
   const handleActionComplete = (action: DocumentAction, data: Record<string, unknown>) => {
     console.log("Action completed:", action, data);
+    refetch();
+    toast.success("Acção executada com sucesso");
   };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !document) return;
+    
+    setIsSubmittingComment(true);
+    try {
+      await createComment.mutateAsync({
+        document_id: document.id,
+        content: newComment.trim(),
+        is_internal: isInternalNote,
+      });
+      setNewComment("");
+      setIsInternalNote(false);
+      toast.success("Comentário adicionado");
+      refetch();
+    } catch (error) {
+      toast.error("Erro ao adicionar comentário");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleDownloadFile = async (filePath: string, fileName: string) => {
+    try {
+      await downloadFile.mutateAsync({ filePath, fileName });
+      toast.success("Download iniciado");
+    } catch (error) {
+      toast.error("Erro ao descarregar ficheiro");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !document) return;
+
+    try {
+      for (const file of Array.from(files)) {
+        await uploadFile.mutateAsync({
+          documentId: document.id,
+          file,
+          isMainFile: false,
+        });
+      }
+      toast.success("Ficheiro(s) adicionado(s) com sucesso");
+      refetch();
+    } catch (error) {
+      toast.error("Erro ao carregar ficheiro");
+    }
+    e.target.value = '';
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  };
+
+  type WorkflowStatus = "completed" | "current" | "pending";
+  
+  interface WorkflowStage {
+    id: number;
+    stage: string;
+    status: WorkflowStatus;
+    date: string | null;
+    user: string | null;
+    description: string;
+  }
+
+  // Construir workflow stages a partir dos movimentos
+  const buildWorkflowStages = (): WorkflowStage[] => {
+    if (!document?.movements?.length) {
+      return [
+        { id: 1, stage: "Recebido", status: "completed", date: document?.entry_date || null, user: "Sistema", description: "Documento registado" },
+        { id: 2, stage: "Em Processamento", status: "current", date: null, user: null, description: "Aguardando acções" },
+      ];
+    }
+
+    const stages: WorkflowStage[] = document.movements
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map((mov, index) => ({
+        id: index + 1,
+        stage: movementActionLabels[mov.action_type] || mov.action_type,
+        status: "completed" as WorkflowStatus,
+        date: mov.created_at,
+        user: mov.to_user?.full_name || mov.to_unit?.name || "Sistema",
+        description: mov.notes || mov.dispatch_text || "",
+      }));
+
+    // Adicionar estado actual
+    stages.push({
+      id: stages.length + 1,
+      stage: documentStatusLabels[document.status] || document.status,
+      status: "current" as WorkflowStatus,
+      date: document.updated_at,
+      user: document.responsible_user?.full_name || document.current_unit?.name || "",
+      description: "Estado actual",
+    });
+
+    return stages;
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Detalhes do Documento" subtitle="A carregar...">
+        <PageBreadcrumb items={[{ label: "Documentos", href: "/documents" }, { label: "A carregar..." }]} />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-9 space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-20 w-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-40 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+          <div className="lg:col-span-3 space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <Skeleton className="h-40 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !document) {
+    return (
+      <DashboardLayout title="Detalhes do Documento" subtitle="Erro">
+        <PageBreadcrumb items={[{ label: "Documentos", href: "/documents" }, { label: "Erro" }]} />
+        <Card className="mt-6">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {error ? "Erro ao carregar documento" : "Documento não encontrado"}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {error ? "Não foi possível obter os detalhes do documento." : "O documento solicitado não existe ou foi removido."}
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => navigate("/documents")}>
+                Voltar à lista
+              </Button>
+              {error && (
+                <Button onClick={() => refetch()}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Tentar novamente
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  const workflowStages = buildWorkflowStages();
+  const attachments = document.files || [];
+  const comments = document.comments || [];
+  const movements = document.movements || [];
+  const signatures = document.signatures || [];
 
   return (
     <DashboardLayout 
       title="Detalhes do Documento" 
-      subtitle="Visualizar e gerenciar documento"
+      subtitle="Visualizar e gerir documento"
     >
       <PageBreadcrumb 
         items={[
           { label: "Documentos", href: "/documents" },
-          { label: documentInfo.entryNumber }
+          { label: document.entry_number }
         ]} 
       />
 
@@ -196,31 +295,53 @@ const DocumentDetail = () => {
             <CardHeader className="pb-4">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="flex gap-4">
-                  <div className="h-14 w-14 bg-primary-muted rounded-lg flex items-center justify-center shrink-0">
+                  <div className="h-14 w-14 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
                     <FileText className="h-7 w-7 text-primary" />
                   </div>
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="font-mono text-xs">
-                        {documentInfo.entryNumber}
+                        {document.entry_number}
                       </Badge>
-                      <Badge variant="warning">{documentInfo.status}</Badge>
-                      <Badge variant="destructive">{documentInfo.priority}</Badge>
+                      <Badge variant={documentStatusVariants[document.status] || "secondary"}>
+                        {documentStatusLabels[document.status] || document.status}
+                      </Badge>
+                      {document.priority === "urgent" && (
+                        <Badge variant="error">Urgente</Badge>
+                      )}
+                      {document.priority === "high" && (
+                        <Badge variant="warning">Alta Prioridade</Badge>
+                      )}
+                      {document.confidentiality !== "public" && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Shield className="h-3 w-3" />
+                          {confidentialityLabels[document.confidentiality]}
+                        </Badge>
+                      )}
                     </div>
-                    <h1 className="text-lg font-semibold text-foreground">{documentInfo.title}</h1>
-                    <p className="text-sm text-muted-foreground">{documentInfo.description}</p>
+                    <h1 className="text-lg font-semibold text-foreground">{document.title}</h1>
+                    {document.description && (
+                      <p className="text-sm text-muted-foreground">{document.description}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Link to={`/documents/${documentInfo.entryNumber}/view`}>
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                  </Link>
-                  <Button variant="outline" size="sm">
+                  {attachments.length > 0 && (
+                    <Link to={`/documents/${document.id}/view`}>
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4 mr-2" />
+                        Visualizar
+                      </Button>
+                    </Link>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => attachments[0] && handleDownloadFile(attachments[0].file_path, attachments[0].file_name)}
+                    disabled={attachments.length === 0}
+                  >
                     <Download className="h-4 w-4 mr-2" />
-                    Baixar
+                    Descarregar
                   </Button>
                 </div>
               </div>
@@ -232,28 +353,30 @@ const DocumentDetail = () => {
                     <Tag className="h-3.5 w-3.5" />
                     Tipo
                   </div>
-                  <p className="text-sm font-medium">{documentInfo.type}</p>
+                  <p className="text-sm font-medium">{document.document_type?.name || "—"}</p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5" />
                     Origem
                   </div>
-                  <p className="text-sm font-medium">{documentInfo.origin}</p>
+                  <p className="text-sm font-medium">{document.origin || document.sender_institution || "—"}</p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <User className="h-3.5 w-3.5" />
                     Responsável
                   </div>
-                  <p className="text-sm font-medium">{documentInfo.author}</p>
+                  <p className="text-sm font-medium">{document.responsible_user?.full_name || "—"}</p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
                     Data de Entrada
                   </div>
-                  <p className="text-sm font-medium">{documentInfo.created}</p>
+                  <p className="text-sm font-medium">
+                    {format(new Date(document.entry_date), "d MMM yyyy", { locale: pt })}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -269,11 +392,11 @@ const DocumentDetail = () => {
             </CardHeader>
             <CardContent>
               <div className="relative">
-                <div className="flex items-start justify-between">
-                  {workflowStages.map((stage, index) => (
-                    <div key={stage.id} className="flex flex-col items-center flex-1 relative">
+                <div className="flex items-start justify-between overflow-x-auto pb-2">
+                  {workflowStages.slice(0, 5).map((stage, index) => (
+                    <div key={stage.id} className="flex flex-col items-center flex-1 relative min-w-[120px]">
                       {/* Connector line */}
-                      {index < workflowStages.length - 1 && (
+                      {index < Math.min(workflowStages.length, 5) - 1 && (
                         <div 
                           className={`absolute top-3 left-1/2 w-full h-0.5 ${
                             stage.status === "completed" ? "bg-success" : "bg-border"
@@ -293,7 +416,9 @@ const DocumentDetail = () => {
                           {stage.stage}
                         </p>
                         {stage.date && (
-                          <p className="text-xs text-muted-foreground mt-1">{stage.date}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(stage.date), "d MMM, HH:mm", { locale: pt })}
+                          </p>
                         )}
                         {stage.user && (
                           <p className="text-xs text-muted-foreground">{stage.user}</p>
@@ -312,157 +437,275 @@ const DocumentDetail = () => {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Paperclip className="h-4 w-4" />
-                  Documentos Anexos
+                  Ficheiros Anexos
+                  {attachments.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{attachments.length}</Badge>
+                  )}
                 </CardTitle>
                 <ProtectedContent permission={{ module: "documents", action: "addAttachment" }} showDisabled disabledTooltip="Requer permissão de edição para adicionar anexos">
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Anexo
-                  </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={handleFileUpload}
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                    />
+                    <Button variant="outline" size="sm">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Adicionar Anexo
+                    </Button>
+                  </div>
                 </ProtectedContent>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {attachments.map((attachment) => (
-                  <div 
-                    key={attachment.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-primary-muted rounded-lg flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-primary" />
+              {attachments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Paperclip className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">Nenhum ficheiro anexo</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attachments.map((attachment) => (
+                    <div 
+                      key={attachment.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{attachment.file_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {attachment.mime_type?.split('/')[1]?.toUpperCase() || "FILE"} • {formatFileSize(attachment.file_size)} • {format(new Date(attachment.created_at), "d MMM yyyy", { locale: pt })}
+                            {attachment.is_main_file && (
+                              <Badge variant="secondary" className="ml-2 text-xs">Principal</Badge>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{attachment.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {attachment.type} • {attachment.size} • {attachment.date}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon-sm" aria-label="Visualizar">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label="Baixar">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover anexos">
-                        <Button variant="ghost" size="icon-sm" aria-label="Remover">
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon-sm" aria-label="Visualizar">
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      </ProtectedContent>
+                        <Button 
+                          variant="ghost" 
+                          size="icon-sm" 
+                          aria-label="Descarregar"
+                          onClick={() => handleDownloadFile(attachment.file_path, attachment.file_name)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover anexos">
+                          <Button variant="ghost" size="icon-sm" aria-label="Remover">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </ProtectedContent>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Section 4: Comments and Internal Notes */}
+          {/* Section 4: Movement History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Forward className="h-4 w-4" />
+                Histórico de Tramitação
+                {movements.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{movements.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {movements.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Forward className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">Sem movimentações registadas</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {movements
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((movement) => (
+                    <div 
+                      key={movement.id}
+                      className="flex gap-3 p-3 rounded-lg bg-muted/30"
+                    >
+                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <Forward className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">{movementActionLabels[movement.action_type] || movement.action_type}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(movement.created_at), "d MMM yyyy, HH:mm", { locale: pt })}
+                          </span>
+                        </div>
+                        <div className="text-sm mt-1">
+                          {movement.from_unit && (
+                            <span className="text-muted-foreground">
+                              De: <span className="font-medium text-foreground">{movement.from_unit.name}</span>
+                            </span>
+                          )}
+                          {movement.from_unit && movement.to_unit && <span className="text-muted-foreground"> → </span>}
+                          {movement.to_unit && (
+                            <span className="text-muted-foreground">
+                              Para: <span className="font-medium text-foreground">{movement.to_unit.name}</span>
+                            </span>
+                          )}
+                        </div>
+                        {movement.dispatch_text && (
+                          <p className="text-sm text-muted-foreground mt-1 italic">"{movement.dispatch_text}"</p>
+                        )}
+                        {movement.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">{movement.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Section 5: Comments and Internal Notes */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
-                  Comentários e Notas Internas
+                  Comentários e Notas
+                  {comments.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{comments.length}</Badge>
+                  )}
                 </CardTitle>
-                <Badge variant="secondary">{comments.length}</Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {comments.map((comment) => (
-                <div 
-                  key={comment.id} 
-                  className={`flex gap-3 p-3 rounded-lg ${
-                    comment.type === "note" ? "bg-warning-muted border border-warning/20" : "bg-muted/30"
-                  }`}
-                >
-                  <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0">
-                    {comment.avatar}
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">{comment.author}</span>
-                      {comment.type === "note" && (
-                        <Badge variant="warning" className="text-xs">Nota Interna</Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">{comment.date}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{comment.text}</p>
-                  </div>
+              {comments.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">Sem comentários</p>
                 </div>
-              ))}
+              ) : (
+                comments
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((comment) => (
+                  <div 
+                    key={comment.id} 
+                    className={`flex gap-3 p-3 rounded-lg ${
+                      comment.is_internal ? "bg-warning/10 border border-warning/20" : "bg-muted/30"
+                    }`}
+                  >
+                    <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0">
+                      {comment.author?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || "??"}
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">{comment.author?.full_name || "Utilizador"}</span>
+                        {comment.is_internal && (
+                          <Badge variant="warning" className="text-xs">Nota Interna</Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(comment.created_at), "d MMM yyyy, HH:mm", { locale: pt })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{comment.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
               
-              {/* Add Comment/Note - Only for users with edit permissions */}
-              {canDo("documents", "addComment") ? (
+              {/* Add Comment/Note */}
+              {canDo("documents", "addComment") && (
                 <>
                   <Separator />
                   <div className="space-y-3">
                     <Textarea 
                       placeholder="Adicionar comentário ou nota interna..." 
                       className="min-h-[80px]"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      disabled={isSubmittingComment}
                       aria-label="Adicionar comentário"
                     />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" id="internal-note" className="rounded border-border" />
-                        <label htmlFor="internal-note" className="text-sm text-muted-foreground">
+                        <Checkbox 
+                          id="internal-note" 
+                          checked={isInternalNote}
+                          onCheckedChange={(checked) => setIsInternalNote(checked as boolean)}
+                          disabled={isSubmittingComment}
+                        />
+                        <label htmlFor="internal-note" className="text-sm text-muted-foreground cursor-pointer">
                           Marcar como nota interna
                         </label>
                       </div>
-                      <Button size="sm">
-                        <Send className="h-4 w-4 mr-2" />
+                      <Button 
+                        size="sm" 
+                        onClick={handleAddComment}
+                        disabled={!newComment.trim() || isSubmittingComment}
+                      >
+                        {isSubmittingComment ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
                         Enviar
                       </Button>
                     </div>
                   </div>
                 </>
-              ) : null}
+              )}
             </CardContent>
           </Card>
 
-          {/* Section 5: Audit Log */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+          {/* Section 6: Signatures */}
+          {signatures.length > 0 && (
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <History className="h-4 w-4" />
-                  Registro de Auditoria
+                  <FileSignature className="h-4 w-4" />
+                  Assinaturas
+                  <Badge variant="secondary" className="ml-2">{signatures.length}</Badge>
                 </CardTitle>
-                <Link to="/audit-logs">
-                  <Button variant="link" size="sm" className="text-xs h-auto p-0">
-                    Ver completo
-                    <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {auditLog.map((entry, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0 text-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                      <span className="font-medium">{entry.action}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {signatures.map((sig) => (
+                    <div 
+                      key={sig.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${sig.is_valid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                          {sig.is_valid ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{sig.signer?.full_name || "Signatário"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {sig.signature_type} • {format(new Date(sig.signed_at), "d MMM yyyy, HH:mm", { locale: pt })}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={sig.is_valid ? "success" : "error"}>
+                        {sig.is_valid ? "Válida" : "Inválida"}
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                      <span>{entry.user}</span>
-                      <span className="text-xs">{entry.date}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Section 6: Version History */}
-          <DocumentVersionHistory 
-            documentId={documentInfo.entryNumber}
-          />
+          {/* Section 7: Version History */}
+          <DocumentVersionHistory documentId={document.id} />
         </div>
 
         {/* Sidebar - Actions - 3 columns */}
@@ -470,7 +713,7 @@ const DocumentDetail = () => {
           {/* Document Workflow Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Ações do Documento</CardTitle>
+              <CardTitle className="text-base">Acções do Documento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <ProtectedContent permission={{ module: "documents", action: "validate" }} showDisabled disabledTooltip="Apenas validadores podem validar documentos">
@@ -504,14 +747,14 @@ const DocumentDetail = () => {
                   Despachar
                 </Button>
               </ProtectedContent>
-              <ProtectedContent permission={{ module: "documents", action: "requestCorrection" }} showDisabled disabledTooltip="Requer permissão de edição para solicitar correção">
+              <ProtectedContent permission={{ module: "documents", action: "requestCorrection" }} showDisabled disabledTooltip="Requer permissão de edição para solicitar correcção">
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
                   onClick={() => openActionDrawer("solicitar_correcao")}
                 >
                   <FileSearch className="h-4 w-4 mr-3" />
-                  Solicitar Correção
+                  Solicitar Correcção
                 </Button>
               </ProtectedContent>
               <ProtectedContent permission={{ module: "documents", action: "attachToProcess" }} showDisabled disabledTooltip="Requer permissão de edição para anexar a processo">
@@ -540,17 +783,17 @@ const DocumentDetail = () => {
           {/* Secondary Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Outras Ações</CardTitle>
+              <CardTitle className="text-base">Outras Acções</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <ProtectedContent permission={{ module: "documents", action: "sign" }} showDisabled disabledTooltip="Requer permissão de assinatura digital">
                 <Button 
                   className="w-full justify-start" 
-                  variant={documentSigned ? "success" : "outline"}
+                  variant={documentSigned || signatures.length > 0 ? "success" : "outline"}
                   onClick={() => setSignatureModalOpen(true)}
                 >
                   <FileSignature className="h-4 w-4 mr-3" />
-                  {documentSigned ? "Documento Assinado" : "Assinar Documento"}
+                  {documentSigned || signatures.length > 0 ? "Documento Assinado" : "Assinar Documento"}
                 </Button>
               </ProtectedContent>
               <ProtectedContent permission={{ module: "documents", action: "classify" }} showDisabled disabledTooltip="Requer permissão de classificação documental">
@@ -589,10 +832,13 @@ const DocumentDetail = () => {
 
           {/* Document Classification Panel */}
           <ClassificationPanel 
-            documentId={documentInfo.entryNumber}
-            currentClassification="100.20.02"
+            documentId={document.id}
+            currentClassification={document.classification?.code}
             compact={true}
-            onClassificationSaved={(code) => console.log("Classification saved:", code)}
+            onClassificationSaved={(code) => {
+              console.log("Classification saved:", code);
+              refetch();
+            }}
           />
 
           {/* Document Info Summary */}
@@ -603,65 +849,56 @@ const DocumentDetail = () => {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-border">
                 <span className="text-sm text-muted-foreground">Assunto</span>
-                <span className="text-sm font-medium">{documentInfo.subject}</span>
+                <span className="text-sm font-medium text-right max-w-[60%] truncate">{document.subject || "—"}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-border">
                 <span className="text-sm text-muted-foreground">Prioridade</span>
-                <Badge variant="destructive">{documentInfo.priority}</Badge>
+                <Badge variant={document.priority === "urgent" ? "error" : document.priority === "high" ? "warning" : "secondary"}>
+                  {documentPriorityLabels[document.priority]}
+                </Badge>
               </div>
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-sm text-muted-foreground">Unidade Actual</span>
+                <span className="text-sm font-medium">{document.current_unit?.name || "—"}</span>
+              </div>
+              {document.due_date && (
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">Data Limite</span>
+                  <span className="text-sm font-medium">
+                    {format(new Date(document.due_date), "d MMM yyyy", { locale: pt })}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-muted-foreground">Unidade</span>
-                <span className="text-sm font-medium">{documentInfo.department}</span>
+                <span className="text-sm text-muted-foreground">Classificação</span>
+                <span className="text-sm font-medium font-mono">{document.classification?.code || "—"}</span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Related Items */}
+          {/* Quick Stats */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Itens Relacionados</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Link 
-                to="/processes/1" 
-                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">PROC-2024-0056</span>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-              <Link 
-                to="/documents" 
-                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">DOC-2024-001230</span>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Quick Info */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Informações</CardTitle>
+              <CardTitle className="text-base">Resumo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex items-center justify-between py-1">
-                <span className="text-muted-foreground">Última atualização</span>
-                <span className="font-medium">{documentInfo.modified}</span>
+                <span className="text-muted-foreground">Última actualização</span>
+                <span className="font-medium">
+                  {format(new Date(document.updated_at), "d MMM yyyy", { locale: pt })}
+                </span>
               </div>
               <div className="flex items-center justify-between py-1">
-                <span className="text-muted-foreground">Total de anexos</span>
+                <span className="text-muted-foreground">Ficheiros</span>
                 <span className="font-medium">{attachments.length}</span>
               </div>
               <div className="flex items-center justify-between py-1">
                 <span className="text-muted-foreground">Comentários</span>
                 <span className="font-medium">{comments.length}</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Movimentações</span>
+                <span className="font-medium">{movements.length}</span>
               </div>
             </CardContent>
           </Card>
@@ -672,8 +909,8 @@ const DocumentDetail = () => {
       <DocumentSignatureModal
         open={signatureModalOpen}
         onOpenChange={setSignatureModalOpen}
-        documentTitle={documentInfo.title}
-        documentId={documentInfo.entryNumber}
+        documentTitle={document.title}
+        documentId={document.id}
         onSign={handleSignDocument}
       />
 
@@ -683,11 +920,11 @@ const DocumentDetail = () => {
         onOpenChange={setActionDrawerOpen}
         action={selectedAction}
         documentSummary={{
-          number: documentInfo.entryNumber,
-          title: documentInfo.title,
-          origin: documentInfo.origin,
-          type: documentInfo.type,
-          status: documentInfo.status,
+          number: document.entry_number,
+          title: document.title,
+          origin: document.origin || document.sender_institution || "",
+          type: document.document_type?.name || "",
+          status: documentStatusLabels[document.status] || document.status,
         }}
         onActionComplete={handleActionComplete}
       />
@@ -697,15 +934,16 @@ const DocumentDetail = () => {
         open={createProcessModalOpen}
         onOpenChange={setCreateProcessModalOpen}
         documents={[{
-          number: documentInfo.entryNumber,
-          title: documentInfo.title,
-          type: documentInfo.type,
-          origin: documentInfo.origin,
-          subject: documentInfo.subject,
-          author: documentInfo.author,
+          number: document.entry_number,
+          title: document.title,
+          type: document.document_type?.name || "",
+          origin: document.origin || document.sender_institution || "",
+          subject: document.subject || "",
+          author: document.sender_name || "",
         }]}
         onProcessCreated={(processNumber) => {
           console.log("Process created:", processNumber);
+          toast.success(`Processo ${processNumber} criado`);
         }}
       />
     </DashboardLayout>
