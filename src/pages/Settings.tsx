@@ -856,14 +856,56 @@ const SegurancaSection = () => {
 
   const onSubmit = async (data: z.infer<typeof passwordSchema>) => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    toast({
-      title: "Palavra-passe actualizada",
-      description: "A sua palavra-passe foi alterada com sucesso.",
-    });
-    form.reset();
-    console.log(data);
+    
+    try {
+      // Import supabase dynamically to avoid circular dependencies
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      // First verify current password by trying to sign in
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user?.email) {
+        throw new Error("Utilizador não encontrado");
+      }
+      
+      // Verify current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: data.currentPassword,
+      });
+      
+      if (signInError) {
+        toast({
+          title: "Erro",
+          description: "A palavra-passe actual está incorrecta.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.newPassword,
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      toast({
+        title: "Palavra-passe actualizada",
+        description: "A sua palavra-passe foi alterada com sucesso.",
+      });
+      form.reset();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao alterar a palavra-passe.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
