@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 import { UploadProcessDocumentModal } from "@/components/processes/UploadProcessDocumentModal";
+import { LinkDocumentModal } from "@/components/processes/LinkDocumentModal";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment, useProcessDocuments, useDeleteProcessDocument } from "@/hooks/useProcesses";
@@ -72,7 +73,7 @@ const ProcessDetail = () => {
   const [newComment, setNewComment] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
   const { canDo } = usePermissions();
   
   // Fetch process data from database
@@ -349,18 +350,26 @@ const ProcessDetail = () => {
             <TabsContent value="documentos" className="space-y-4">
               <Card>
                 <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Paperclip className="h-4 w-4" />
-                  Documentos Anexos ({processDocuments.length})
-                </CardTitle>
-                <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled disabledTooltip="Requer permissão de edição para anexar documentos">
-                  <Button variant="outline" size="sm" onClick={() => setUploadModalOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Anexar Documento
-                  </Button>
-                </ProtectedContent>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Documentos Anexos ({processDocuments.length})
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled disabledTooltip="Requer permissão de edição para vincular documentos">
+                        <Button variant="outline" size="sm" onClick={() => setLinkModalOpen(true)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Vincular Existente
+                        </Button>
+                      </ProtectedContent>
+                      <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled disabledTooltip="Requer permissão de edição para anexar documentos">
+                        <Button variant="outline" size="sm" onClick={() => setUploadModalOpen(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Carregar Novo
+                        </Button>
+                      </ProtectedContent>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -856,6 +865,16 @@ const ProcessDetail = () => {
           open={uploadModalOpen}
           onOpenChange={setUploadModalOpen}
           processId={id}
+        />
+      )}
+      
+      {/* Link Document Modal */}
+      {id && (
+        <LinkDocumentModal
+          open={linkModalOpen}
+          onOpenChange={setLinkModalOpen}
+          processId={id}
+          linkedDocumentIds={processDocuments.filter(d => d.document_id).map(d => d.document_id!)}
         />
       )}
     </DashboardLayout>

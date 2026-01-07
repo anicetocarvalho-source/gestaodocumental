@@ -873,3 +873,68 @@ export function useDeleteProcessDocument() {
     },
   });
 }
+
+// Link existing document to process
+export function useLinkDocumentToProcess() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: {
+      process_id: string;
+      document_id: string;
+      description?: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      // Get user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      // Check if already linked
+      const { data: existing } = await supabase
+        .from('process_documents')
+        .select('id')
+        .eq('process_id', input.process_id)
+        .eq('document_id', input.document_id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('Este documento já está vinculado ao processo');
+      }
+
+      // Create link
+      const { data, error } = await supabase
+        .from('process_documents')
+        .insert({
+          process_id: input.process_id,
+          document_id: input.document_id,
+          description: input.description || null,
+          uploaded_by: profile?.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['process-documents', variables.process_id] });
+      toast({
+        title: "Documento vinculado",
+        description: "O documento foi vinculado ao processo com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao vincular documento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
