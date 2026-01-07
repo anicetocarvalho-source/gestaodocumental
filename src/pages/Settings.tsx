@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence, Variants } from "framer-motion";
@@ -589,6 +589,8 @@ const GeralSection = () => {
 const PerfilSection = () => {
   const { profile, user, refreshProfile } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof perfilSchema>>({
     resolver: zodResolver(perfilSchema),
@@ -644,6 +646,117 @@ const PerfilSection = () => {
     }
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user || !profile) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Ficheiro inválido",
+        description: "Por favor, seleccione uma imagem (JPG, PNG ou GIF).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Ficheiro muito grande",
+        description: "O tamanho máximo é 2MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // Update profile with avatar URL (add cache buster)
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+        .eq("id", profile.id);
+
+      if (updateError) throw updateError;
+
+      await refreshProfile();
+      
+      toast({
+        title: "Foto actualizada",
+        description: "A sua foto de perfil foi actualizada com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar foto",
+        description: error.message || "Ocorreu um erro ao carregar a foto.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user || !profile) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // List files in user folder
+      const { data: files } = await supabase.storage
+        .from("avatars")
+        .list(user.id);
+
+      // Delete all avatar files
+      if (files && files.length > 0) {
+        const filePaths = files.map((f) => `${user.id}/${f.name}`);
+        await supabase.storage.from("avatars").remove(filePaths);
+      }
+
+      // Update profile to remove avatar URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: null, updated_at: new Date().toISOString() })
+        .eq("id", profile.id);
+
+      if (updateError) throw updateError;
+
+      await refreshProfile();
+      
+      toast({
+        title: "Foto removida",
+        description: "A sua foto de perfil foi removida.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao remover foto",
+        description: error.message || "Ocorreu um erro ao remover a foto.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -684,23 +797,62 @@ const PerfilSection = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-start gap-6 mb-6">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
                 <motion.div 
-                  className="h-24 w-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold shrink-0 cursor-pointer"
+                  className="h-24 w-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold shrink-0 cursor-pointer overflow-hidden relative"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => !isUploadingAvatar && fileInputRef.current?.click()}
                 >
-                  {profile?.full_name ? getInitials(profile.full_name) : "?"}
+                  {isUploadingAvatar ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="h-8 w-8 border-3 border-primary-foreground border-t-transparent rounded-full"
+                    />
+                  ) : profile?.avatar_url ? (
+                    <img 
+                      src={profile.avatar_url} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    profile?.full_name ? getInitials(profile.full_name) : "?"
+                  )}
                 </motion.div>
                 <div className="space-y-2">
                   <h3 className="font-medium">Foto de Perfil</h3>
                   <p className="text-sm text-muted-foreground">JPG, PNG ou GIF. Máximo 2MB.</p>
                   <div className="flex gap-2">
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button variant="outline" size="sm">Carregar Foto</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                      >
+                        {isUploadingAvatar ? "A carregar..." : "Carregar Foto"}
+                      </Button>
                     </motion.div>
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button variant="ghost" size="sm" className="text-destructive">Remover</Button>
-                    </motion.div>
+                    {profile?.avatar_url && (
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-destructive"
+                          onClick={handleRemoveAvatar}
+                          disabled={isUploadingAvatar}
+                        >
+                          Remover
+                        </Button>
+                      </motion.div>
+                    )}
                   </div>
                 </div>
               </div>
