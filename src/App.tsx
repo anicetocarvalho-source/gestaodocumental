@@ -40,6 +40,7 @@ import IntelligentSearch from "./pages/IntelligentSearch";
 import ProcedureGuide from "./pages/ProcedureGuide";
 import InstitutionalAssistant from "./pages/InstitutionalAssistant";
 import MovementHistory from "./pages/MovementHistory";
+import PendingApprovals from "./pages/PendingApprovals";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/dispatches/new" element={<ProtectedRoute><CreateDispatch /></ProtectedRoute>} />
             <Route path="/dispatches/:id" element={<ProtectedRoute><DispatchDetail /></ProtectedRoute>} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
+            <Route path="/pending-approvals" element={<ProtectedRoute><PendingApprovals /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
