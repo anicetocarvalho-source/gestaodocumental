@@ -32,9 +32,11 @@ import {
   AlertTriangle,
   UserPlus,
   KeyRound,
+  Pencil,
 } from "lucide-react";
 import { CreateUserModal } from "@/components/users/CreateUserModal";
 import { ResetPasswordModal } from "@/components/users/ResetPasswordModal";
+import { EditUserProfileModal } from "@/components/users/EditUserProfileModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +65,7 @@ const UserManagement = () => {
   const [editRolesOpen, setEditRolesOpen] = useState(false);
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{
     user_id: string;
     full_name: string;
@@ -71,6 +74,14 @@ const UserManagement = () => {
   const [resetPasswordUser, setResetPasswordUser] = useState<{
     user_id: string;
     full_name: string;
+  } | null>(null);
+  const [editProfileUser, setEditProfileUser] = useState<{
+    id: string;
+    user_id: string;
+    full_name: string;
+    position: string | null;
+    phone: string | null;
+    unit_id: string | null;
   } | null>(null);
   
   const { data: users, isLoading, error } = useUsersWithRoles();
@@ -377,6 +388,22 @@ const UserManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setEditProfileUser({
+                                  id: user.id,
+                                  user_id: user.user_id,
+                                  full_name: user.full_name,
+                                  position: user.position,
+                                  phone: user.phone,
+                                  unit_id: user.unit_id,
+                                });
+                                setEditProfileOpen(true);
+                              }}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" /> 
+                              Editar Perfil
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditRoles(user)}>
                               <Shield className="mr-2 h-4 w-4" /> 
                               Gerir Roles
@@ -480,6 +507,13 @@ const UserManagement = () => {
         open={resetPasswordOpen} 
         onOpenChange={setResetPasswordOpen} 
         user={resetPasswordUser}
+      />
+
+      {/* Edit Profile Modal */}
+      <EditUserProfileModal 
+        open={editProfileOpen} 
+        onOpenChange={setEditProfileOpen} 
+        user={editProfileUser}
       />
     </DashboardLayout>
   );
