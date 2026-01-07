@@ -4,10 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -31,9 +29,10 @@ import {
   MoreVertical,
   UserCheck,
   UserX,
-  Loader2,
   AlertTriangle,
+  UserPlus,
 } from "lucide-react";
+import { CreateUserModal } from "@/components/users/CreateUserModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +59,7 @@ const UserManagement = () => {
   const [filterRole, setFilterRole] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [editRolesOpen, setEditRolesOpen] = useState(false);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{
     user_id: string;
     full_name: string;
@@ -230,7 +230,7 @@ const UserManagement = () => {
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input 
@@ -262,6 +262,10 @@ const UserManagement = () => {
             </SelectContent>
           </Select>
         </div>
+        <Button onClick={() => setCreateUserOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Novo Utilizador
+        </Button>
       </div>
 
       {/* User Table */}
@@ -447,6 +451,9 @@ const UserManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create User Modal */}
+      <CreateUserModal open={createUserOpen} onOpenChange={setCreateUserOpen} />
     </DashboardLayout>
   );
 };
