@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -37,33 +38,27 @@ import {
   Users,
   CalendarIcon,
   X,
-  Upload,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Link,
   Building2,
   User,
-  Clock,
-  AlertCircle,
-  CheckCircle,
   Search,
   Plus,
-  Trash2,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useCreateDispatch, useEmitDispatch, dispatchTypeLabels, dispatchPriorityLabels } from "@/hooks/useDispatches";
+import { useOrganizationalUnits, useProfiles } from "@/hooks/useReferenceData";
+import { useDocuments } from "@/hooks/useDocuments";
+import { useAuth } from "@/contexts/AuthContext";
+import { Database } from "@/integrations/supabase/types";
 
-// Types
+type DispatchType = Database["public"]["Enums"]["dispatch_type"];
+type DispatchPriority = Database["public"]["Enums"]["dispatch_priority"];
+
 interface Recipient {
   id: string;
   name: string;
@@ -74,12 +69,10 @@ interface Recipient {
 interface AttachedDocument {
   id: string;
   name: string;
-  size: string;
-  type: string;
+  entry_number: string;
 }
 
-// Sample Data
-const dispatchTypes = [
+const dispatchTypes: Array<{ value: DispatchType; label: string; description: string }> = [
   { value: "informativo", label: "Informativo", description: "Para conhecimento" },
   { value: "determinativo", label: "Determinativo", description: "Ordem ou instrução" },
   { value: "autorizativo", label: "Autorizativo", description: "Autorização ou aprovação" },
@@ -87,45 +80,18 @@ const dispatchTypes = [
   { value: "decisorio", label: "Decisório", description: "Decisão final" },
 ];
 
-const availableUnits: Recipient[] = [
-  { id: "unit-1", name: "Gabinete do Director-Geral", type: "unit" },
-  { id: "unit-2", name: "Direcção de Administração e Finanças", type: "unit" },
-  { id: "unit-3", name: "Direcção de Recursos Humanos", type: "unit" },
-  { id: "unit-4", name: "Direcção de Tecnologias de Informação", type: "unit" },
-  { id: "unit-5", name: "Direcção Jurídica", type: "unit" },
-  { id: "unit-6", name: "Direcção de Operações", type: "unit" },
-  { id: "unit-7", name: "Gabinete de Planeamento", type: "unit" },
-  { id: "unit-8", name: "Secretaria-Geral", type: "unit" },
-];
-
-const availablePeople: Recipient[] = [
-  { id: "person-1", name: "Dr. António Silva", type: "person", department: "Direcção-Geral" },
-  { id: "person-2", name: "Dra. Maria Santos", type: "person", department: "Recursos Humanos" },
-  { id: "person-3", name: "Eng. João Costa", type: "person", department: "TI" },
-  { id: "person-4", name: "Dr. Carlos Ferreira", type: "person", department: "Jurídico" },
-  { id: "person-5", name: "Dra. Ana Rodrigues", type: "person", department: "Finanças" },
-  { id: "person-6", name: "Dr. Pedro Almeida", type: "person", department: "Operações" },
-];
-
-const availableDocuments: AttachedDocument[] = [
-  { id: "doc-1", name: "Relatório Mensal Janeiro 2024.pdf", size: "2.4 MB", type: "pdf" },
-  { id: "doc-2", name: "Proposta Orçamento 2024.xlsx", size: "1.8 MB", type: "excel" },
-  { id: "doc-3", name: "Contrato Prestação Serviços.docx", size: "856 KB", type: "word" },
-  { id: "doc-4", name: "Parecer Jurídico 2024-012.pdf", size: "1.2 MB", type: "pdf" },
-  { id: "doc-5", name: "Acta Reunião Direcção.pdf", size: "645 KB", type: "pdf" },
-];
-
 const CreateDispatch = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   
   // Form state
-  const [dispatchType, setDispatchType] = useState<string>("");
+  const [dispatchType, setDispatchType] = useState<DispatchType | "">("");
   const [subject, setSubject] = useState("");
   const [dispatchText, setDispatchText] = useState("");
   const [selectedRecipients, setSelectedRecipients] = useState<Recipient[]>([]);
   const [attachedDocuments, setAttachedDocuments] = useState<AttachedDocument[]>([]);
   const [deadline, setDeadline] = useState<Date | undefined>();
-  const [priority, setPriority] = useState<string>("normal");
+  const [priority, setPriority] = useState<DispatchPriority>("normal");
   const [requiresResponse, setRequiresResponse] = useState(false);
   
   // Dialog states
@@ -135,19 +101,30 @@ const CreateDispatch = () => {
   const [recipientSearch, setRecipientSearch] = useState("");
   const [documentSearch, setDocumentSearch] = useState("");
 
+  // Data fetching
+  const { data: units, isLoading: unitsLoading } = useOrganizationalUnits();
+  const { data: profiles, isLoading: profilesLoading } = useProfiles();
+  const { data: documents, isLoading: documentsLoading } = useDocuments();
+  
+  // Mutations
+  const createDispatch = useCreateDispatch();
+  const emitDispatch = useEmitDispatch();
+
   // Filter recipients based on search
-  const filteredUnits = availableUnits.filter(u => 
+  const filteredUnits = (units || []).filter(u => 
     u.name.toLowerCase().includes(recipientSearch.toLowerCase()) &&
-    !selectedRecipients.find(r => r.id === u.id)
+    !selectedRecipients.find(r => r.id === u.id && r.type === "unit")
   );
-  const filteredPeople = availablePeople.filter(p => 
-    p.name.toLowerCase().includes(recipientSearch.toLowerCase()) &&
-    !selectedRecipients.find(r => r.id === p.id)
+  const filteredPeople = (profiles || []).filter(p => 
+    p.full_name.toLowerCase().includes(recipientSearch.toLowerCase()) &&
+    !selectedRecipients.find(r => r.id === p.id && r.type === "person")
   );
 
   // Filter documents based on search
-  const filteredDocuments = availableDocuments.filter(d =>
-    d.name.toLowerCase().includes(documentSearch.toLowerCase()) &&
+  const documentsList = documents && 'data' in documents ? documents.data : (documents || []);
+  const filteredDocuments = (documentsList as any[]).filter((d: any) =>
+    (d.title.toLowerCase().includes(documentSearch.toLowerCase()) ||
+    d.entry_number.toLowerCase().includes(documentSearch.toLowerCase())) &&
     !attachedDocuments.find(a => a.id === d.id)
   );
 
@@ -167,22 +144,84 @@ const CreateDispatch = () => {
     setAttachedDocuments(attachedDocuments.filter(d => d.id !== id));
   };
 
-  const handleEmit = () => {
-    if (!dispatchType || !subject || !dispatchText || selectedRecipients.length === 0) {
-      toast.error("Por favor preencha todos os campos obrigatórios");
+  const validateForm = () => {
+    if (!dispatchType) {
+      toast.error("Seleccione o tipo de despacho");
+      return false;
+    }
+    if (!subject.trim()) {
+      toast.error("Digite o assunto do despacho");
+      return false;
+    }
+    if (!dispatchText.trim()) {
+      toast.error("Digite o conteúdo do despacho");
+      return false;
+    }
+    if (selectedRecipients.length === 0) {
+      toast.error("Adicione pelo menos um destinatário");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!dispatchType || !subject.trim()) {
+      toast.error("Preencha pelo menos o tipo e assunto para guardar rascunho");
       return;
     }
-    toast.success("Despacho emitido com sucesso!");
-    navigate("/dispatches");
+
+    try {
+      await createDispatch.mutateAsync({
+        dispatch_type: dispatchType as DispatchType,
+        subject: subject.trim(),
+        content: dispatchText.trim() || "Rascunho",
+        priority,
+        origin_unit_id: profile?.unit_id || undefined,
+        deadline: deadline?.toISOString(),
+        requires_response: requiresResponse,
+        recipients: selectedRecipients.map(r => ({
+          type: r.type,
+          unit_id: r.type === "unit" ? r.id : undefined,
+          profile_id: r.type === "person" ? r.id : undefined,
+        })),
+        document_ids: attachedDocuments.map(d => d.id),
+      });
+      toast.success("Rascunho guardado com sucesso!");
+      navigate("/dispatches");
+    } catch (error) {
+      toast.error("Erro ao guardar rascunho");
+    }
   };
 
-  const handleSaveDraft = () => {
-    toast.success("Rascunho guardado com sucesso!");
+  const handleEmit = async () => {
+    if (!validateForm()) return;
+
+    try {
+      const dispatch = await createDispatch.mutateAsync({
+        dispatch_type: dispatchType as DispatchType,
+        subject: subject.trim(),
+        content: dispatchText.trim(),
+        priority,
+        origin_unit_id: profile?.unit_id || undefined,
+        deadline: deadline?.toISOString(),
+        requires_response: requiresResponse,
+        recipients: selectedRecipients.map(r => ({
+          type: r.type,
+          unit_id: r.type === "unit" ? r.id : undefined,
+          profile_id: r.type === "person" ? r.id : undefined,
+        })),
+        document_ids: attachedDocuments.map(d => d.id),
+      });
+
+      await emitDispatch.mutateAsync(dispatch.id);
+      toast.success("Despacho emitido com sucesso!");
+      navigate("/dispatches");
+    } catch (error) {
+      toast.error("Erro ao emitir despacho");
+    }
   };
 
-  const getTypeInfo = (type: string) => {
-    return dispatchTypes.find(t => t.value === type);
-  };
+  const isSubmitting = createDispatch.isPending || emitDispatch.isPending;
 
   return (
     <DashboardLayout
@@ -249,54 +288,14 @@ const CreateDispatch = () => {
                 />
               </div>
 
-              {/* Rich Text Toolbar */}
               <div className="space-y-2">
                 <Label>Conteúdo do Despacho *</Label>
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <div className="flex flex-wrap items-center gap-1 p-2 bg-muted border-b border-border">
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <Bold className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <Italic className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <Underline className="h-4 w-4" />
-                    </Button>
-                    <div className="w-px h-6 bg-border mx-1" />
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <List className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <ListOrdered className="h-4 w-4" />
-                    </Button>
-                    <div className="w-px h-6 bg-border mx-1" />
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <AlignLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <AlignCenter className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <AlignRight className="h-4 w-4" />
-                    </Button>
-                    <div className="w-px h-6 bg-border mx-1" />
-                    <Button variant="ghost" size="icon-sm" type="button">
-                      <Link className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <Textarea
-                    placeholder="Digite o texto do despacho aqui...
-
-Exemplo:
-Autorizo a despesa solicitada no valor de 50.000,00 MT (cinquenta mil meticais), referente à aquisição de equipamentos informáticos, conforme proposta anexa.
-
-Determino que a Direcção de Administração e Finanças proceda aos trâmites necessários para a efectivação da presente autorização."
-                    className="min-h-[250px] border-0 rounded-none focus-visible:ring-0 resize-none"
-                    value={dispatchText}
-                    onChange={(e) => setDispatchText(e.target.value)}
-                  />
-                </div>
+                <Textarea
+                  placeholder="Digite o texto do despacho aqui..."
+                  className="min-h-[200px]"
+                  value={dispatchText}
+                  onChange={(e) => setDispatchText(e.target.value)}
+                />
                 <p className="text-xs text-muted-foreground">
                   {dispatchText.length} caracteres
                 </p>
@@ -345,7 +344,7 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
                         </div>
                         <div>
                           <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                          <p className="text-xs text-muted-foreground">{doc.size}</p>
+                          <p className="text-xs text-muted-foreground">{doc.entry_number}</p>
                         </div>
                       </div>
                       <Button
@@ -431,7 +430,7 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                Prazo
+                Prazo e Prioridade
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -464,7 +463,7 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
 
               <div className="space-y-2">
                 <Label>Prioridade</Label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Select value={priority} onValueChange={(v) => setPriority(v as DispatchPriority)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -499,7 +498,7 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Tipo:</span>
                 <span className="font-medium">
-                  {dispatchType ? getTypeInfo(dispatchType)?.label : "-"}
+                  {dispatchType ? dispatchTypeLabels[dispatchType] : "-"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -523,7 +522,7 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
                   priority === "alta" ? "warning" :
                   priority === "normal" ? "secondary" : "outline"
                 }>
-                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                  {dispatchPriorityLabels[priority]}
                 </Badge>
               </div>
             </CardContent>
@@ -531,12 +530,21 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
 
           {/* Actions */}
           <div className="space-y-3">
-            <Button className="w-full" size="lg" onClick={handleEmit}>
-              <Send className="h-4 w-4 mr-2" />
+            <Button 
+              className="w-full" 
+              size="lg" 
+              onClick={handleEmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
               Emitir Despacho
             </Button>
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" onClick={handleSaveDraft}>
+              <Button variant="outline" onClick={handleSaveDraft} disabled={isSubmitting}>
                 <Save className="h-4 w-4 mr-2" />
                 Guardar Rascunho
               </Button>
@@ -556,79 +564,104 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
         </div>
       </div>
 
-      {/* Recipient Selection Dialog */}
+      {/* Recipients Dialog */}
       <Dialog open={recipientDialogOpen} onOpenChange={setRecipientDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Seleccionar Destinatários</DialogTitle>
+            <DialogTitle>Adicionar Destinatários</DialogTitle>
             <DialogDescription>
-              Escolha as unidades orgânicas ou pessoas que receberão o despacho
+              Seleccione unidades ou pessoas para receber o despacho
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar..."
-                className="pl-9"
-                value={recipientSearch}
-                onChange={(e) => setRecipientSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="max-h-[300px] overflow-y-auto space-y-4">
-              {filteredUnits.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Unidades Orgânicas
-                  </p>
-                  {filteredUnits.map((unit) => (
-                    <button
-                      key={unit.id}
-                      type="button"
-                      onClick={() => addRecipient(unit)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Building2 className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="text-sm font-medium">{unit.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {filteredPeople.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Pessoas
-                  </p>
-                  {filteredPeople.map((person) => (
-                    <button
-                      key={person.id}
-                      type="button"
-                      onClick={() => addRecipient(person)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-success" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{person.name}</p>
-                        <p className="text-xs text-muted-foreground">{person.department}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {filteredUnits.length === 0 && filteredPeople.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum resultado encontrado
-                </p>
-              )}
-            </div>
+          
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input 
+              placeholder="Pesquisar destinatários..." 
+              className="pl-10"
+              value={recipientSearch}
+              onChange={(e) => setRecipientSearch(e.target.value)}
+            />
           </div>
+
+          <div className="max-h-[400px] overflow-y-auto space-y-4">
+            {unitsLoading || profilesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Units */}
+                {filteredUnits.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Unidades Orgânicas
+                    </h4>
+                    <div className="space-y-1">
+                      {filteredUnits.map((unit) => (
+                        <button
+                          key={unit.id}
+                          type="button"
+                          onClick={() => addRecipient({ id: unit.id, name: unit.name, type: "unit" })}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Building2 className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="text-sm font-medium">{unit.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* People */}
+                {filteredPeople.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Pessoas
+                    </h4>
+                    <div className="space-y-1">
+                      {filteredPeople.map((person) => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          onClick={() => addRecipient({ 
+                            id: person.id, 
+                            name: person.full_name, 
+                            type: "person",
+                            department: person.position || undefined
+                          })}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
+                            <User className="h-4 w-4 text-success" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{person.full_name}</p>
+                            {person.position && (
+                              <p className="text-xs text-muted-foreground">{person.position}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {filteredUnits.length === 0 && filteredPeople.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum destinatário encontrado
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setRecipientDialogOpen(false)}>
               Fechar
@@ -637,68 +670,57 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
         </DialogContent>
       </Dialog>
 
-      {/* Document Selection Dialog */}
+      {/* Documents Dialog */}
       <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Anexar Documentos</DialogTitle>
             <DialogDescription>
-              Seleccione documentos existentes ou carregue novos ficheiros
+              Seleccione documentos do sistema para anexar ao despacho
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Upload Area */}
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground mb-2">
-                Arraste ficheiros ou clique para carregar
-              </p>
-              <Button variant="outline" size="sm">
-                Seleccionar Ficheiros
-              </Button>
-            </div>
+          
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input 
+              placeholder="Pesquisar documentos..." 
+              className="pl-10"
+              value={documentSearch}
+              onChange={(e) => setDocumentSearch(e.target.value)}
+            />
+          </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+          <div className="max-h-[400px] overflow-y-auto space-y-1">
+            {documentsLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  ou seleccione existentes
-                </span>
+            ) : filteredDocuments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum documento encontrado
               </div>
-            </div>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar documentos..."
-                className="pl-9"
-                value={documentSearch}
-                onChange={(e) => setDocumentSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="max-h-[200px] overflow-y-auto space-y-2">
-              {filteredDocuments.map((doc) => (
+            ) : (
+              filteredDocuments.map((doc) => (
                 <button
                   key={doc.id}
                   type="button"
-                  onClick={() => addDocument(doc)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors text-left"
+                  onClick={() => addDocument({ id: doc.id, name: doc.title, entry_number: doc.entry_number })}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left"
                 >
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground">{doc.size}</p>
+                    <p className="text-sm font-medium truncate">{doc.title}</p>
+                    <p className="text-xs text-muted-foreground">{doc.entry_number}</p>
                   </div>
-                  <Plus className="h-4 w-4 text-muted-foreground" />
                 </button>
-              ))}
-            </div>
+              ))
+            )}
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDocumentDialogOpen(false)}>
               Fechar
@@ -709,84 +731,64 @@ Determino que a Direcção de Administração e Finanças proceda aos trâmites 
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Pré-visualização do Despacho</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="border-b border-border pb-4">
-              <div className="flex items-center justify-between mb-4">
-                <Badge variant="secondary">
-                  {dispatchType ? getTypeInfo(dispatchType)?.label : "Tipo não definido"}
-                </Badge>
-                <Badge variant={
-                  priority === "urgente" ? "destructive" :
-                  priority === "alta" ? "warning" : "secondary"
-                }>
-                  Prioridade: {priority}
-                </Badge>
-              </div>
-              <h3 className="text-lg font-semibold text-foreground">
-                {subject || "Assunto não definido"}
+          
+          <div className="border border-border rounded-lg p-6 bg-background">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-bold uppercase">
+                Despacho {dispatchType ? dispatchTypeLabels[dispatchType] : ""}
               </h3>
+              <p className="text-sm text-muted-foreground">Número: (Será gerado automaticamente)</p>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Texto do Despacho:</p>
-              <div className="p-4 bg-muted rounded-lg whitespace-pre-wrap text-sm">
-                {dispatchText || "Nenhum conteúdo"}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Assunto:</p>
+                <p className="font-medium">{subject || "-"}</p>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Destinatários:</p>
-                <div className="space-y-1">
-                  {selectedRecipients.length > 0 ? (
-                    selectedRecipients.map((r) => (
-                      <div key={r.id} className="flex items-center gap-2 text-sm">
-                        {r.type === "unit" ? (
-                          <Building2 className="h-3 w-3 text-primary" />
-                        ) : (
-                          <User className="h-3 w-3 text-success" />
-                        )}
-                        {r.name}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Nenhum destinatário</p>
-                  )}
+              <div>
+                <p className="text-sm text-muted-foreground">Destinatários:</p>
+                <p className="font-medium">
+                  {selectedRecipients.length > 0 
+                    ? selectedRecipients.map(r => r.name).join(", ")
+                    : "-"
+                  }
+                </p>
+              </div>
+
+              <div className="border-t border-b border-border py-4 my-4">
+                <p className="whitespace-pre-wrap">{dispatchText || "Sem conteúdo"}</p>
+              </div>
+
+              {attachedDocuments.length > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Anexos:</p>
+                  <ul className="list-disc list-inside">
+                    {attachedDocuments.map(d => (
+                      <li key={d.id} className="text-sm">{d.name}</li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Anexos:</p>
-                <div className="space-y-1">
-                  {attachedDocuments.length > 0 ? (
-                    attachedDocuments.map((d) => (
-                      <div key={d.id} className="flex items-center gap-2 text-sm">
-                        <Paperclip className="h-3 w-3" />
-                        {d.name}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Nenhum anexo</p>
-                  )}
-                </div>
-              </div>
-            </div>
+              )}
 
-            {deadline && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                Prazo: {format(deadline, "PPP", { locale: pt })}
-              </div>
-            )}
+              {deadline && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Prazo:</p>
+                  <p className="font-medium">{format(deadline, "dd/MM/yyyy")}</p>
+                </div>
+              )}
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
               Fechar
             </Button>
-            <Button onClick={handleEmit}>
+            <Button onClick={() => { setPreviewDialogOpen(false); handleEmit(); }} disabled={isSubmitting}>
               <Send className="h-4 w-4 mr-2" />
               Emitir Despacho
             </Button>
