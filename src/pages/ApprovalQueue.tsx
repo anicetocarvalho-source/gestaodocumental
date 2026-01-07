@@ -25,7 +25,9 @@ import {
   MessageSquare,
   Send,
   Loader2,
-  Inbox
+  Inbox,
+  CheckSquare,
+  X
 } from "lucide-react";
 
 const priorityLabels = {
@@ -58,12 +60,15 @@ const ApprovalQueue = () => {
     isLoading, 
     processApproval, 
     isProcessing,
+    processBulkApproval,
+    isBulkProcessing,
     getApprovalHistory 
   } = useApprovalQueue();
   
   const [selectedItem, setSelectedItem] = useState<ApprovalItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [currentApprovalItem, setCurrentApprovalItem] = useState<ApprovalItem | null>(null);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'priority'>('recent');
@@ -118,6 +123,37 @@ const ApprovalQueue = () => {
     // Clear selected item if it was processed
     if (selectedItem?.id === currentApprovalItem.id) {
       setSelectedItem(null);
+    }
+  };
+
+  const handleBulkApprovalSubmit = async (decision: 'aprovado' | 'rejeitado' | 'devolvido', comments?: string) => {
+    if (selectedItems.size === 0) return;
+    
+    // Get all approval IDs from selected items
+    const approvalIds = approvalItems
+      .filter(item => selectedItems.has(item.id) && item.approvalId)
+      .map(item => item.approvalId as string);
+    
+    if (approvalIds.length === 0) return;
+    
+    processBulkApproval({
+      approvalIds,
+      decision,
+      comments,
+    });
+    
+    // Clear selections after processing
+    setSelectedItems(new Set());
+    if (selectedItem && selectedItems.has(selectedItem.id)) {
+      setSelectedItem(null);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.size === sortedItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(sortedItems.map(item => item.id)));
     }
   };
 
@@ -229,9 +265,67 @@ const ApprovalQueue = () => {
             </div>
 
             <TabsContent value="all" className="mt-6">
+              {/* Barra de Ações em Massa */}
+              {selectedItems.size > 0 && (
+                <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <CheckSquare className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">
+                      {selectedItems.size} {selectedItems.size === 1 ? 'item selecionado' : 'itens selecionados'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      size="sm"
+                      onClick={() => setBulkModalOpen(true)}
+                      disabled={isBulkProcessing}
+                    >
+                      {isBulkProcessing ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <ThumbsUp className="h-3 w-3 mr-1" />
+                      )}
+                      Aprovar Selecionados
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setBulkModalOpen(true);
+                      }}
+                      disabled={isBulkProcessing}
+                    >
+                      <ThumbsDown className="h-3 w-3 mr-1" />
+                      Rejeitar
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setSelectedItems(new Set())}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Limpar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Lista da Fila - 8 colunas */}
                 <div className="lg:col-span-8 space-y-3">
+                  {/* Seleccionar Todos */}
+                  {!isLoading && sortedItems.length > 0 && (
+                    <div className="flex items-center gap-2 pb-2">
+                      <Checkbox 
+                        checked={selectedItems.size === sortedItems.length && sortedItems.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Seleccionar todos os itens"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        Seleccionar todos
+                      </span>
+                    </div>
+                  )}
                   {isLoading ? (
                     // Loading skeleton
                     Array.from({ length: 3 }).map((_, i) => (
@@ -650,6 +744,16 @@ const ApprovalQueue = () => {
         approverName=""
         onApprove={handleApprovalSubmit}
         isLoading={isProcessing}
+      />
+
+      {/* Bulk Approval Modal */}
+      <DispatchApprovalModal
+        open={bulkModalOpen}
+        onOpenChange={setBulkModalOpen}
+        dispatchNumber={`${selectedItems.size} ${selectedItems.size === 1 ? 'item' : 'itens'}`}
+        approverName=""
+        onApprove={handleBulkApprovalSubmit}
+        isLoading={isBulkProcessing}
       />
     </DashboardLayout>
   );
