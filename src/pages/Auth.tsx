@@ -7,11 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2, Building2, ArrowLeft, Mail } from "lucide-react";
 import { z } from "zod";
 
 const emailSchema = z.string().email("E-mail inválido");
 const passwordSchema = z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres");
+
+type AuthView = "main" | "forgot-password" | "reset-sent";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [view, setView] = useState<AuthView>("main");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -111,6 +114,123 @@ const Auth = () => {
     setLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      toast.error(emailResult.error.errors[0].message);
+      return;
+    }
+
+    setLoading(true);
+    const redirectUrl = `${window.location.origin}/auth?type=recovery`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setView("reset-sent");
+    }
+    setLoading(false);
+  };
+
+  // Check for password recovery
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("type") === "recovery") {
+      // User came from password reset email
+      toast.info("Pode agora definir uma nova palavra-passe nas definições.");
+    }
+  }, []);
+
+  if (view === "reset-sent") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="h-14 w-14 rounded-xl bg-success/10 flex items-center justify-center">
+                <Mail className="h-7 w-7 text-success" />
+              </div>
+            </div>
+            <CardTitle className="text-xl">Verifique o seu e-mail</CardTitle>
+            <CardDescription>
+              Enviámos instruções para recuperar a sua palavra-passe para <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Se não receber o e-mail em alguns minutos, verifique a pasta de spam.
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => {
+                setView("main");
+                setEmail("");
+              }}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar ao login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (view === "forgot-password") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-7 w-7 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-xl">Recuperar Palavra-passe</CardTitle>
+            <CardDescription>
+              Introduza o seu e-mail para receber instruções de recuperação
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">E-mail</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="seu.email@minagrif.gov.ao"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enviar Instruções
+              </Button>
+              <Button 
+                type="button"
+                variant="ghost" 
+                className="w-full" 
+                onClick={() => setView("main")}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar ao login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -146,7 +266,17 @@ const Auth = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Palavra-passe</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="login-password">Palavra-passe</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                      onClick={() => setView("forgot-password")}
+                    >
+                      Esqueceu a palavra-passe?
+                    </Button>
+                  </div>
                   <Input
                     id="login-password"
                     type="password"
