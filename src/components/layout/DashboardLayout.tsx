@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -9,6 +10,8 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+  // Subscribe to realtime notifications with sound
+  useNotificationSound();
   return (
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
