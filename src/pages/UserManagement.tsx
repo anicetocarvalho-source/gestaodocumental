@@ -31,8 +31,10 @@ import {
   UserX,
   AlertTriangle,
   UserPlus,
+  KeyRound,
 } from "lucide-react";
 import { CreateUserModal } from "@/components/users/CreateUserModal";
+import { ResetPasswordModal } from "@/components/users/ResetPasswordModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,10 +62,15 @@ const UserManagement = () => {
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [editRolesOpen, setEditRolesOpen] = useState(false);
   const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{
     user_id: string;
     full_name: string;
     roles: AppRole[];
+  } | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<{
+    user_id: string;
+    full_name: string;
   } | null>(null);
   
   const { data: users, isLoading, error } = useUsersWithRoles();
@@ -374,6 +381,19 @@ const UserManagement = () => {
                               <Shield className="mr-2 h-4 w-4" /> 
                               Gerir Roles
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setResetPasswordUser({
+                                  user_id: user.user_id,
+                                  full_name: user.full_name,
+                                });
+                                setResetPasswordOpen(true);
+                              }}
+                              disabled={user.user_id === currentUser?.id}
+                            >
+                              <KeyRound className="mr-2 h-4 w-4" /> 
+                              Redefinir Password
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleToggleStatus(user)}
@@ -454,6 +474,13 @@ const UserManagement = () => {
 
       {/* Create User Modal */}
       <CreateUserModal open={createUserOpen} onOpenChange={setCreateUserOpen} />
+
+      {/* Reset Password Modal */}
+      <ResetPasswordModal 
+        open={resetPasswordOpen} 
+        onOpenChange={setResetPasswordOpen} 
+        user={resetPasswordUser}
+      />
     </DashboardLayout>
   );
 };
