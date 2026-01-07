@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -193,12 +195,9 @@ const organizacaoSchema = z.object({
 });
 
 const perfilSchema = z.object({
-  firstName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(50, "Nome muito longo"),
-  lastName: z.string().min(2, "Apelido deve ter pelo menos 2 caracteres").max(50, "Apelido muito longo"),
-  email: z.string().email("Email inválido"),
-  phone: z.string().min(9, "Telefone deve ter pelo menos 9 dígitos").max(20, "Telefone muito longo"),
-  department: z.string().min(2, "Departamento deve ter pelo menos 2 caracteres"),
-  position: z.string().min(2, "Cargo deve ter pelo menos 2 caracteres"),
+  fullName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  phone: z.string().max(20, "Telefone muito longo").optional().or(z.literal("")),
+  position: z.string().max(100, "Cargo muito longo").optional().or(z.literal("")),
 });
 
 const passwordSchema = z.object({
@@ -588,29 +587,70 @@ const GeralSection = () => {
 
 // ========== SECÇÃO PERFIL ==========
 const PerfilSection = () => {
+  const { profile, user, refreshProfile } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+
   const form = useForm<z.infer<typeof perfilSchema>>({
     resolver: zodResolver(perfilSchema),
     defaultValues: {
-      firstName: "Maria",
-      lastName: "Silva",
-      email: "maria.silva@minagrif.gov.mz",
-      phone: "+258 84 000 0000",
-      department: "Gabinete do Ministro",
-      position: "Directora de Expediente",
+      fullName: "",
+      phone: "",
+      position: "",
     },
   });
 
-  const [isSaving, setIsSaving] = useState(false);
+  // Load profile data when available
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        fullName: profile.full_name || "",
+        phone: profile.phone || "",
+        position: profile.position || "",
+      });
+    }
+  }, [profile, form]);
 
   const onSubmit = async (data: z.infer<typeof perfilSchema>) => {
+    if (!profile) return;
+    
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    toast({
-      title: "Perfil actualizado",
-      description: "As suas informações foram guardadas com sucesso.",
-    });
-    console.log(data);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: data.fullName,
+          phone: data.phone || null,
+          position: data.position || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      
+      toast({
+        title: "Perfil actualizado",
+        description: "As suas informações foram guardadas com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao actualizar perfil",
+        description: error.message || "Ocorreu um erro ao guardar as alterações.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
@@ -649,7 +689,7 @@ const PerfilSection = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  MS
+                  {profile?.full_name ? getInitials(profile.full_name) : "?"}
                 </motion.div>
                 <div className="space-y-2">
                   <h3 className="font-medium">Foto de Perfil</h3>
@@ -669,10 +709,10 @@ const PerfilSection = () => {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="fullName"
                     render={({ field, fieldState }) => (
-                      <FormItem>
-                        <FormLabel className={fieldState.error ? "text-destructive" : ""}>Nome</FormLabel>
+                      <FormItem className="md:col-span-2">
+                        <FormLabel className={fieldState.error ? "text-destructive" : ""}>Nome Completo</FormLabel>
                         <FormControl>
                           <motion.div
                             animate={fieldState.error ? { x: [0, -5, 5, -5, 5, 0] } : {}}
@@ -688,49 +728,15 @@ const PerfilSection = () => {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field, fieldState }) => (
-                      <FormItem>
-                        <FormLabel className={fieldState.error ? "text-destructive" : ""}>Apelido</FormLabel>
-                        <FormControl>
-                          <motion.div
-                            animate={fieldState.error ? { x: [0, -5, 5, -5, 5, 0] } : {}}
-                            transition={{ duration: 0.4 }}
-                          >
-                            <Input 
-                              {...field} 
-                              className={fieldState.error ? "border-destructive focus-visible:ring-destructive" : ""}
-                            />
-                          </motion.div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field, fieldState }) => (
-                      <FormItem>
-                        <FormLabel className={fieldState.error ? "text-destructive" : ""}>Email</FormLabel>
-                        <FormControl>
-                          <motion.div
-                            animate={fieldState.error ? { x: [0, -5, 5, -5, 5, 0] } : {}}
-                            transition={{ duration: 0.4 }}
-                          >
-                            <Input 
-                              type="email"
-                              {...field} 
-                              className={fieldState.error ? "border-destructive focus-visible:ring-destructive" : ""}
-                            />
-                          </motion.div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div>
+                    <FormLabel>Email</FormLabel>
+                    <Input 
+                      value={user?.email || profile?.email || ""} 
+                      disabled 
+                      className="bg-muted/50"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">O email não pode ser alterado aqui</p>
+                  </div>
                   <FormField
                     control={form.control}
                     name="phone"
@@ -744,27 +750,7 @@ const PerfilSection = () => {
                           >
                             <Input 
                               type="tel"
-                              {...field} 
-                              className={fieldState.error ? "border-destructive focus-visible:ring-destructive" : ""}
-                            />
-                          </motion.div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="department"
-                    render={({ field, fieldState }) => (
-                      <FormItem>
-                        <FormLabel className={fieldState.error ? "text-destructive" : ""}>Departamento</FormLabel>
-                        <FormControl>
-                          <motion.div
-                            animate={fieldState.error ? { x: [0, -5, 5, -5, 5, 0] } : {}}
-                            transition={{ duration: 0.4 }}
-                          >
-                            <Input 
+                              placeholder="+258 84 000 0000"
                               {...field} 
                               className={fieldState.error ? "border-destructive focus-visible:ring-destructive" : ""}
                             />
@@ -786,6 +772,7 @@ const PerfilSection = () => {
                             transition={{ duration: 0.4 }}
                           >
                             <Input 
+                              placeholder="Ex: Director de Expediente"
                               {...field} 
                               className={fieldState.error ? "border-destructive focus-visible:ring-destructive" : ""}
                             />
