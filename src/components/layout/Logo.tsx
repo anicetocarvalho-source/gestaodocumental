@@ -1,12 +1,15 @@
 import { cn } from "@/lib/utils";
 import minagrif_logo from "@/assets/minagrif-logo.png";
 
-interface LogoProps {
+export interface LogoProps {
   collapsed?: boolean;
   className?: string;
+  variant?: "default" | "light";
 }
 
-export function Logo({ collapsed = false, className }: LogoProps) {
+export function Logo({ collapsed = false, className, variant = "default" }: LogoProps) {
+  const isLight = variant === "light";
+  
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       {/* Logo Image */}
@@ -14,17 +17,23 @@ export function Logo({ collapsed = false, className }: LogoProps) {
         <img 
           src={minagrif_logo} 
           alt="MINAGRIF Logo" 
-          className="h-9 w-9 object-contain"
+          className={cn("h-9 w-9 object-contain", isLight && "brightness-0 invert")}
         />
       </div>
 
       {/* Text */}
       {!collapsed && (
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-sidebar-foreground tracking-tight leading-none">
+          <span className={cn(
+            "text-sm font-bold tracking-tight leading-none",
+            isLight ? "text-white" : "text-sidebar-foreground"
+          )}>
             MINAGRIF
           </span>
-          <span className="text-[9px] font-medium text-sidebar-muted tracking-wider uppercase mt-0.5">
+          <span className={cn(
+            "text-[9px] font-medium tracking-wider uppercase mt-0.5",
+            isLight ? "text-white/70" : "text-sidebar-muted"
+          )}>
             Gestão Documental
           </span>
         </div>
