@@ -1,27 +1,34 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useDemoAuth } from "@/contexts/DemoAuthContext";
-import { canAccessRoute } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 /**
- * Componente que protege rotas verificando se o utilizador tem permissão para aceder.
- * Redireciona para /demo-login se não autenticado, ou /access-denied se não autorizado.
+ * Componente que protege rotas verificando se o utilizador está autenticado.
+ * Redireciona para /auth se não autenticado.
  */
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, role } = useDemoAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  // Se não está autenticado, redireciona para login demo
-  if (!isAuthenticated) {
-    return <Navigate to="/demo-login" state={{ from: location }} replace />;
+  // Mostra loading enquanto verifica autenticação
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">A verificar autenticação...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Verifica se o role tem permissão para a rota actual
-  if (!canAccessRoute(role, location.pathname)) {
-    return <Navigate to="/access-denied" replace />;
+  // Se não está autenticado, redireciona para login
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

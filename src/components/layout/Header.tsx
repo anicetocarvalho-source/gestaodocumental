@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate, Link } from "react-router-dom";
-import { useDemoAuth, roleLabels } from "@/contexts/DemoAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole, roleLabels } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useNotifications";
 
 interface HeaderProps {
@@ -29,12 +30,13 @@ const roleBadgeVariants: Record<string, "error" | "info" | "success" | "warning"
 
 export function Header({ title, subtitle }: HeaderProps) {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useDemoAuth();
+  const { isAuthenticated, profile, signOut } = useAuth();
+  const { primaryRole } = useUserRole();
   const { data: unreadCount = 0 } = useUnreadCount();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/demo-login");
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth");
   };
 
   const getInitials = (name: string) => {
@@ -45,6 +47,10 @@ export function Header({ title, subtitle }: HeaderProps) {
       .join("")
       .toUpperCase();
   };
+
+  const displayName = profile?.full_name || "Utilizador";
+  const displayEmail = profile?.email || "";
+  const displayRole = primaryRole || "consulta";
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-6 lg:px-8 backdrop-blur-lg supports-[backdrop-filter]:bg-background/80">
@@ -87,22 +93,22 @@ export function Header({ title, subtitle }: HeaderProps) {
         </Button>
 
         {/* User Menu */}
-        {isAuthenticated && user ? (
+        {isAuthenticated && profile ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="ml-2 gap-2 px-2">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    {getInitials(user.name)}
+                    {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden lg:flex flex-col items-start">
-                  <span className="text-sm font-medium">{user.name.split(" ")[0]}</span>
+                  <span className="text-sm font-medium">{displayName.split(" ")[0]}</span>
                   <Badge 
-                    variant={roleBadgeVariants[user.role || "consulta"]} 
+                    variant={roleBadgeVariants[displayRole]} 
                     className="text-[10px] py-0 px-1.5 h-4"
                   >
-                    {roleLabels[user.role || "consulta"]}
+                    {roleLabels[displayRole]}
                   </Badge>
                 </div>
               </Button>
@@ -110,9 +116,9 @@ export function Header({ title, subtitle }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col">
-                  <span>{user.name}</span>
-                  <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
-                  <span className="text-xs font-normal text-muted-foreground">{user.department}</span>
+                  <span>{displayName}</span>
+                  <span className="text-xs font-normal text-muted-foreground">{displayEmail}</span>
+                  <span className="text-xs font-normal text-muted-foreground">{profile.position || "Sem cargo"}</span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -120,12 +126,6 @@ export function Header({ title, subtitle }: HeaderProps) {
                 <Link to="/settings" className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Meu Perfil
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/demo-login" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Mudar Perfil
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -137,9 +137,9 @@ export function Header({ title, subtitle }: HeaderProps) {
           </DropdownMenu>
         ) : (
           <Button variant="outline" size="sm" className="ml-2" asChild>
-            <Link to="/demo-login">
+            <Link to="/auth">
               <LogOut className="mr-2 h-4 w-4" />
-              Demo Login
+              Iniciar Sessão
             </Link>
           </Button>
         )}
