@@ -13,6 +13,7 @@ import Processes from "./pages/Processes";
 import CreateProcess from "./pages/CreateProcess";
 import ProcessDetail from "./pages/ProcessDetail";
 import DispatchManagement from "./pages/DispatchManagement";
+import DispatchDetail from "./pages/DispatchDetail";
 import ApprovalQueue from "./pages/ApprovalQueue";
 import UserManagement from "./pages/UserManagement";
 import Permissions from "./pages/Permissions";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/processes/:id" element={<ProtectedRoute><ProcessDetail /></ProtectedRoute>} />
             <Route path="/dispatches" element={<ProtectedRoute><DispatchManagement /></ProtectedRoute>} />
             <Route path="/dispatches/new" element={<ProtectedRoute><CreateDispatch /></ProtectedRoute>} />
+            <Route path="/dispatches/:id" element={<ProtectedRoute><DispatchDetail /></ProtectedRoute>} />
             <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />

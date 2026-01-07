@@ -85,6 +85,57 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_approvals: {
+        Row: {
+          approval_order: number
+          approved_at: string | null
+          approver_id: string | null
+          comments: string | null
+          created_at: string
+          dispatch_id: string
+          id: string
+          status: Database["public"]["Enums"]["approval_status"]
+          updated_at: string
+        }
+        Insert: {
+          approval_order?: number
+          approved_at?: string | null
+          approver_id?: string | null
+          comments?: string | null
+          created_at?: string
+          dispatch_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+        }
+        Update: {
+          approval_order?: number
+          approved_at?: string | null
+          approver_id?: string | null
+          comments?: string | null
+          created_at?: string
+          dispatch_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_approvals_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_audit_log: {
         Row: {
           action: string
@@ -229,14 +280,70 @@ export type Database = {
           },
         ]
       }
+      dispatch_signatures: {
+        Row: {
+          certificate_info: Json | null
+          device_info: string | null
+          dispatch_id: string
+          id: string
+          ip_address: string | null
+          is_valid: boolean
+          signature_data: string | null
+          signature_type: string
+          signed_at: string
+          signer_id: string
+        }
+        Insert: {
+          certificate_info?: Json | null
+          device_info?: string | null
+          dispatch_id: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          signature_data?: string | null
+          signature_type: string
+          signed_at?: string
+          signer_id: string
+        }
+        Update: {
+          certificate_info?: Json | null
+          device_info?: string | null
+          dispatch_id?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          signature_data?: string | null
+          signature_type?: string
+          signed_at?: string
+          signer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_signatures_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_signatures_signer_id_fkey"
+            columns: ["signer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatches: {
         Row: {
+          approval_chain: string[] | null
           cancellation_reason: string | null
           cancelled_at: string | null
           completed_at: string | null
           content: string
           created_at: string
           created_by: string | null
+          current_approval_step: number | null
           deadline: string | null
           dispatch_number: string
           dispatch_type: Database["public"]["Enums"]["dispatch_type"]
@@ -244,19 +351,23 @@ export type Database = {
           id: string
           origin_unit_id: string | null
           priority: Database["public"]["Enums"]["dispatch_priority"]
+          requires_approval: boolean
           requires_response: boolean
           signer_id: string | null
           status: Database["public"]["Enums"]["dispatch_status"]
           subject: string
           updated_at: string
+          workflow_status: string | null
         }
         Insert: {
+          approval_chain?: string[] | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           completed_at?: string | null
           content: string
           created_at?: string
           created_by?: string | null
+          current_approval_step?: number | null
           deadline?: string | null
           dispatch_number: string
           dispatch_type: Database["public"]["Enums"]["dispatch_type"]
@@ -264,19 +375,23 @@ export type Database = {
           id?: string
           origin_unit_id?: string | null
           priority?: Database["public"]["Enums"]["dispatch_priority"]
+          requires_approval?: boolean
           requires_response?: boolean
           signer_id?: string | null
           status?: Database["public"]["Enums"]["dispatch_status"]
           subject: string
           updated_at?: string
+          workflow_status?: string | null
         }
         Update: {
+          approval_chain?: string[] | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           completed_at?: string | null
           content?: string
           created_at?: string
           created_by?: string | null
+          current_approval_step?: number | null
           deadline?: string | null
           dispatch_number?: string
           dispatch_type?: Database["public"]["Enums"]["dispatch_type"]
@@ -284,11 +399,13 @@ export type Database = {
           id?: string
           origin_unit_id?: string | null
           priority?: Database["public"]["Enums"]["dispatch_priority"]
+          requires_approval?: boolean
           requires_response?: boolean
           signer_id?: string | null
           status?: Database["public"]["Enums"]["dispatch_status"]
           subject?: string
           updated_at?: string
+          workflow_status?: string | null
         }
         Relationships: [
           {
@@ -1486,6 +1603,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor" | "tecnico" | "consulta"
+      approval_status: "pendente" | "aprovado" | "rejeitado" | "devolvido"
       dispatch_priority: "baixa" | "normal" | "alta" | "urgente"
       dispatch_status:
         | "rascunho"
@@ -1637,6 +1755,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor", "tecnico", "consulta"],
+      approval_status: ["pendente", "aprovado", "rejeitado", "devolvido"],
       dispatch_priority: ["baixa", "normal", "alta", "urgente"],
       dispatch_status: [
         "rascunho",
