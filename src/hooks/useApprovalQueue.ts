@@ -225,6 +225,47 @@ export function useApprovalQueue() {
     },
   });
 
+  // Bulk approval mutation
+  const bulkApprovalMutation = useMutation({
+    mutationFn: async ({ 
+      approvalIds, 
+      decision, 
+      comments 
+    }: { 
+      approvalIds: string[]; 
+      decision: 'aprovado' | 'rejeitado' | 'devolvido'; 
+      comments?: string 
+    }) => {
+      const { error } = await supabase
+        .from('dispatch_approvals')
+        .update({
+          status: decision,
+          approved_at: new Date().toISOString(),
+          comments: comments || null,
+        })
+        .in('id', approvalIds);
+
+      if (error) throw error;
+      return approvalIds.length;
+    },
+    onSuccess: (count, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['approval-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['approval-queue-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
+      
+      const messages = {
+        aprovado: `${count} ${count === 1 ? 'item aprovado' : 'itens aprovados'} com sucesso`,
+        rejeitado: `${count} ${count === 1 ? 'item rejeitado' : 'itens rejeitados'}`,
+        devolvido: `${count} ${count === 1 ? 'item devolvido' : 'itens devolvidos'} para revisão`,
+      };
+      toast.success(messages[variables.decision]);
+    },
+    onError: (error) => {
+      console.error('Error processing bulk approval:', error);
+      toast.error('Erro ao processar aprovações em massa');
+    },
+  });
+
   // Fetch approval history for a specific dispatch
   const getApprovalHistory = async (dispatchId: string) => {
     const { data, error } = await supabase
@@ -263,6 +304,8 @@ export function useApprovalQueue() {
     error,
     processApproval: processApprovalMutation.mutate,
     isProcessing: processApprovalMutation.isPending,
+    processBulkApproval: bulkApprovalMutation.mutate,
+    isBulkProcessing: bulkApprovalMutation.isPending,
     getApprovalHistory,
   };
 }
