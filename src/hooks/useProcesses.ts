@@ -768,3 +768,108 @@ export function useRealtimeProcesses() {
     };
   }, [queryClient]);
 }
+
+// Upload document to process
+export function useUploadProcessDocument() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: {
+      process_id: string;
+      file: File;
+      description?: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      // Get user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      // Upload file to storage
+      const timestamp = Date.now();
+      const cleanFileName = input.file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `process-documents/${input.process_id}/${timestamp}_${cleanFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, input.file);
+
+      if (uploadError) throw uploadError;
+
+      // Create record in process_documents
+      const { data, error } = await supabase
+        .from('process_documents')
+        .insert({
+          process_id: input.process_id,
+          file_name: input.file.name,
+          file_path: filePath,
+          file_size: input.file.size,
+          mime_type: input.file.type,
+          description: input.description || null,
+          uploaded_by: profile?.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['process-documents', variables.process_id] });
+      toast({
+        title: "Documento anexado",
+        description: "O documento foi anexado ao processo com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao anexar documento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+// Delete process document
+export function useDeleteProcessDocument() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, process_id, file_path }: { id: string; process_id: string; file_path?: string | null }) => {
+      // Delete from storage if file_path exists
+      if (file_path) {
+        await supabase.storage.from('documents').remove([file_path]);
+      }
+
+      // Delete record
+      const { error } = await supabase
+        .from('process_documents')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { id, process_id };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['process-documents', variables.process_id] });
+      toast({
+        title: "Documento removido",
+        description: "O documento foi removido do processo.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao remover documento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}

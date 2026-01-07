@@ -38,11 +38,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
+import { UploadProcessDocumentModal } from "@/components/processes/UploadProcessDocumentModal";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment, useProcessDocuments } from "@/hooks/useProcesses";
+import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment, useProcessDocuments, useDeleteProcessDocument } from "@/hooks/useProcesses";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusConfig: Record<string, { label: string; variant: "info" | "success" | "warning" | "error" | "secondary" }> = {
   rascunho: { label: "Rascunho", variant: "secondary" },
@@ -69,6 +71,7 @@ const ProcessDetail = () => {
   const [selectedAction, setSelectedAction] = useState<WorkflowAction | null>(null);
   const [newComment, setNewComment] = useState("");
   const [isInternal, setIsInternal] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   
   const { canDo } = usePermissions();
   
@@ -80,8 +83,9 @@ const ProcessDetail = () => {
   const { data: opinions = [] } = useProcessOpinions(id);
   const { data: processDocuments = [] } = useProcessDocuments(id);
   
-  // Mutation for adding comments
+  // Mutations
   const addComment = useAddProcessComment();
+  const deleteDocument = useDeleteProcessDocument();
   
   // Calculate SLA remaining
   const getSlaRemaining = () => {
@@ -351,7 +355,7 @@ const ProcessDetail = () => {
                   Documentos Anexos ({processDocuments.length})
                 </CardTitle>
                 <ProtectedContent permission={{ module: "processes", action: "addDocument" }} showDisabled disabledTooltip="Requer permissão de edição para anexar documentos">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setUploadModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Anexar Documento
                   </Button>
@@ -375,6 +379,21 @@ const ProcessDetail = () => {
                         
                         const displayName = doc.document?.title || doc.file_name || "Documento sem nome";
                         const docNumber = doc.document?.entry_number;
+                        
+                        const handleDownload = async () => {
+                          if (!doc.file_path) return;
+                          const { data } = await supabase.storage
+                            .from('documents')
+                            .createSignedUrl(doc.file_path, 60);
+                          if (data?.signedUrl) {
+                            window.open(data.signedUrl, '_blank');
+                          }
+                        };
+                        
+                        const handleDelete = () => {
+                          if (!id) return;
+                          deleteDocument.mutate({ id: doc.id, process_id: id, file_path: doc.file_path });
+                        };
                         
                         return (
                           <div 
@@ -405,12 +424,12 @@ const ProcessDetail = () => {
                                 </Link>
                               )}
                               {doc.file_path && (
-                                <Button variant="ghost" size="icon-sm" title="Baixar ficheiro">
+                                <Button variant="ghost" size="icon-sm" title="Baixar ficheiro" onClick={handleDownload}>
                                   <Download className="h-4 w-4" />
                                 </Button>
                               )}
                               <ProtectedContent permission={{ module: "processes", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover documentos">
-                                <Button variant="ghost" size="icon-sm">
+                                <Button variant="ghost" size="icon-sm" onClick={handleDelete} disabled={deleteDocument.isPending}>
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                               </ProtectedContent>
@@ -830,6 +849,15 @@ const ProcessDetail = () => {
         }}
         onActionComplete={handleActionComplete}
       />
+      
+      {/* Upload Document Modal */}
+      {id && (
+        <UploadProcessDocumentModal
+          open={uploadModalOpen}
+          onOpenChange={setUploadModalOpen}
+          processId={id}
+        />
+      )}
     </DashboardLayout>
   );
 };
