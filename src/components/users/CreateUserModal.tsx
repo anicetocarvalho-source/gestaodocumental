@@ -259,8 +259,8 @@ export function CreateUserModal({ open, onOpenChange }: CreateUserModalProps) {
                 <FormItem>
                   <FormLabel>Unidade Orgânica</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
+                    onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
+                    value={field.value || "none"}
                     disabled={isSubmitting}
                   >
                     <FormControl>
@@ -269,7 +269,7 @@ export function CreateUserModal({ open, onOpenChange }: CreateUserModalProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
+                      <SelectItem value="none">Nenhuma</SelectItem>
                       {units?.map((unit) => (
                         <SelectItem key={unit.id} value={unit.id}>
                           {unit.name}
