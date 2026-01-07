@@ -1,4 +1,4 @@
-import { Bell, HelpCircle, Settings, Search, LogOut, User } from "lucide-react";
+import { Bell, HelpCircle, Settings, Search, LogOut, User, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, roleLabels } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { useMyPendingApprovals } from "@/hooks/useDispatchWorkflow";
 
 interface HeaderProps {
   title: string;
@@ -33,6 +34,8 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { isAuthenticated, profile, signOut } = useAuth();
   const { primaryRole } = useUserRole();
   const { data: unreadCount = 0 } = useUnreadCount();
+  const { data: pendingApprovals = [] } = useMyPendingApprovals();
+  const pendingApprovalsCount = pendingApprovals.length;
 
   const handleLogout = async () => {
     await signOut();
@@ -73,6 +76,16 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" asChild>
+          <Link to="/pending-approvals">
+            <ClipboardCheck className="h-5 w-5" />
+            {pendingApprovalsCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-warning text-[10px] font-bold text-warning-foreground">
+                {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
+              </span>
+            )}
+          </Link>
+        </Button>
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
           <HelpCircle className="h-5 w-5" />
         </Button>
