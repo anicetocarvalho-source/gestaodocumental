@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "./Logo";
-import { useDemoAuth, roleLabels, DemoRole } from "@/contexts/DemoAuthContext";
-import { filterMenuItems, navigationPermissions } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole, AppRole, roleLabels } from "@/hooks/useUserRole";
 import {
   LayoutDashboard,
   FileText,
@@ -44,7 +44,7 @@ interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
-  roles: DemoRole[];
+  roles: AppRole[];
 }
 
 const navigation: NavItem[] = [
@@ -73,7 +73,7 @@ const management: NavItem[] = [
   { name: "Definições", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
 
-const roleBadgeColors: Record<Exclude<DemoRole, null>, string> = {
+const roleBadgeColors: Record<AppRole, string> = {
   admin: "bg-destructive/15 text-destructive border-destructive/30",
   gestor: "bg-primary/15 text-primary border-primary/30",
   tecnico: "bg-success/15 text-success border-success/30",
@@ -83,15 +83,22 @@ const roleBadgeColors: Record<Exclude<DemoRole, null>, string> = {
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { user, role, logout, isAuthenticated } = useDemoAuth();
+  const navigate = useNavigate();
+  const { profile, isAuthenticated, signOut } = useAuth();
+  const { primaryRole, hasAnyRole } = useUserRole();
 
-  // Filtra items de menu baseado no role do utilizador
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  // Filter menu items based on user role
   const filteredNavigation = navigation.filter(item => 
-    role && item.roles.includes(role)
+    primaryRole && item.roles.includes(primaryRole)
   );
   
   const filteredManagement = management.filter(item => 
-    role && item.roles.includes(role)
+    primaryRole && item.roles.includes(primaryRole)
   );
 
   const NavItemComponent = ({ item }: { item: NavItem }) => {
@@ -129,6 +136,9 @@ export function Sidebar() {
 
     return linkContent;
   };
+
+  const displayName = profile?.full_name || "Utilizador";
+  const displayRole = primaryRole || "consulta";
 
   return (
     <aside
@@ -205,24 +215,24 @@ export function Sidebar() {
 
       {/* Utilizador */}
       <div className="border-t border-sidebar-border p-3">
-        {isAuthenticated && user ? (
+        {isAuthenticated && profile ? (
           <div className={cn("space-y-2", collapsed && "flex flex-col items-center")}>
             <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-sidebar-foreground">
-                {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                {displayName.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
               {!collapsed && (
                 <div className="flex-1 truncate">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</p>
                   <div className="flex items-center gap-2">
                     <Badge 
                       variant="outline" 
                       className={cn(
                         "text-[10px] px-1.5 py-0",
-                        role && roleBadgeColors[role]
+                        roleBadgeColors[displayRole]
                       )}
                     >
-                      {role && roleLabels[role]}
+                      {roleLabels[displayRole]}
                     </Badge>
                   </div>
                 </div>
@@ -236,16 +246,16 @@ export function Sidebar() {
                   className="flex-1 h-8 text-xs text-sidebar-muted hover:text-sidebar-foreground"
                   asChild
                 >
-                  <NavLink to="/demo-login">
+                  <NavLink to="/settings">
                     <UserCircle className="h-3.5 w-3.5 mr-1.5" />
-                    Mudar Perfil
+                    Meu Perfil
                   </NavLink>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-sidebar-muted hover:text-destructive"
-                  onClick={logout}
+                  onClick={handleLogout}
                 >
                   <LogOut className="h-3.5 w-3.5" />
                 </Button>
@@ -258,7 +268,7 @@ export function Sidebar() {
                     variant="ghost"
                     size="icon-sm"
                     className="text-sidebar-muted hover:text-destructive"
-                    onClick={logout}
+                    onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4" />
                   </Button>
@@ -273,7 +283,7 @@ export function Sidebar() {
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon-sm" asChild>
-                    <NavLink to="/demo-login">
+                    <NavLink to="/auth">
                       <UserCircle className="h-5 w-5" />
                     </NavLink>
                   </Button>
@@ -282,9 +292,9 @@ export function Sidebar() {
               </Tooltip>
             ) : (
               <Button variant="outline" size="sm" className="w-full" asChild>
-                <NavLink to="/demo-login">
+                <NavLink to="/auth">
                   <UserCircle className="h-4 w-4 mr-2" />
-                  Iniciar Sessão Demo
+                  Iniciar Sessão
                 </NavLink>
               </Button>
             )}
