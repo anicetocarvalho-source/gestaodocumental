@@ -85,6 +85,228 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          dispatch_id: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          dispatch_id: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          dispatch_id?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_audit_log_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_documents: {
+        Row: {
+          created_at: string
+          dispatch_id: string
+          document_id: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          mime_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          dispatch_id: string
+          document_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          dispatch_id?: string
+          document_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_documents_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_recipients: {
+        Row: {
+          created_at: string
+          dispatch_id: string
+          id: string
+          is_read: boolean
+          profile_id: string | null
+          read_at: string | null
+          recipient_type: string
+          unit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dispatch_id: string
+          id?: string
+          is_read?: boolean
+          profile_id?: string | null
+          read_at?: string | null
+          recipient_type: string
+          unit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dispatch_id?: string
+          id?: string
+          is_read?: boolean
+          profile_id?: string | null
+          read_at?: string | null
+          recipient_type?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_recipients_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_recipients_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatches: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          dispatch_number: string
+          dispatch_type: Database["public"]["Enums"]["dispatch_type"]
+          emitted_at: string | null
+          id: string
+          origin_unit_id: string | null
+          priority: Database["public"]["Enums"]["dispatch_priority"]
+          requires_response: boolean
+          signer_id: string | null
+          status: Database["public"]["Enums"]["dispatch_status"]
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          dispatch_number: string
+          dispatch_type: Database["public"]["Enums"]["dispatch_type"]
+          emitted_at?: string | null
+          id?: string
+          origin_unit_id?: string | null
+          priority?: Database["public"]["Enums"]["dispatch_priority"]
+          requires_response?: boolean
+          signer_id?: string | null
+          status?: Database["public"]["Enums"]["dispatch_status"]
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          dispatch_number?: string
+          dispatch_type?: Database["public"]["Enums"]["dispatch_type"]
+          emitted_at?: string | null
+          id?: string
+          origin_unit_id?: string | null
+          priority?: Database["public"]["Enums"]["dispatch_priority"]
+          requires_response?: boolean
+          signer_id?: string | null
+          status?: Database["public"]["Enums"]["dispatch_status"]
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatches_origin_unit_id_fkey"
+            columns: ["origin_unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatches_signer_id_fkey"
+            columns: ["signer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_audit_log: {
         Row: {
           action: string
@@ -1264,6 +1486,19 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor" | "tecnico" | "consulta"
+      dispatch_priority: "baixa" | "normal" | "alta" | "urgente"
+      dispatch_status:
+        | "rascunho"
+        | "emitido"
+        | "em_tramite"
+        | "concluido"
+        | "cancelado"
+      dispatch_type:
+        | "informativo"
+        | "determinativo"
+        | "autorizativo"
+        | "homologativo"
+        | "decisorio"
       process_priority: "baixa" | "normal" | "alta" | "urgente"
       process_status:
         | "rascunho"
@@ -1402,6 +1637,21 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor", "tecnico", "consulta"],
+      dispatch_priority: ["baixa", "normal", "alta", "urgente"],
+      dispatch_status: [
+        "rascunho",
+        "emitido",
+        "em_tramite",
+        "concluido",
+        "cancelado",
+      ],
+      dispatch_type: [
+        "informativo",
+        "determinativo",
+        "autorizativo",
+        "homologativo",
+        "decisorio",
+      ],
       process_priority: ["baixa", "normal", "alta", "urgente"],
       process_status: [
         "rascunho",

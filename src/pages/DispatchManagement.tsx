@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
-import { AuditLogReference } from "@/components/common/AuditLogReference";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -25,19 +25,14 @@ import {
   CheckCircle, 
   Clock,
   Search,
-  Filter,
   Plus,
   CalendarIcon,
   MoreVertical,
   Eye,
   Edit,
-  Trash2,
   XCircle,
-  AlertCircle,
   Send,
-  ArrowRight,
   X,
-  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -50,89 +45,38 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  useDispatches,
+  useDispatchStats,
+  useEmitDispatch,
+  useCancelDispatch,
+  dispatchTypeLabels,
+  dispatchStatusLabels,
+  DispatchFilters,
+} from "@/hooks/useDispatches";
+import { useOrganizationalUnits } from "@/hooks/useReferenceData";
+import { Database } from "@/integrations/supabase/types";
 
-// Types
-interface Dispatch {
-  id: string;
-  numero: string;
-  tipo: "informativo" | "determinativo" | "autorizativo" | "homologativo" | "decisorio";
-  unidade: string;
-  data: string;
-  estado: "rascunho" | "emitido" | "em_tramite" | "concluido" | "cancelado";
-  prazo: string | null;
-  assinante: string;
-  autor: string;
-  assunto: string;
-}
+type DispatchType = Database["public"]["Enums"]["dispatch_type"];
+type DispatchStatus = Database["public"]["Enums"]["dispatch_status"];
 
-// Sample Data
-const dispatches: Dispatch[] = [
-  { id: "1", numero: "DESP-2024-0145", tipo: "autorizativo", unidade: "Gabinete do Director-Geral", data: "2024-01-15", estado: "emitido", prazo: "2024-01-22", assinante: "Dr. António Silva", autor: "Maria Santos", assunto: "Autorização de despesa - Equipamentos" },
-  { id: "2", numero: "DESP-2024-0144", tipo: "determinativo", unidade: "Direcção de Recursos Humanos", data: "2024-01-14", estado: "em_tramite", prazo: "2024-01-21", assinante: "Dra. Maria Santos", autor: "João Costa", assunto: "Determinação de férias colectivas" },
-  { id: "3", numero: "DESP-2024-0143", tipo: "informativo", unidade: "Direcção de Administração e Finanças", data: "2024-01-13", estado: "concluido", prazo: null, assinante: "Eng. João Costa", autor: "Ana Rodrigues", assunto: "Informação sobre orçamento Q1" },
-  { id: "4", numero: "DESP-2024-0142", tipo: "homologativo", unidade: "Direcção Jurídica", data: "2024-01-12", estado: "emitido", prazo: "2024-01-19", assinante: "Dr. Carlos Ferreira", autor: "Pedro Almeida", assunto: "Homologação de contrato" },
-  { id: "5", numero: "DESP-2024-0141", tipo: "decisorio", unidade: "Gabinete de Planeamento", data: "2024-01-11", estado: "cancelado", prazo: null, assinante: "Dra. Ana Rodrigues", autor: "Teresa Gomes", assunto: "Decisão sobre projecto X" },
-  { id: "6", numero: "DESP-2024-0140", tipo: "autorizativo", unidade: "Direcção de Operações", data: "2024-01-10", estado: "rascunho", prazo: "2024-01-17", assinante: "Dr. Pedro Almeida", autor: "Carlos Ferreira", assunto: "Autorização de viagem" },
-  { id: "7", numero: "DESP-2024-0139", tipo: "informativo", unidade: "Secretaria-Geral", data: "2024-01-09", estado: "emitido", prazo: null, assinante: "Dra. Teresa Gomes", autor: "António Silva", assunto: "Comunicação de alterações" },
-  { id: "8", numero: "DESP-2024-0138", tipo: "determinativo", unidade: "Direcção de Tecnologias de Informação", data: "2024-01-08", estado: "em_tramite", prazo: "2024-01-15", assinante: "Eng. António Ribeiro", autor: "Maria Santos", assunto: "Determinação de actualização de sistemas" },
-];
-
-const tipoOptions = [
-  { value: "informativo", label: "Informativo" },
-  { value: "determinativo", label: "Determinativo" },
-  { value: "autorizativo", label: "Autorizativo" },
-  { value: "homologativo", label: "Homologatório" },
-  { value: "decisorio", label: "Decisório" },
-];
-
-const unidadeOptions = [
-  "Gabinete do Director-Geral",
-  "Direcção de Administração e Finanças",
-  "Direcção de Recursos Humanos",
-  "Direcção de Tecnologias de Informação",
-  "Direcção Jurídica",
-  "Direcção de Operações",
-  "Gabinete de Planeamento",
-  "Secretaria-Geral",
-];
-
-const estadoOptions = [
-  { value: "rascunho", label: "Rascunho" },
-  { value: "emitido", label: "Emitido" },
-  { value: "em_tramite", label: "Em Trâmite" },
-  { value: "concluido", label: "Concluído" },
-  { value: "cancelado", label: "Cancelado" },
-];
-
-const autorOptions = [
-  "Maria Santos",
-  "João Costa",
-  "Ana Rodrigues",
-  "Pedro Almeida",
-  "Teresa Gomes",
-  "Carlos Ferreira",
-  "António Silva",
-];
-
-const stats = [
-  { icon: FileText, label: "Total", value: 156, color: "text-primary" },
-  { icon: Send, label: "Emitidos", value: 89, color: "text-success" },
-  { icon: Clock, label: "Em Trâmite", value: 34, color: "text-warning" },
-  { icon: CheckCircle, label: "Concluídos", value: 28, color: "text-info" },
-  { icon: XCircle, label: "Cancelados", value: 5, color: "text-destructive" },
-];
+const dispatchTypes: DispatchType[] = ["informativo", "determinativo", "autorizativo", "homologativo", "decisorio"];
+const dispatchStatuses: DispatchStatus[] = ["rascunho", "emitido", "em_tramite", "concluido", "cancelado"];
 
 const DispatchManagement = () => {
   const navigate = useNavigate();
   const [selectedDispatches, setSelectedDispatches] = useState<Set<string>>(new Set());
   
   // Filters
-  const [filterTipo, setFilterTipo] = useState<string>("");
-  const [filterUnidade, setFilterUnidade] = useState<string>("");
-  const [filterEstado, setFilterEstado] = useState<string>("");
-  const [filterAutor, setFilterAutor] = useState<string>("");
+  const [filters, setFilters] = useState<DispatchFilters>({});
   const [filterDate, setFilterDate] = useState<Date | undefined>();
-  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: dispatches, isLoading, error } = useDispatches(filters);
+  const { data: stats } = useDispatchStats();
+  const { data: units } = useOrganizationalUnits();
+  const emitDispatch = useEmitDispatch();
+  const cancelDispatch = useCancelDispatch();
 
   const toggleDispatchSelection = (id: string) => {
     const newSelected = new Set(selectedDispatches);
@@ -145,56 +89,62 @@ const DispatchManagement = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedDispatches.size === dispatches.length) {
+    if (dispatches && selectedDispatches.size === dispatches.length) {
       setSelectedDispatches(new Set());
-    } else {
+    } else if (dispatches) {
       setSelectedDispatches(new Set(dispatches.map(d => d.id)));
     }
   };
 
   const clearFilters = () => {
-    setFilterTipo("");
-    setFilterUnidade("");
-    setFilterEstado("");
-    setFilterAutor("");
+    setFilters({});
     setFilterDate(undefined);
-    setSearchQuery("");
   };
 
-  const hasActiveFilters = filterTipo || filterUnidade || filterEstado || filterAutor || filterDate || searchQuery;
+  const handleDateChange = (date: Date | undefined) => {
+    setFilterDate(date);
+    if (date) {
+      setFilters(prev => ({ ...prev, date: format(date, "yyyy-MM-dd") }));
+    } else {
+      setFilters(prev => {
+        const { date, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
 
-  // Filter dispatches
-  const filteredDispatches = dispatches.filter(d => {
-    const matchesTipo = !filterTipo || filterTipo === "all" || d.tipo === filterTipo;
-    const matchesUnidade = !filterUnidade || filterUnidade === "all" || d.unidade === filterUnidade;
-    const matchesEstado = !filterEstado || filterEstado === "all" || d.estado === filterEstado;
-    const matchesAutor = !filterAutor || filterAutor === "all" || d.autor === filterAutor;
-    const matchesDate = !filterDate || d.data === format(filterDate, "yyyy-MM-dd");
-    const matchesSearch = !searchQuery || 
-      d.numero.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.assunto.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTipo && matchesUnidade && matchesEstado && matchesAutor && matchesDate && matchesSearch;
-  });
+  const hasActiveFilters = filters.search || filters.dispatch_type || filters.status || filters.origin_unit_id || filterDate;
 
-  const getTipoBadge = (tipo: Dispatch["tipo"]) => {
-    const colors: Record<Dispatch["tipo"], string> = {
+  const handleEmit = async (id: string) => {
+    try {
+      await emitDispatch.mutateAsync(id);
+      toast.success("Despacho emitido com sucesso!");
+    } catch (err) {
+      toast.error("Erro ao emitir despacho");
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    try {
+      await cancelDispatch.mutateAsync({ id });
+      toast.success("Despacho cancelado");
+    } catch (err) {
+      toast.error("Erro ao cancelar despacho");
+    }
+  };
+
+  const getTipoBadge = (tipo: DispatchType) => {
+    const colors: Record<DispatchType, string> = {
       informativo: "bg-info/10 text-info border-info/20",
       determinativo: "bg-warning/10 text-warning border-warning/20",
       autorizativo: "bg-success/10 text-success border-success/20",
       homologativo: "bg-primary/10 text-primary border-primary/20",
       decisorio: "bg-destructive/10 text-destructive border-destructive/20",
     };
-    const labels: Record<Dispatch["tipo"], string> = {
-      informativo: "Informativo",
-      determinativo: "Determinativo",
-      autorizativo: "Autorizativo",
-      homologativo: "Homologatório",
-      decisorio: "Decisório",
-    };
-    return <Badge variant="outline" className={cn("border", colors[tipo])}>{labels[tipo]}</Badge>;
+    return <Badge variant="outline" className={cn("border", colors[tipo])}>{dispatchTypeLabels[tipo]}</Badge>;
   };
 
-  const getEstadoBadge = (estado: Dispatch["estado"]) => {
+  const getEstadoBadge = (estado: DispatchStatus) => {
     switch (estado) {
       case "rascunho":
         return <Badge variant="secondary"><Edit className="h-3 w-3 mr-1" />Rascunho</Badge>;
@@ -214,6 +164,14 @@ const DispatchManagement = () => {
     return new Date(prazo) < new Date();
   };
 
+  const statsData = [
+    { icon: FileText, label: "Total", value: stats?.total || 0, color: "text-primary" },
+    { icon: Send, label: "Emitidos", value: stats?.emitido || 0, color: "text-success" },
+    { icon: Clock, label: "Em Trâmite", value: stats?.em_tramite || 0, color: "text-warning" },
+    { icon: CheckCircle, label: "Concluídos", value: stats?.concluido || 0, color: "text-info" },
+    { icon: XCircle, label: "Cancelados", value: stats?.cancelado || 0, color: "text-destructive" },
+  ];
+
   return (
     <DashboardLayout 
       title="Gestão de Despachos" 
@@ -224,7 +182,7 @@ const DispatchManagement = () => {
       <div className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {stats.map((stat, i) => (
+          {statsData.map((stat, i) => (
             <Card key={i} variant="stat">
               <div className="flex items-center gap-3">
                 <div className={cn("h-10 w-10 rounded-lg bg-muted flex items-center justify-center", stat.color)}>
@@ -250,59 +208,55 @@ const DispatchManagement = () => {
                     <Input 
                       placeholder="Pesquisar por nº ou assunto..." 
                       className="pl-10 w-64"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={filters.search || ""}
+                      onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                     />
                   </div>
                   
                   {/* Tipo Filter */}
-                  <Select value={filterTipo || "all"} onValueChange={(v) => setFilterTipo(v === "all" ? "" : v)}>
+                  <Select 
+                    value={filters.dispatch_type || "all"} 
+                    onValueChange={(v) => setFilters(prev => ({ ...prev, dispatch_type: v === "all" ? undefined : v as DispatchType }))}
+                  >
                     <SelectTrigger className="w-36">
                       <SelectValue placeholder="Tipo" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Tipos</SelectItem>
-                      {tipoOptions.map(t => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      {dispatchTypes.map(t => (
+                        <SelectItem key={t} value={t}>{dispatchTypeLabels[t]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
 
                   {/* Unidade Filter */}
-                  <Select value={filterUnidade || "all"} onValueChange={(v) => setFilterUnidade(v === "all" ? "" : v)}>
+                  <Select 
+                    value={filters.origin_unit_id || "all"} 
+                    onValueChange={(v) => setFilters(prev => ({ ...prev, origin_unit_id: v === "all" ? undefined : v }))}
+                  >
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Unidade" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas as Unidades</SelectItem>
-                      {unidadeOptions.map(u => (
-                        <SelectItem key={u} value={u}>{u}</SelectItem>
+                      {units?.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
 
                   {/* Estado Filter */}
-                  <Select value={filterEstado || "all"} onValueChange={(v) => setFilterEstado(v === "all" ? "" : v)}>
+                  <Select 
+                    value={filters.status || "all"} 
+                    onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === "all" ? undefined : v as DispatchStatus }))}
+                  >
                     <SelectTrigger className="w-36">
                       <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Estados</SelectItem>
-                      {estadoOptions.map(e => (
-                        <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Autor Filter */}
-                  <Select value={filterAutor || "all"} onValueChange={(v) => setFilterAutor(v === "all" ? "" : v)}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Autor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Autores</SelectItem>
-                      {autorOptions.map(a => (
-                        <SelectItem key={a} value={a}>{a}</SelectItem>
+                      {dispatchStatuses.map(s => (
+                        <SelectItem key={s} value={s}>{dispatchStatusLabels[s]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -319,7 +273,7 @@ const DispatchManagement = () => {
                       <Calendar
                         mode="single"
                         selected={filterDate}
-                        onSelect={setFilterDate}
+                        onSelect={handleDateChange}
                         initialFocus
                       />
                     </PopoverContent>
@@ -334,10 +288,6 @@ const DispatchManagement = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Exportar
-                  </Button>
                   <Button onClick={() => navigate("/dispatches/new")}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Despacho
@@ -349,15 +299,17 @@ const DispatchManagement = () => {
               {selectedDispatches.size > 0 && (
                 <div className="flex items-center gap-3 pt-3 border-t border-border">
                   <span className="text-sm text-muted-foreground">{selectedDispatches.size} seleccionados</span>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    selectedDispatches.forEach(id => handleEmit(id));
+                    setSelectedDispatches(new Set());
+                  }}>
                     <Send className="h-4 w-4 mr-2" />
                     Emitir
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    Converter em Processo
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive">
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => {
+                    selectedDispatches.forEach(id => handleCancel(id));
+                    setSelectedDispatches(new Set());
+                  }}>
                     <XCircle className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
@@ -370,149 +322,155 @@ const DispatchManagement = () => {
         {/* Dispatches Table */}
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full" role="grid">
-                <thead>
-                  <tr className="bg-muted border-b border-border">
-                    <th className="px-4 py-3 text-left w-10">
-                      <Checkbox
-                        checked={selectedDispatches.size === dispatches.length && dispatches.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        aria-label="Seleccionar todos"
-                      />
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Unidade</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prazo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assinante</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acções</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDispatches.map((dispatch) => (
-                    <tr
-                      key={dispatch.id}
-                      className={cn(
-                        "border-b border-border hover:bg-muted/50 transition-colors",
-                        selectedDispatches.has(dispatch.id) && "bg-primary/5",
-                        dispatch.estado === "cancelado" && "opacity-60"
-                      )}
-                    >
-                      <td className="px-4 py-3">
+            {isLoading ? (
+              <div className="p-6 space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-5 w-5" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-4 w-48 flex-1" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="p-6 text-center text-destructive">
+                Erro ao carregar despachos
+              </div>
+            ) : !dispatches || dispatches.length === 0 ? (
+              <div className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhum despacho encontrado</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {hasActiveFilters ? "Tente ajustar os filtros de pesquisa" : "Comece por criar um novo despacho"}
+                </p>
+                {!hasActiveFilters && (
+                  <Button onClick={() => navigate("/dispatches/new")}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Despacho
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full" role="grid">
+                  <thead>
+                    <tr className="bg-muted border-b border-border">
+                      <th className="px-4 py-3 text-left w-10">
                         <Checkbox
-                          checked={selectedDispatches.has(dispatch.id)}
-                          onCheckedChange={() => toggleDispatchSelection(dispatch.id)}
-                          aria-label={`Seleccionar ${dispatch.numero}`}
+                          checked={selectedDispatches.size === dispatches.length && dispatches.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Seleccionar todos"
                         />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="text-sm font-mono font-medium text-foreground">{dispatch.numero}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{dispatch.assunto}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {getTipoBadge(dispatch.tipo)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-foreground truncate max-w-[180px]">{dispatch.unidade}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(dispatch.data), "dd/MM/yyyy")}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {getEstadoBadge(dispatch.estado)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {dispatch.prazo ? (
-                          <div className={cn(
-                            "flex items-center gap-1 text-sm",
-                            isPrazoVencido(dispatch.prazo) && dispatch.estado !== "concluido" && dispatch.estado !== "cancelado"
-                              ? "text-destructive"
-                              : "text-muted-foreground"
-                          )}>
-                            {isPrazoVencido(dispatch.prazo) && dispatch.estado !== "concluido" && dispatch.estado !== "cancelado" && (
-                              <AlertCircle className="h-3 w-3" />
-                            )}
-                            {format(new Date(dispatch.prazo), "dd/MM/yyyy")}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-foreground">{dispatch.assinante}</p>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" aria-label={`Acções para ${dispatch.numero}`}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-popover">
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" /> Abrir
-                            </DropdownMenuItem>
-                            <DropdownMenuItem disabled={dispatch.estado === "concluido" || dispatch.estado === "cancelado"}>
-                              <Edit className="mr-2 h-4 w-4" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <ArrowRight className="mr-2 h-4 w-4" /> Converter em Processo
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive"
-                              disabled={dispatch.estado === "concluido" || dispatch.estado === "cancelado"}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" /> Cancelar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assunto</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Unidade</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prazo</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acções</th>
                     </tr>
-                  ))}
-                  {filteredDispatches.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center">
-                        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                        <p className="text-sm text-muted-foreground">Nenhum despacho encontrado</p>
-                        {hasActiveFilters && (
-                          <Button variant="link" size="sm" onClick={clearFilters} className="mt-2">
-                            Limpar filtros
-                          </Button>
+                  </thead>
+                  <tbody>
+                    {dispatches.map((dispatch) => (
+                      <tr
+                        key={dispatch.id}
+                        className={cn(
+                          "border-b border-border hover:bg-muted/50 transition-colors",
+                          selectedDispatches.has(dispatch.id) && "bg-primary/5",
+                          dispatch.status === "cancelado" && "opacity-60"
                         )}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      >
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedDispatches.has(dispatch.id)}
+                            onCheckedChange={() => toggleDispatchSelection(dispatch.id)}
+                            disabled={dispatch.status === "cancelado" || dispatch.status === "concluido"}
+                            aria-label={`Seleccionar despacho ${dispatch.dispatch_number}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-sm font-medium text-primary">
+                            {dispatch.dispatch_number}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {getTipoBadge(dispatch.dispatch_type)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-foreground line-clamp-1 max-w-xs">
+                            {dispatch.subject}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {dispatch.origin_unit?.name || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {format(new Date(dispatch.created_at), "dd/MM/yyyy", { locale: pt })}
+                        </td>
+                        <td className="px-4 py-3">
+                          {getEstadoBadge(dispatch.status)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {dispatch.deadline ? (
+                            <span className={cn(
+                              "text-sm",
+                              isPrazoVencido(dispatch.deadline) && dispatch.status !== "concluido" && dispatch.status !== "cancelado"
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            )}>
+                              {format(new Date(dispatch.deadline), "dd/MM/yyyy", { locale: pt })}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon-sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => navigate(`/dispatches/${dispatch.id}`)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
+                              {dispatch.status === "rascunho" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => navigate(`/dispatches/${dispatch.id}/edit`)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleEmit(dispatch.id)}>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Emitir
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleCancel(dispatch.id)}
+                                    className="text-destructive"
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancelar
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            A mostrar {filteredDispatches.length} de {dispatches.length} despachos
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>Anterior</Button>
-            <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">1</Button>
-            <Button variant="outline" size="sm">2</Button>
-            <Button variant="outline" size="sm">3</Button>
-            <Button variant="outline" size="sm">Seguinte</Button>
-          </div>
-        </div>
-
-        {/* Audit Log Reference */}
-        <AuditLogReference context="Ver histórico de actividade de despachos" />
       </div>
     </DashboardLayout>
   );
