@@ -1,14 +1,14 @@
-import { DemoRole } from "@/contexts/DemoAuthContext";
+import { AppRole } from "@/hooks/useUserRole";
 
 export interface MenuItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles: DemoRole[]; // Roles que têm acesso a este item
+  roles: AppRole[]; // Roles que têm acesso a este item
 }
 
 // Define quais roles podem aceder a cada funcionalidade
-export const navigationPermissions: Record<string, DemoRole[]> = {
+export const navigationPermissions: Record<string, AppRole[]> = {
   // Principal - Acesso geral
   "/": ["admin", "gestor", "tecnico", "consulta"],
   "/documents": ["admin", "gestor", "tecnico", "consulta"],
@@ -45,57 +45,57 @@ export const navigationPermissions: Record<string, DemoRole[]> = {
 // Permissões de acção dentro das páginas
 export const actionPermissions = {
   documents: {
-    view: ["admin", "gestor", "tecnico", "consulta"] as DemoRole[],
-    create: ["admin", "gestor", "tecnico"] as DemoRole[],
-    edit: ["admin", "gestor", "tecnico"] as DemoRole[],
-    delete: ["admin", "gestor"] as DemoRole[],
-    archive: ["admin", "gestor"] as DemoRole[],
-    download: ["admin", "gestor", "tecnico", "consulta"] as DemoRole[],
-    classify: ["admin", "gestor", "tecnico"] as DemoRole[],
+    view: ["admin", "gestor", "tecnico", "consulta"] as AppRole[],
+    create: ["admin", "gestor", "tecnico"] as AppRole[],
+    edit: ["admin", "gestor", "tecnico"] as AppRole[],
+    delete: ["admin", "gestor"] as AppRole[],
+    archive: ["admin", "gestor"] as AppRole[],
+    download: ["admin", "gestor", "tecnico", "consulta"] as AppRole[],
+    classify: ["admin", "gestor", "tecnico"] as AppRole[],
     // Ações de workflow de documentos
-    validate: ["admin", "gestor"] as DemoRole[],
-    reject: ["admin", "gestor"] as DemoRole[],
-    dispatch: ["admin", "gestor", "tecnico"] as DemoRole[],
-    requestCorrection: ["admin", "gestor", "tecnico"] as DemoRole[],
-    attachToProcess: ["admin", "gestor", "tecnico"] as DemoRole[],
-    returnToOrigin: ["admin", "gestor"] as DemoRole[],
-    sign: ["admin", "gestor", "tecnico"] as DemoRole[],
-    createProcess: ["admin", "gestor", "tecnico"] as DemoRole[],
-    addAttachment: ["admin", "gestor", "tecnico"] as DemoRole[],
-    addComment: ["admin", "gestor", "tecnico"] as DemoRole[],
+    validate: ["admin", "gestor"] as AppRole[],
+    reject: ["admin", "gestor"] as AppRole[],
+    dispatch: ["admin", "gestor", "tecnico"] as AppRole[],
+    requestCorrection: ["admin", "gestor", "tecnico"] as AppRole[],
+    attachToProcess: ["admin", "gestor", "tecnico"] as AppRole[],
+    returnToOrigin: ["admin", "gestor"] as AppRole[],
+    sign: ["admin", "gestor", "tecnico"] as AppRole[],
+    createProcess: ["admin", "gestor", "tecnico"] as AppRole[],
+    addAttachment: ["admin", "gestor", "tecnico"] as AppRole[],
+    addComment: ["admin", "gestor", "tecnico"] as AppRole[],
   },
   processes: {
-    view: ["admin", "gestor", "tecnico", "consulta"] as DemoRole[],
-    create: ["admin", "gestor", "tecnico"] as DemoRole[],
-    edit: ["admin", "gestor", "tecnico"] as DemoRole[],
-    delete: ["admin", "gestor"] as DemoRole[],
-    approve: ["admin", "gestor"] as DemoRole[],
-    reject: ["admin", "gestor"] as DemoRole[],
-    dispatch: ["admin", "gestor", "tecnico"] as DemoRole[],
-    forward: ["admin", "gestor", "tecnico"] as DemoRole[],
-    requestInfo: ["admin", "gestor", "tecnico"] as DemoRole[],
-    assign: ["admin", "gestor"] as DemoRole[],
-    close: ["admin", "gestor"] as DemoRole[],
-    addDocument: ["admin", "gestor", "tecnico"] as DemoRole[],
-    addParecer: ["admin", "gestor", "tecnico"] as DemoRole[],
-    addComment: ["admin", "gestor", "tecnico"] as DemoRole[],
+    view: ["admin", "gestor", "tecnico", "consulta"] as AppRole[],
+    create: ["admin", "gestor", "tecnico"] as AppRole[],
+    edit: ["admin", "gestor", "tecnico"] as AppRole[],
+    delete: ["admin", "gestor"] as AppRole[],
+    approve: ["admin", "gestor"] as AppRole[],
+    reject: ["admin", "gestor"] as AppRole[],
+    dispatch: ["admin", "gestor", "tecnico"] as AppRole[],
+    forward: ["admin", "gestor", "tecnico"] as AppRole[],
+    requestInfo: ["admin", "gestor", "tecnico"] as AppRole[],
+    assign: ["admin", "gestor"] as AppRole[],
+    close: ["admin", "gestor"] as AppRole[],
+    addDocument: ["admin", "gestor", "tecnico"] as AppRole[],
+    addParecer: ["admin", "gestor", "tecnico"] as AppRole[],
+    addComment: ["admin", "gestor", "tecnico"] as AppRole[],
   },
   users: {
-    view: ["admin"] as DemoRole[],
-    create: ["admin"] as DemoRole[],
-    edit: ["admin"] as DemoRole[],
-    delete: ["admin"] as DemoRole[],
+    view: ["admin"] as AppRole[],
+    create: ["admin"] as AppRole[],
+    edit: ["admin"] as AppRole[],
+    delete: ["admin"] as AppRole[],
   },
   settings: {
-    view: ["admin"] as DemoRole[],
-    edit: ["admin"] as DemoRole[],
+    view: ["admin"] as AppRole[],
+    edit: ["admin"] as AppRole[],
   },
 };
 
 /**
  * Verifica se um role tem acesso a uma rota específica
  */
-export function canAccessRoute(role: DemoRole, path: string): boolean {
+export function canAccessRoute(role: AppRole | null, path: string): boolean {
   if (!role) return false;
   
   // Verifica correspondência exacta
@@ -121,7 +121,7 @@ export function canAccessRoute(role: DemoRole, path: string): boolean {
  * Verifica se um role pode executar uma acção específica
  */
 export function canPerformAction(
-  role: DemoRole, 
+  role: AppRole | null, 
   module: keyof typeof actionPermissions, 
   action: string
 ): boolean {
@@ -141,7 +141,7 @@ export function canPerformAction(
  */
 export function filterMenuItems<T extends { href: string }>(
   items: T[], 
-  role: DemoRole
+  role: AppRole | null
 ): T[] {
   if (!role) return [];
   return items.filter(item => canAccessRoute(role, item.href));
