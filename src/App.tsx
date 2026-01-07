@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { DemoAuthProvider } from "@/contexts/DemoAuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Documents from "./pages/Documents";
 import DocumentDetail from "./pages/DocumentDetail";
@@ -40,7 +40,6 @@ import ProcedureGuide from "./pages/ProcedureGuide";
 import InstitutionalAssistant from "./pages/InstitutionalAssistant";
 import MovementHistory from "./pages/MovementHistory";
 import Auth from "./pages/Auth";
-import DemoLogin from "./pages/DemoLogin";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -49,14 +48,13 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <DemoAuthProvider>
+    <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
             {/* Rotas públicas */}
-            <Route path="/demo-login" element={<DemoLogin />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/access-denied" element={<AccessDenied />} />
             
@@ -100,7 +98,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </DemoAuthProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
