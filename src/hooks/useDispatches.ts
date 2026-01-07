@@ -26,6 +26,9 @@ export interface Dispatch {
   completed_at: string | null;
   cancelled_at: string | null;
   cancellation_reason: string | null;
+  requires_approval: boolean;
+  workflow_status: string | null;
+  current_approval_step: number | null;
   origin_unit?: { id: string; name: string } | null;
   signer?: { id: string; full_name: string } | null;
   recipients?: DispatchRecipient[];
