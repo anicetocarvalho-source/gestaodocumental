@@ -240,23 +240,23 @@ const UserManagement = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select value={filterRole} onValueChange={setFilterRole}>
+          <Select value={filterRole || "all"} onValueChange={(v) => setFilterRole(v === "all" ? "" : v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Todos os roles" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os roles</SelectItem>
+              <SelectItem value="all">Todos os roles</SelectItem>
               {allRoles.map((role) => (
                 <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <Select value={filterStatus || "all"} onValueChange={(v) => setFilterStatus(v === "all" ? "" : v)}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="active">Activos</SelectItem>
               <SelectItem value="inactive">Inactivos</SelectItem>
             </SelectContent>
