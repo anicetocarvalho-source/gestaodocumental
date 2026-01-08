@@ -67,7 +67,7 @@ export function ConversationList({
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="p-2 space-y-1 overflow-hidden">
           {conversations.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">
               Nenhuma conversa guardada
@@ -91,8 +91,8 @@ export function ConversationList({
                       onClick={() => onSelect(conv)}
                     >
                       <MessageSquare className="h-4 w-4 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{conv.title}</p>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-sm font-medium truncate max-w-full">{conv.title}</p>
                         <p className="text-[10px] text-muted-foreground">
                           {formatDistanceToNow(new Date(conv.updated_at), {
                             addSuffix: true,
