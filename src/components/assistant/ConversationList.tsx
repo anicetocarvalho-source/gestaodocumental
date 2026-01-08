@@ -1,7 +1,9 @@
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Search, X } from "lucide-react";
 import { Conversation } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -21,13 +23,46 @@ export function ConversationList({
   onNew,
   onDelete,
 }: Props) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    
+    const query = searchQuery.toLowerCase().trim();
+    return conversations.filter((conv) =>
+      conv.title.toLowerCase().includes(query)
+    );
+  }, [conversations, searchQuery]);
+
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border">
+      <div className="p-3 space-y-2 border-b border-border">
         <Button onClick={onNew} className="w-full" size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Nova Conversa
         </Button>
+        
+        {conversations.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar conversas..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 pl-8 pr-8 text-xs"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       
       <ScrollArea className="flex-1">
@@ -36,8 +71,12 @@ export function ConversationList({
             <p className="text-xs text-muted-foreground text-center py-4">
               Nenhuma conversa guardada
             </p>
+          ) : filteredConversations.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Nenhum resultado para "{searchQuery}"
+            </p>
           ) : (
-            conversations.map((conv) => (
+            filteredConversations.map((conv) => (
               <div
                 key={conv.id}
                 className={cn(
