@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.minagrif-assistant]
 verify_jwt = false
+
+[functions.ocr-document]
+verify_jwt = false

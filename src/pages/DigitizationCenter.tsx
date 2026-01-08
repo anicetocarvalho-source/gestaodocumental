@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,7 +84,10 @@ import {
   useDownloadScannedDocument,
   useDeleteScannedDocumentWithFile,
   getScannedDocumentUrl,
+  useProcessOcr,
+  useProcessMultipleOcr,
 } from "@/hooks/useScannedDocumentUpload";
+
 // Status mapping
 const statusMap = {
   pending: "pendente",
@@ -146,6 +150,8 @@ const DigitizationCenter = () => {
   const uploadDocuments = useUploadMultipleDocuments();
   const downloadDocument = useDownloadScannedDocument();
   const deleteDocument = useDeleteScannedDocumentWithFile();
+  const processOcr = useProcessOcr();
+  const processMultipleOcr = useProcessMultipleOcr();
 
   // Get operators from profiles
   const operators = profiles;
@@ -203,6 +209,25 @@ const DigitizationCenter = () => {
         fileName: doc.title || doc.document_number,
       });
     }
+  };
+
+  const handleProcessOcr = (doc: ScannedDocument) => {
+    if (!doc.file_path) {
+      toast.error('Documento não tem ficheiro associado');
+      return;
+    }
+    processOcr.mutate({ documentId: doc.id, filePath: doc.file_path });
+  };
+
+  const handleProcessSelectedOcr = () => {
+    const docsToProcess = scannedDocuments
+      .filter(doc => selectedDocuments.has(doc.id))
+      .map(doc => ({ id: doc.id, filePath: doc.file_path }));
+    
+    if (docsToProcess.length === 0) return;
+    
+    processMultipleOcr.mutate(docsToProcess);
+    setSelectedDocuments(new Set());
   };
 
   const toggleDocumentSelection = (id: string) => {
@@ -451,9 +476,18 @@ const DigitizationCenter = () => {
                       <User className="h-4 w-4 mr-2" />
                       Atribuir Operador
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Play className="h-4 w-4 mr-2" />
-                      Processar
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleProcessSelectedOcr}
+                      disabled={processMultipleOcr.isPending}
+                    >
+                      {processMultipleOcr.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4 mr-2" />
+                      )}
+                      Processar OCR
                     </Button>
                     <Button variant="outline" size="sm">
                       <Tags className="h-4 w-4 mr-2" />
@@ -594,9 +628,12 @@ const DigitizationCenter = () => {
                                   <Eye className="h-4 w-4 mr-2" />
                                   Rever Qualidade
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  {doc.status === "error" ? "Reprocessar" : "Processar"}
+                                <DropdownMenuItem 
+                                  onClick={() => handleProcessOcr(doc)}
+                                  disabled={!doc.file_path || processOcr.isPending || doc.status === 'ocr_processing'}
+                                >
+                                  <Zap className="h-4 w-4 mr-2" />
+                                  {doc.status === "error" || doc.status === "ocr_processing" ? "Reprocessar OCR" : "Processar OCR"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
                                   <Tags className="h-4 w-4 mr-2" />
