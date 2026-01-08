@@ -85,6 +85,78 @@ export type Database = {
         }
         Relationships: []
       }
+      digitization_batches: {
+        Row: {
+          batch_number: string
+          classification_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_pages: number
+          id: string
+          name: string
+          notes: string | null
+          operator_id: string | null
+          priority: string
+          processed_pages: number
+          started_at: string | null
+          status: string
+          total_pages: number
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          classification_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_pages?: number
+          id?: string
+          name: string
+          notes?: string | null
+          operator_id?: string | null
+          priority?: string
+          processed_pages?: number
+          started_at?: string | null
+          status?: string
+          total_pages?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          classification_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_pages?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          operator_id?: string | null
+          priority?: string
+          processed_pages?: number
+          started_at?: string | null
+          status?: string
+          total_pages?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digitization_batches_classification_id_fkey"
+            columns: ["classification_id"]
+            isOneToOne: false
+            referencedRelation: "classification_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "digitization_batches_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_approvals: {
         Row: {
           approval_order: number
@@ -1549,6 +1621,103 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scanned_documents: {
+        Row: {
+          batch_id: string
+          created_at: string
+          detected_language: string | null
+          document_number: string
+          file_path: string | null
+          file_size: number | null
+          id: string
+          metadata: Json | null
+          mime_type: string | null
+          ocr_confidence: number | null
+          ocr_text: string | null
+          operator_id: string | null
+          page_count: number
+          priority: string
+          quality_flags: Json | null
+          quality_score: number | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          detected_language?: string | null
+          document_number: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          ocr_confidence?: number | null
+          ocr_text?: string | null
+          operator_id?: string | null
+          page_count?: number
+          priority?: string
+          quality_flags?: Json | null
+          quality_score?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          detected_language?: string | null
+          document_number?: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          ocr_confidence?: number | null
+          ocr_text?: string | null
+          operator_id?: string | null
+          page_count?: number
+          priority?: string
+          quality_flags?: Json | null
+          quality_score?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scanned_documents_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "digitization_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scanned_documents_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scanned_documents_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
