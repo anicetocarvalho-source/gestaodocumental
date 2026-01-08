@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Send, Bot, User, Loader2, Sparkles, FileText, FolderOpen, HelpCircle } from "lucide-react";
 import { Message } from "@/hooks/useConversations";
@@ -66,19 +67,27 @@ export function ChatArea({
               Sou o seu assistente de conhecimento interno. Posso ajudá-lo a encontrar documentos, 
               processos, explicar procedimentos e muito mais.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-              {suggestedQuestions.map((q, i) => (
-                <Button
-                  key={i}
-                  variant="outline"
-                  className="justify-start text-left h-auto py-3 px-4 overflow-hidden"
-                  onClick={() => onSend(q.text)}
-                >
-                  <q.icon className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
-                  <span className="text-sm truncate">{q.text}</span>
-                </Button>
-              ))}
-            </div>
+            <TooltipProvider>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
+                {suggestedQuestions.map((q, i) => (
+                  <Tooltip key={i}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="justify-start text-left h-auto py-3 px-4 overflow-hidden"
+                        onClick={() => onSend(q.text)}
+                      >
+                        <q.icon className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
+                        <span className="text-sm truncate">{q.text}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="text-sm">{q.text}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </TooltipProvider>
           </div>
         ) : (
           <div className="space-y-4">
