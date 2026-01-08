@@ -15,6 +15,11 @@ interface UploadMultipleDocumentsInput {
   priority?: 'low' | 'normal' | 'high' | 'urgent';
 }
 
+interface OcrProcessInput {
+  documentId: string;
+  filePath: string;
+}
+
 // Generate document number
 const generateDocumentNumber = () => {
   const date = new Date();
@@ -286,6 +291,115 @@ export function useDeleteScannedDocumentWithFile() {
       toast.success('Documento removido');
     },
     onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// Process OCR for a scanned document
+export function useProcessOcr() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ documentId, filePath }: OcrProcessInput) => {
+      // Update status to processing
+      await supabase
+        .from('scanned_documents')
+        .update({ status: 'ocr_processing' })
+        .eq('id', documentId);
+
+      const { data, error } = await supabase.functions.invoke('ocr-document', {
+        body: { documentId, filePath },
+      });
+
+      if (error) {
+        // Reset status on error
+        await supabase
+          .from('scanned_documents')
+          .update({ status: 'error' })
+          .eq('id', documentId);
+        throw new Error(error.message || 'Erro no processamento OCR');
+      }
+
+      if (data?.error) {
+        await supabase
+          .from('scanned_documents')
+          .update({ status: 'error' })
+          .eq('id', documentId);
+        throw new Error(data.error);
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['digitization-stats'] });
+      toast.success('Processamento OCR concluído');
+    },
+    onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
+      toast.error('Erro no OCR: ' + error.message);
+    },
+  });
+}
+
+// Process OCR for multiple documents
+export function useProcessMultipleOcr() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documents: { id: string; filePath: string | null }[]) => {
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+
+      for (const doc of documents) {
+        if (!doc.filePath) {
+          results.failed++;
+          results.errors.push(`Documento ${doc.id}: sem ficheiro associado`);
+          continue;
+        }
+
+        try {
+          await supabase
+            .from('scanned_documents')
+            .update({ status: 'ocr_processing' })
+            .eq('id', doc.id);
+
+          const { data, error } = await supabase.functions.invoke('ocr-document', {
+            body: { documentId: doc.id, filePath: doc.filePath },
+          });
+
+          if (error || data?.error) {
+            await supabase
+              .from('scanned_documents')
+              .update({ status: 'error' })
+              .eq('id', doc.id);
+            results.failed++;
+            results.errors.push(`Documento ${doc.id}: ${error?.message || data?.error}`);
+          } else {
+            results.success++;
+          }
+        } catch (err) {
+          results.failed++;
+          results.errors.push(`Documento ${doc.id}: erro desconhecido`);
+        }
+      }
+
+      return results;
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['digitization-stats'] });
+
+      if (results.success > 0 && results.failed === 0) {
+        toast.success(`OCR concluído para ${results.success} documento(s)`);
+      } else if (results.success > 0 && results.failed > 0) {
+        toast.warning(`${results.success} sucesso, ${results.failed} falha(s)`);
+      } else {
+        toast.error('Erro no processamento OCR');
+      }
+    },
+    onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
       toast.error(error.message);
     },
   });
