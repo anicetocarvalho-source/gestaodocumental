@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConversations, Message } from "@/hooks/useConversations";
 import { ConversationList } from "@/components/assistant/ConversationList";
 import { ChatArea } from "@/components/assistant/ChatArea";
+import { ExportConversation } from "@/components/assistant/ExportConversation";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/minagrif-assistant`;
 
@@ -208,6 +209,11 @@ const InstitutionalAssistant = () => {
     clearCurrentConversation();
   };
 
+  const handleFeedback = (messageId: string, positive: boolean) => {
+    // Could save to database in the future
+    console.log("Feedback:", messageId, positive);
+  };
+
   return (
     <DashboardLayout
       title="Assistente Institucional"
@@ -249,12 +255,18 @@ const InstitutionalAssistant = () => {
                   </p>
                 </div>
               </div>
-              {messages.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={handleNewConversation}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Nova
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <ExportConversation 
+                  messages={messages} 
+                  conversationTitle={currentConversation?.title}
+                />
+                {messages.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleNewConversation}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Nova
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
 
@@ -266,6 +278,7 @@ const InstitutionalAssistant = () => {
               isLoading={isLoading}
               onSend={handleSend}
               streamingContent={streamingContent}
+              onFeedback={handleFeedback}
             />
           </div>
         </Card>

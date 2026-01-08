@@ -5,6 +5,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Send, Bot, User, Loader2, Sparkles, FileText, FolderOpen, HelpCircle } from "lucide-react";
 import { Message } from "@/hooks/useConversations";
+import { MarkdownContent } from "./MarkdownContent";
+import { MessageActions } from "./MessageActions";
 
 const suggestedQuestions = [
   { icon: FileText, text: "Quais são os documentos mais recentes no sistema?" },
@@ -20,6 +22,7 @@ type Props = {
   isLoading: boolean;
   onSend: (text?: string) => void;
   streamingContent?: string;
+  onFeedback?: (messageId: string, positive: boolean) => void;
 };
 
 export function ChatArea({
@@ -29,6 +32,7 @@ export function ChatArea({
   isLoading,
   onSend,
   streamingContent,
+  onFeedback,
 }: Props) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +82,11 @@ export function ChatArea({
         ) : (
           <div className="space-y-4">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble 
+                key={message.id} 
+                message={message} 
+                onFeedback={onFeedback}
+              />
             ))}
             {streamingContent && (
               <div className="flex gap-3 justify-start">
@@ -86,7 +94,7 @@ export function ChatArea({
                   <Bot className="h-4 w-4 text-primary" />
                 </div>
                 <div className="max-w-[80%] rounded-xl px-4 py-3 bg-muted">
-                  <div className="text-sm whitespace-pre-wrap">{streamingContent || "..."}</div>
+                  <MarkdownContent content={streamingContent || "..."} className="text-sm" />
                 </div>
               </div>
             )}
@@ -131,11 +139,16 @@ export function ChatArea({
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+type MessageBubbleProps = {
+  message: Message;
+  onFeedback?: (messageId: string, positive: boolean) => void;
+};
+
+function MessageBubble({ message, onFeedback }: MessageBubbleProps) {
   return (
     <div
       className={cn(
-        "flex gap-3",
+        "flex gap-3 group",
         message.role === "user" ? "justify-end" : "justify-start"
       )}
     >
@@ -144,20 +157,35 @@ function MessageBubble({ message }: { message: Message }) {
           <Bot className="h-4 w-4 text-primary" />
         </div>
       )}
-      <div
-        className={cn(
-          "max-w-[80%] rounded-xl px-4 py-3",
-          message.role === "user"
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted"
-        )}
-      >
-        <div className="text-sm whitespace-pre-wrap">{message.content || "..."}</div>
-        <div className={cn(
-          "text-[10px] mt-1.5",
-          message.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
-        )}>
-          {new Date(message.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+      <div className="flex flex-col max-w-[80%]">
+        <div
+          className={cn(
+            "rounded-xl px-4 py-3",
+            message.role === "user"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted"
+          )}
+        >
+          {message.role === "assistant" ? (
+            <MarkdownContent content={message.content || "..."} className="text-sm" />
+          ) : (
+            <div className="text-sm whitespace-pre-wrap">{message.content || "..."}</div>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-1">
+          <span className={cn(
+            "text-[10px]",
+            message.role === "user" ? "text-muted-foreground ml-auto" : "text-muted-foreground"
+          )}>
+            {new Date(message.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {message.role === "assistant" && (
+            <MessageActions 
+              content={message.content} 
+              messageId={message.id}
+              onFeedback={onFeedback}
+            />
+          )}
         </div>
       </div>
       {message.role === "user" && (
