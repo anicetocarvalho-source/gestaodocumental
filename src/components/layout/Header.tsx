@@ -11,11 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, roleLabels } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useNotifications";
-import { useMyPendingApprovals } from "@/hooks/useDispatchWorkflow";
+import { usePendingApprovalsCount } from "@/hooks/usePendingApprovalsCount";
 
 interface HeaderProps {
   title: string;
@@ -34,8 +39,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { isAuthenticated, profile, signOut } = useAuth();
   const { primaryRole } = useUserRole();
   const { data: unreadCount = 0 } = useUnreadCount();
-  const { data: pendingApprovals = [] } = useMyPendingApprovals();
-  const pendingApprovalsCount = pendingApprovals.length;
+  const { total: pendingApprovalsCount, urgent, hasUrgent } = usePendingApprovalsCount();
 
   const handleLogout = async () => {
     await signOut();
@@ -76,16 +80,28 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" asChild>
-          <Link to="/pending-approvals">
-            <ClipboardCheck className="h-5 w-5" />
-            {pendingApprovalsCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-warning text-[10px] font-bold text-warning-foreground">
-                {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
-              </span>
-            )}
-          </Link>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" asChild>
+              <Link to="/pending-approvals">
+                <ClipboardCheck className="h-5 w-5" />
+                {pendingApprovalsCount > 0 && (
+                  <span className={`absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${hasUrgent ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'}`}>
+                    {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>
+              {pendingApprovalsCount === 0 
+                ? "Sem aprovações pendentes" 
+                : `${pendingApprovalsCount} aprovações pendentes${hasUrgent ? ` (${urgent} urgente${urgent > 1 ? 's' : ''})` : ''}`
+              }
+            </p>
+          </TooltipContent>
+        </Tooltip>
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
           <HelpCircle className="h-5 w-5" />
         </Button>
