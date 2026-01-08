@@ -198,6 +198,7 @@ export function useDigitizationStats() {
         completed: 0,
         error: 0,
         rejected: 0,
+        approved: 0,
         total: documents?.length || 0,
       };
 
@@ -209,6 +210,71 @@ export function useDigitizationStats() {
       });
 
       return stats;
+    },
+  });
+}
+
+// Get stats per batch
+export interface BatchDocumentStats {
+  batchId: string;
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  processing: number;
+}
+
+export function useBatchDocumentStats() {
+  return useQuery({
+    queryKey: ['batch-document-stats'],
+    queryFn: async () => {
+      const { data: documents, error } = await supabase
+        .from('scanned_documents')
+        .select('batch_id, status');
+
+      if (error) {
+        console.error('Error fetching batch stats:', error);
+        throw error;
+      }
+
+      const statsMap = new Map<string, BatchDocumentStats>();
+
+      documents?.forEach(doc => {
+        if (!doc.batch_id) return;
+        
+        if (!statsMap.has(doc.batch_id)) {
+          statsMap.set(doc.batch_id, {
+            batchId: doc.batch_id,
+            total: 0,
+            pending: 0,
+            approved: 0,
+            rejected: 0,
+            processing: 0,
+          });
+        }
+        
+        const batchStats = statsMap.get(doc.batch_id)!;
+        batchStats.total++;
+        
+        switch (doc.status) {
+          case 'approved':
+          case 'completed':
+            batchStats.approved++;
+            break;
+          case 'rejected':
+            batchStats.rejected++;
+            break;
+          case 'scanning':
+          case 'ocr_processing':
+          case 'quality_review':
+            batchStats.processing++;
+            break;
+          default:
+            batchStats.pending++;
+        }
+      });
+
+      return Object.fromEntries(statsMap);
     },
   });
 }
