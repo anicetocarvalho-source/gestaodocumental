@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ interface ScannedDocument {
   priority: string;
   page_count: number;
   metadata: Record<string, unknown> | null;
+  rejection_reason: string | null;
 }
 
 interface BatchInfo {
@@ -78,13 +79,18 @@ const QualityReview = () => {
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showRejectDocumentDialog, setShowRejectDocumentDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [documentRejectReason, setDocumentRejectReason] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [isApprovingDocument, setIsApprovingDocument] = useState(false);
+  const [isRejectingDocument, setIsRejectingDocument] = useState(false);
 
+  const queryClient = useQueryClient();
   const downloadDocument = useDownloadScannedDocument();
 
   // Metadata state
@@ -122,7 +128,7 @@ const QualityReview = () => {
       if (!batchId) return [];
       const { data, error } = await supabase
         .from('scanned_documents')
-        .select('id, document_number, title, status, file_path, ocr_text, quality_score, priority, page_count, metadata')
+        .select('id, document_number, title, status, file_path, ocr_text, quality_score, priority, page_count, metadata, rejection_reason')
         .eq('batch_id', batchId)
         .order('created_at', { ascending: true });
       
@@ -253,6 +259,93 @@ const QualityReview = () => {
         filePath: selectedDocument.file_path,
         fileName: selectedDocument.title + (selectedDocument.file_path.split('.').pop() ? '.' + selectedDocument.file_path.split('.').pop() : ''),
       });
+    }
+  };
+
+  const handleApproveDocument = async () => {
+    if (!selectedDocument) return;
+    
+    setIsApprovingDocument(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Save metadata along with approval
+      const updatedMetadata = {
+        ...(selectedDocument.metadata as Record<string, unknown> || {}),
+        titulo: metadata.titulo,
+        autor: metadata.autor,
+        dataDocumento: metadata.dataDocumento,
+        descricao: metadata.descricao,
+        classificacao: metadata.classificacao,
+        tipoDocumento: metadata.tipoDocumento,
+        tags: tags,
+      };
+
+      const { error } = await supabase
+        .from('scanned_documents')
+        .update({ 
+          status: 'approved',
+          title: metadata.titulo || selectedDocument.title,
+          metadata: updatedMetadata,
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', selectedDocument.id);
+      
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['batch-documents', batchId] });
+      queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['digitization-stats'] });
+      toast.success('Documento aprovado com sucesso');
+      
+      // Navigate to next document if available
+      if (documents && currentIndex < documents.length - 1) {
+        setSelectedDocumentId(documents[currentIndex + 1].id);
+      }
+    } catch (error) {
+      console.error('Error approving document:', error);
+      toast.error('Erro ao aprovar documento');
+    } finally {
+      setIsApprovingDocument(false);
+    }
+  };
+
+  const handleRejectDocument = async () => {
+    if (!selectedDocument || !documentRejectReason.trim()) return;
+    
+    setIsRejectingDocument(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from('scanned_documents')
+        .update({ 
+          status: 'rejected',
+          rejection_reason: documentRejectReason,
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', selectedDocument.id);
+      
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['batch-documents', batchId] });
+      queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['digitization-stats'] });
+      toast.success('Documento rejeitado');
+      setShowRejectDocumentDialog(false);
+      setDocumentRejectReason("");
+      
+      // Navigate to next document if available
+      if (documents && currentIndex < documents.length - 1) {
+        setSelectedDocumentId(documents[currentIndex + 1].id);
+      }
+    } catch (error) {
+      console.error('Error rejecting document:', error);
+      toast.error('Erro ao rejeitar documento');
+    } finally {
+      setIsRejectingDocument(false);
     }
   };
 
@@ -663,17 +756,59 @@ const QualityReview = () => {
 
                   <Separator />
 
+                  {/* Document Status */}
+                  {selectedDocument && (
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Estado do Documento</span>
+                        <Badge 
+                          variant={
+                            selectedDocument.status === 'approved' ? 'default' : 
+                            selectedDocument.status === 'rejected' ? 'destructive' : 
+                            'secondary'
+                          }
+                          className={selectedDocument.status === 'approved' ? 'bg-emerald-500' : ''}
+                        >
+                          {selectedDocument.status === 'approved' ? 'Aprovado' : 
+                           selectedDocument.status === 'rejected' ? 'Rejeitado' : 
+                           'Pendente'}
+                        </Badge>
+                      </div>
+                      {selectedDocument.status === 'rejected' && selectedDocument.rejection_reason && (
+                        <p className="text-xs text-destructive mt-2">
+                          Motivo: {selectedDocument.rejection_reason}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Document Actions */}
                   <div className="space-y-2">
                     <Label>Acções do Documento</Label>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Check className="h-4 w-4 mr-2" />
-                        Aprovar
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={handleApproveDocument}
+                        disabled={isApprovingDocument || selectedDocument?.status === 'approved'}
+                      >
+                        {isApprovingDocument ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4 mr-2" />
+                        )}
+                        {selectedDocument?.status === 'approved' ? 'Aprovado' : 'Aprovar'}
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 text-destructive hover:text-destructive">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => setShowRejectDocumentDialog(true)}
+                        disabled={selectedDocument?.status === 'rejected'}
+                      >
                         <X className="h-4 w-4 mr-2" />
-                        Rejeitar
+                        {selectedDocument?.status === 'rejected' ? 'Rejeitado' : 'Rejeitar'}
                       </Button>
                     </div>
                   </div>
@@ -735,6 +870,69 @@ const QualityReview = () => {
               onClick={handleRejectBatch}
               disabled={!rejectReason.trim()}
             >
+              Confirmar Rejeição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Document Dialog */}
+      <Dialog open={showRejectDocumentDialog} onOpenChange={setShowRejectDocumentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejeitar Documento</DialogTitle>
+            <DialogDescription>
+              Indique o motivo da rejeição deste documento específico.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="documentRejectReason">Motivo da Rejeição</Label>
+              <Textarea
+                id="documentRejectReason"
+                placeholder="Descreva o motivo da rejeição..."
+                value={documentRejectReason}
+                onChange={(e) => setDocumentRejectReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Motivos Frequentes</Label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Imagem ilegível",
+                  "Documento incompleto",
+                  "Má qualidade de digitalização",
+                  "Páginas cortadas",
+                  "Metadados incorrectos"
+                ].map((reason) => (
+                  <Badge
+                    key={reason}
+                    variant="outline"
+                    className="cursor-pointer hover:bg-primary/10"
+                    onClick={() => setDocumentRejectReason(reason)}
+                  >
+                    {reason}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRejectDocumentDialog(false);
+              setDocumentRejectReason("");
+            }}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleRejectDocument}
+              disabled={!documentRejectReason.trim() || isRejectingDocument}
+            >
+              {isRejectingDocument ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
               Confirmar Rejeição
             </Button>
           </DialogFooter>
