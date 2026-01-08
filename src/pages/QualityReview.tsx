@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -27,7 +27,8 @@ import {
   Maximize2,
   Download,
   Loader2,
-  ImageOff
+  ImageOff,
+  Save
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,6 +90,10 @@ const QualityReview = () => {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [isApprovingDocument, setIsApprovingDocument] = useState(false);
   const [isRejectingDocument, setIsRejectingDocument] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedRef = useRef<string>("");
 
   const queryClient = useQueryClient();
   const downloadDocument = useDownloadScannedDocument();
@@ -152,7 +157,7 @@ const QualityReview = () => {
   useEffect(() => {
     if (selectedDocument) {
       const docMetadata = selectedDocument.metadata as Record<string, string> | null;
-      setMetadata({
+      const newMetadata = {
         titulo: selectedDocument.title || "",
         autor: docMetadata?.autor || "",
         dataDocumento: docMetadata?.dataDocumento || "",
@@ -160,11 +165,83 @@ const QualityReview = () => {
         descricao: docMetadata?.descricao || selectedDocument.ocr_text?.substring(0, 200) || "",
         classificacao: docMetadata?.classificacao || "interno",
         tipoDocumento: docMetadata?.tipoDocumento || "outro",
-      });
+      };
+      setMetadata(newMetadata);
       const existingTags = Array.isArray(docMetadata?.tags) ? docMetadata.tags as string[] : [];
       setTags(existingTags.length > 0 ? existingTags : [selectedDocument.document_number]);
+      
+      // Reset save state when document changes
+      lastSavedRef.current = JSON.stringify({ metadata: newMetadata, tags: existingTags });
+      setHasUnsavedChanges(false);
     }
   }, [selectedDocument?.id]);
+
+  // Auto-save function
+  const saveMetadata = useCallback(async () => {
+    if (!selectedDocument) return;
+    
+    const currentState = JSON.stringify({ metadata, tags });
+    if (currentState === lastSavedRef.current) return;
+    
+    setIsSaving(true);
+    try {
+      const updatedMetadata = {
+        ...(selectedDocument.metadata as Record<string, unknown> || {}),
+        titulo: metadata.titulo,
+        autor: metadata.autor,
+        dataDocumento: metadata.dataDocumento,
+        descricao: metadata.descricao,
+        classificacao: metadata.classificacao,
+        tipoDocumento: metadata.tipoDocumento,
+        tags: tags,
+      };
+
+      const { error } = await supabase
+        .from('scanned_documents')
+        .update({ 
+          title: metadata.titulo || selectedDocument.title,
+          metadata: updatedMetadata,
+        })
+        .eq('id', selectedDocument.id);
+      
+      if (error) throw error;
+      
+      lastSavedRef.current = currentState;
+      setHasUnsavedChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['batch-documents', batchId] });
+    } catch (error) {
+      console.error('Error saving metadata:', error);
+      toast.error('Erro ao guardar metadados');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedDocument, metadata, tags, batchId, queryClient]);
+
+  // Debounced auto-save effect
+  useEffect(() => {
+    if (!selectedDocument) return;
+    
+    const currentState = JSON.stringify({ metadata, tags });
+    if (currentState !== lastSavedRef.current) {
+      setHasUnsavedChanges(true);
+      
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Set new timeout for auto-save (2 seconds after last change)
+      saveTimeoutRef.current = setTimeout(() => {
+        saveMetadata();
+      }, 2000);
+    }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [metadata, tags, selectedDocument, saveMetadata]);
 
   // Load image URLs for documents with file paths
   useEffect(() => {
@@ -581,8 +658,26 @@ const QualityReview = () => {
 
           {/* Right Panel - Metadata & Tags */}
           <Card className="col-span-4 flex flex-col">
-            <CardHeader className="py-3 px-4">
+            <CardHeader className="py-3 px-4 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium">Metadados do Documento</CardTitle>
+              <div className="flex items-center gap-2">
+                {isSaving ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>A guardar...</span>
+                  </div>
+                ) : hasUnsavedChanges ? (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-500">
+                    <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span>Alterações pendentes</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-500">
+                    <Check className="h-3 w-3" />
+                    <span>Guardado</span>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
               <ScrollArea className="h-full pr-4">
