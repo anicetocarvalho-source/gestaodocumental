@@ -74,6 +74,7 @@ import {
   useDigitizationBatches,
   useScannedDocuments,
   useDigitizationStats,
+  useBatchDocumentStats,
   useCreateBatch,
   useUpdateBatch,
   type ScannedDocument,
@@ -144,6 +145,7 @@ const DigitizationCenter = () => {
   const { data: batches = [], isLoading: loadingBatches } = useDigitizationBatches();
   const { data: scannedDocuments = [], isLoading: loadingDocuments } = useScannedDocuments(undefined, filterStatus || undefined);
   const { data: stats } = useDigitizationStats();
+  const { data: batchStats = {} } = useBatchDocumentStats();
   const { data: profiles = [] } = useProfiles({ activeOnly: true });
 
   // Mutations
@@ -741,22 +743,77 @@ const DigitizationCenter = () => {
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Progresso</span>
-                        <span className="font-medium">{batch.processed_pages}/{batch.total_pages}</span>
-                      </div>
-                      <Progress 
-                        value={batch.total_pages > 0 ? (batch.processed_pages / batch.total_pages) * 100 : 0} 
-                        className="h-2" 
-                      />
-                      <p className="text-xs text-muted-foreground text-right">
-                        {batch.total_pages > 0 
-                          ? `${Math.round((batch.processed_pages / batch.total_pages) * 100)}% concluído`
-                          : 'Sem documentos'
-                        }
-                      </p>
-                    </div>
+                    {(() => {
+                      const bStats = batchStats[batch.id];
+                      const total = bStats?.total || batch.total_pages || 0;
+                      const approved = bStats?.approved || 0;
+                      const rejected = bStats?.rejected || 0;
+                      const processing = bStats?.processing || 0;
+                      const pending = bStats?.pending || (total - approved - rejected - processing);
+                      
+                      const approvedPercent = total > 0 ? (approved / total) * 100 : 0;
+                      const rejectedPercent = total > 0 ? (rejected / total) * 100 : 0;
+                      const processingPercent = total > 0 ? (processing / total) * 100 : 0;
+                      
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Progresso</span>
+                            <span className="font-medium">{approved + rejected}/{total}</span>
+                          </div>
+                          
+                          {/* Segmented Progress Bar */}
+                          <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex">
+                            {approvedPercent > 0 && (
+                              <div 
+                                className="h-full bg-emerald-500 transition-all"
+                                style={{ width: `${approvedPercent}%` }}
+                              />
+                            )}
+                            {rejectedPercent > 0 && (
+                              <div 
+                                className="h-full bg-destructive transition-all"
+                                style={{ width: `${rejectedPercent}%` }}
+                              />
+                            )}
+                            {processingPercent > 0 && (
+                              <div 
+                                className="h-full bg-amber-500 transition-all"
+                                style={{ width: `${processingPercent}%` }}
+                              />
+                            )}
+                          </div>
+                          
+                          {/* Legend */}
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                            {approved > 0 && (
+                              <div className="flex items-center gap-1">
+                                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                                <span className="text-muted-foreground">{approved} aprovados</span>
+                              </div>
+                            )}
+                            {rejected > 0 && (
+                              <div className="flex items-center gap-1">
+                                <div className="h-2 w-2 rounded-full bg-destructive" />
+                                <span className="text-muted-foreground">{rejected} rejeitados</span>
+                              </div>
+                            )}
+                            {processing > 0 && (
+                              <div className="flex items-center gap-1">
+                                <div className="h-2 w-2 rounded-full bg-amber-500" />
+                                <span className="text-muted-foreground">{processing} processando</span>
+                              </div>
+                            )}
+                            {pending > 0 && (
+                              <div className="flex items-center gap-1">
+                                <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                                <span className="text-muted-foreground">{pending} pendentes</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {batch.error_pages > 0 && (
                       <div className="text-xs text-destructive flex items-center gap-1">
