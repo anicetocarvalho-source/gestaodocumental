@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
@@ -125,6 +126,7 @@ const priorityLabels: Record<string, string> = {
 };
 
 const DigitizationCenter = () => {
+  const navigate = useNavigate();
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
@@ -700,6 +702,10 @@ const DigitizationCenter = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/quality-review?batchId=${batch.id}`)}>
+                            <FileCheck className="h-4 w-4 mr-2" />
+                            Revisão de Qualidade
+                          </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Documentos
@@ -765,15 +771,13 @@ const DigitizationCenter = () => {
                         Carregar
                       </Button>
                       <Button 
-                        variant={batch.status === "completed" ? "secondary" : "default"} 
+                        variant="default" 
                         size="sm" 
                         className="flex-1"
+                        onClick={() => navigate(`/quality-review?batchId=${batch.id}`)}
                       >
-                        {batch.status === "completed" ? (
-                          <><Download className="h-4 w-4 mr-2" />Exportar</>
-                        ) : (
-                          <><Play className="h-4 w-4 mr-2" />Continuar</>
-                        )}
+                        <FileCheck className="h-4 w-4 mr-2" />
+                        Revisar
                       </Button>
                     </div>
                   </CardContent>
