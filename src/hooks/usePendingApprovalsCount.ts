@@ -2,25 +2,43 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export function usePendingApprovalsCount() {
+interface PendingApprovalsResult {
+  total: number;
+  urgent: number;
+  hasUrgent: boolean;
+}
+
+export function usePendingApprovalsCount(): PendingApprovalsResult {
   const { user } = useAuth();
 
-  const { data: count = 0 } = useQuery({
+  const { data = { total: 0, urgent: 0, hasUrgent: false } } = useQuery({
     queryKey: ['pending-approvals-count', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 0;
+    queryFn: async (): Promise<PendingApprovalsResult> => {
+      if (!user?.id) return { total: 0, urgent: 0, hasUrgent: false };
 
-      const { count } = await supabase
+      // Fetch total pending approvals
+      const { count: totalCount } = await supabase
         .from('dispatch_approvals')
         .select('*', { count: 'exact', head: true })
         .eq('approver_id', user.id)
         .eq('status', 'pendente');
 
-      return count || 0;
+      // Fetch urgent pending approvals (join with dispatches to check priority)
+      const { data: urgentData } = await supabase
+        .from('dispatch_approvals')
+        .select('id, dispatches!inner(priority)')
+        .eq('approver_id', user.id)
+        .eq('status', 'pendente')
+        .eq('dispatches.priority', 'urgente');
+
+      const urgent = urgentData?.length || 0;
+      const total = totalCount || 0;
+
+      return { total, urgent, hasUrgent: urgent > 0 };
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
 
-  return count;
+  return data;
 }

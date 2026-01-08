@@ -41,12 +41,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface BadgeInfo {
+  count: number;
+  hasUrgent: boolean;
+}
+
 interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
   roles: AppRole[];
-  badge?: number;
+  badge?: BadgeInfo;
 }
 
 const navigation: NavItem[] = [
@@ -100,7 +105,9 @@ export function Sidebar() {
     .filter(item => primaryRole && item.roles.includes(primaryRole))
     .map(item => ({
       ...item,
-      badge: item.href === '/approvals' ? pendingApprovalsCount : undefined,
+      badge: item.href === '/approvals' && pendingApprovalsCount.total > 0
+        ? { count: pendingApprovalsCount.total, hasUrgent: pendingApprovalsCount.hasUrgent }
+        : undefined,
     }));
   
   const filteredManagement = management.filter(item => 
@@ -124,15 +131,16 @@ export function Sidebar() {
       >
         <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
         {!collapsed && <span className="truncate flex-1">{item.name}</span>}
-        {item.badge && item.badge > 0 && (
+        {item.badge && (
           <Badge 
-            variant="destructive" 
+            variant={item.badge.hasUrgent ? "destructive" : "secondary"}
             className={cn(
               "h-5 min-w-5 px-1.5 text-[10px] font-semibold",
-              collapsed && "absolute -top-1 -right-1"
+              collapsed && "absolute -top-1 -right-1",
+              item.badge.hasUrgent && "animate-pulse"
             )}
           >
-            {item.badge > 99 ? '99+' : item.badge}
+            {item.badge.count > 99 ? '99+' : item.badge.count}
           </Badge>
         )}
       </NavLink>
@@ -148,9 +156,12 @@ export function Sidebar() {
           </TooltipTrigger>
           <TooltipContent side="right" className="font-medium flex items-center gap-2">
             {item.name}
-            {item.badge && item.badge > 0 && (
-              <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[9px]">
-                {item.badge > 99 ? '99+' : item.badge}
+            {item.badge && (
+              <Badge 
+                variant={item.badge.hasUrgent ? "destructive" : "secondary"} 
+                className={cn("h-4 min-w-4 px-1 text-[9px]", item.badge.hasUrgent && "animate-pulse")}
+              >
+                {item.badge.count > 99 ? '99+' : item.badge.count}
               </Badge>
             )}
           </TooltipContent>
