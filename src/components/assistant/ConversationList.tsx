@@ -91,9 +91,9 @@ export function ConversationList({
                       onClick={() => onSelect(conv)}
                     >
                       <MessageSquare className="h-4 w-4 shrink-0" />
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="text-sm font-medium truncate max-w-full">{conv.title}</p>
-                        <p className="text-[10px] text-muted-foreground">
+                      <div className="flex-1 w-0">
+                        <p className="text-sm font-medium truncate">{conv.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
                           {formatDistanceToNow(new Date(conv.updated_at), {
                             addSuffix: true,
                             locale: pt,
@@ -103,7 +103,7 @@ export function ConversationList({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDelete(conv.id);
