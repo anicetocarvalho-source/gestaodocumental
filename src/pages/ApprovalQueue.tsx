@@ -10,6 +10,16 @@ import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { DispatchApprovalModal } from "@/components/dispatches/DispatchApprovalModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useApprovalQueue, ApprovalItem } from "@/hooks/useApprovalQueue";
 import { 
   Clock, 
@@ -69,6 +79,8 @@ const ApprovalQueue = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [urgentConfirmOpen, setUrgentConfirmOpen] = useState(false);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | null>(null);
   const [currentApprovalItem, setCurrentApprovalItem] = useState<ApprovalItem | null>(null);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'priority'>('recent');
@@ -126,6 +138,28 @@ const ApprovalQueue = () => {
     }
   };
 
+  // Check if there are urgent items in selection
+  const getUrgentSelectedItems = () => {
+    return approvalItems.filter(item => 
+      selectedItems.has(item.id) && (item.urgent || item.priority === 'urgente')
+    );
+  };
+
+  const handleBulkAction = (action: 'approve' | 'reject') => {
+    const urgentItems = getUrgentSelectedItems();
+    if (urgentItems.length > 0) {
+      setPendingBulkAction(action);
+      setUrgentConfirmOpen(true);
+    } else {
+      setBulkModalOpen(true);
+    }
+  };
+
+  const handleUrgentConfirm = () => {
+    setUrgentConfirmOpen(false);
+    setBulkModalOpen(true);
+  };
+
   const handleBulkApprovalSubmit = async (decision: 'aprovado' | 'rejeitado' | 'devolvido', comments?: string) => {
     if (selectedItems.size === 0) return;
     
@@ -144,6 +178,7 @@ const ApprovalQueue = () => {
     
     // Clear selections after processing
     setSelectedItems(new Set());
+    setPendingBulkAction(null);
     if (selectedItem && selectedItems.has(selectedItem.id)) {
       setSelectedItem(null);
     }
@@ -277,7 +312,7 @@ const ApprovalQueue = () => {
                   <div className="flex items-center gap-2">
                     <Button 
                       size="sm"
-                      onClick={() => setBulkModalOpen(true)}
+                      onClick={() => handleBulkAction('approve')}
                       disabled={isBulkProcessing}
                     >
                       {isBulkProcessing ? (
@@ -290,9 +325,7 @@ const ApprovalQueue = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => {
-                        setBulkModalOpen(true);
-                      }}
+                      onClick={() => handleBulkAction('reject')}
                       disabled={isBulkProcessing}
                     >
                       <ThumbsDown className="h-3 w-3 mr-1" />
@@ -755,6 +788,46 @@ const ApprovalQueue = () => {
         onApprove={handleBulkApprovalSubmit}
         isLoading={isBulkProcessing}
       />
+
+      {/* Urgent Items Confirmation Dialog */}
+      <AlertDialog open={urgentConfirmOpen} onOpenChange={setUrgentConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Itens Urgentes Selecionados
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                A sua seleção contém <strong>{getUrgentSelectedItems().length}</strong> {getUrgentSelectedItems().length === 1 ? 'item urgente' : 'itens urgentes'}:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {getUrgentSelectedItems().slice(0, 5).map(item => (
+                  <li key={item.id} className="text-foreground">
+                    {item.dispatchNumber || item.title}
+                  </li>
+                ))}
+                {getUrgentSelectedItems().length > 5 && (
+                  <li className="text-muted-foreground">
+                    e mais {getUrgentSelectedItems().length - 5} itens...
+                  </li>
+                )}
+              </ul>
+              <p className="font-medium">
+                Tem a certeza que pretende {pendingBulkAction === 'approve' ? 'aprovar' : 'rejeitar'} estes itens em massa?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingBulkAction(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleUrgentConfirm}>
+              Sim, Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
