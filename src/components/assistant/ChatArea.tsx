@@ -71,11 +71,11 @@ export function ChatArea({
                 <Button
                   key={i}
                   variant="outline"
-                  className="justify-start text-left h-auto py-3 px-4"
+                  className="justify-start text-left h-auto py-3 px-4 overflow-hidden"
                   onClick={() => onSend(q.text)}
                 >
                   <q.icon className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
-                  <span className="text-sm">{q.text}</span>
+                  <span className="text-sm truncate">{q.text}</span>
                 </Button>
               ))}
             </div>
