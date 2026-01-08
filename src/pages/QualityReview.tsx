@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ZoomIn, 
   ZoomOut, 
@@ -22,21 +25,34 @@ import {
   Plus,
   FileText,
   Maximize2,
-  Download
+  Download,
+  Loader2,
+  ImageOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { getScannedDocumentUrl, useDownloadScannedDocument } from "@/hooks/useScannedDocumentUpload";
+import { toast } from "sonner";
 
-// Mock data for scanned pages
-const mockPages = [
-  { id: 1, thumbnail: "/placeholder.svg", status: "pending", pageNumber: 1 },
-  { id: 2, thumbnail: "/placeholder.svg", status: "approved", pageNumber: 2 },
-  { id: 3, thumbnail: "/placeholder.svg", status: "pending", pageNumber: 3 },
-  { id: 4, thumbnail: "/placeholder.svg", status: "rejected", pageNumber: 4 },
-  { id: 5, thumbnail: "/placeholder.svg", status: "pending", pageNumber: 5 },
-  { id: 6, thumbnail: "/placeholder.svg", status: "pending", pageNumber: 6 },
-  { id: 7, thumbnail: "/placeholder.svg", status: "pending", pageNumber: 7 },
-  { id: 8, thumbnail: "/placeholder.svg", status: "approved", pageNumber: 8 },
-];
+interface ScannedDocument {
+  id: string;
+  document_number: string;
+  title: string | null;
+  status: string;
+  file_path: string | null;
+  ocr_text: string | null;
+  quality_score: number | null;
+  priority: string;
+  page_count: number;
+  metadata: Record<string, unknown> | null;
+}
+
+interface BatchInfo {
+  id: string;
+  batch_number: string;
+  name: string;
+  total_pages: number;
+}
 
 const classificationOptions = [
   { value: "confidencial", label: "Confidencial" },
@@ -55,24 +71,123 @@ const documentTypes = [
 ];
 
 const QualityReview = () => {
-  const [selectedPage, setSelectedPage] = useState(mockPages[0]);
+  const [searchParams] = useSearchParams();
+  const batchId = searchParams.get('batchId');
+  
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [tags, setTags] = useState<string[]>(["digitalização", "lote-001"]);
+  const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
+  const downloadDocument = useDownloadScannedDocument();
 
   // Metadata state
   const [metadata, setMetadata] = useState({
-    titulo: "Ofício nº 234/2024",
-    autor: "Ministério da Administração",
-    dataDocumento: "2024-01-15",
-    numeroReferencia: "OF/2024/234",
-    descricao: "Comunicação oficial referente ao processo de digitalização de documentos históricos.",
+    titulo: "",
+    autor: "",
+    dataDocumento: "",
+    numeroReferencia: "",
+    descricao: "",
     classificacao: "interno",
-    tipoDocumento: "oficio",
+    tipoDocumento: "outro",
   });
+
+  // Fetch batch info
+  const { data: batch } = useQuery({
+    queryKey: ['batch-info', batchId],
+    queryFn: async () => {
+      if (!batchId) return null;
+      const { data, error } = await supabase
+        .from('digitization_batches')
+        .select('id, batch_number, name, total_pages')
+        .eq('id', batchId)
+        .single();
+      
+      if (error) throw error;
+      return data as BatchInfo;
+    },
+    enabled: !!batchId,
+  });
+
+  // Fetch documents in batch
+  const { data: documents, isLoading } = useQuery({
+    queryKey: ['batch-documents', batchId],
+    queryFn: async () => {
+      if (!batchId) return [];
+      const { data, error } = await supabase
+        .from('scanned_documents')
+        .select('id, document_number, title, status, file_path, ocr_text, quality_score, priority, page_count, metadata')
+        .eq('batch_id', batchId)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data as ScannedDocument[];
+    },
+    enabled: !!batchId,
+  });
+
+  // Get selected document
+  const selectedDocument = documents?.find(d => d.id === selectedDocumentId) || documents?.[0];
+
+  // Select first document when documents load
+  useEffect(() => {
+    if (documents && documents.length > 0 && !selectedDocumentId) {
+      setSelectedDocumentId(documents[0].id);
+    }
+  }, [documents, selectedDocumentId]);
+
+  // Update metadata when document changes
+  useEffect(() => {
+    if (selectedDocument) {
+      const docMetadata = selectedDocument.metadata as Record<string, string> | null;
+      setMetadata({
+        titulo: selectedDocument.title || "",
+        autor: docMetadata?.autor || "",
+        dataDocumento: docMetadata?.dataDocumento || "",
+        numeroReferencia: selectedDocument.document_number || "",
+        descricao: docMetadata?.descricao || selectedDocument.ocr_text?.substring(0, 200) || "",
+        classificacao: docMetadata?.classificacao || "interno",
+        tipoDocumento: docMetadata?.tipoDocumento || "outro",
+      });
+      const existingTags = Array.isArray(docMetadata?.tags) ? docMetadata.tags as string[] : [];
+      setTags(existingTags.length > 0 ? existingTags : [selectedDocument.document_number]);
+    }
+  }, [selectedDocument?.id]);
+
+  // Load image URLs for documents with file paths
+  useEffect(() => {
+    const loadImageUrls = async () => {
+      if (!documents) return;
+
+      for (const doc of documents) {
+        if (doc.file_path && !imageUrls[doc.id] && !loadingImages[doc.id]) {
+          setLoadingImages(prev => ({ ...prev, [doc.id]: true }));
+          
+          try {
+            const url = await getScannedDocumentUrl(doc.file_path);
+            if (url) {
+              setImageUrls(prev => ({ ...prev, [doc.id]: url }));
+              setImageErrors(prev => ({ ...prev, [doc.id]: false }));
+            } else {
+              setImageErrors(prev => ({ ...prev, [doc.id]: true }));
+            }
+          } catch {
+            setImageErrors(prev => ({ ...prev, [doc.id]: true }));
+          } finally {
+            setLoadingImages(prev => ({ ...prev, [doc.id]: false }));
+          }
+        }
+      }
+    };
+
+    loadImageUrls();
+  }, [documents]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50));
@@ -90,25 +205,66 @@ const QualityReview = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleApproveBatch = () => {
-    console.log("Lote aprovado");
-    // Implementation for batch approval
-  };
-
-  const handleRejectBatch = () => {
-    if (rejectReason.trim()) {
-      console.log("Lote rejeitado:", rejectReason);
-      setShowRejectDialog(false);
-      setRejectReason("");
+  const handleApproveBatch = async () => {
+    if (!batchId) return;
+    
+    try {
+      await supabase
+        .from('digitization_batches')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', batchId);
+      
+      await supabase
+        .from('scanned_documents')
+        .update({ status: 'approved' })
+        .eq('batch_id', batchId);
+      
+      toast.success('Lote aprovado com sucesso');
+    } catch (error) {
+      toast.error('Erro ao aprovar lote');
     }
   };
 
-  const navigatePage = (direction: "prev" | "next") => {
-    const currentIndex = mockPages.findIndex(p => p.id === selectedPage.id);
+  const handleRejectBatch = async () => {
+    if (!batchId || !rejectReason.trim()) return;
+    
+    try {
+      await supabase
+        .from('digitization_batches')
+        .update({ status: 'rejected', notes: rejectReason })
+        .eq('id', batchId);
+      
+      await supabase
+        .from('scanned_documents')
+        .update({ status: 'rejected', rejection_reason: rejectReason })
+        .eq('batch_id', batchId);
+      
+      toast.success('Lote rejeitado');
+      setShowRejectDialog(false);
+      setRejectReason("");
+    } catch (error) {
+      toast.error('Erro ao rejeitar lote');
+    }
+  };
+
+  const handleDownload = () => {
+    if (selectedDocument?.file_path && selectedDocument.title) {
+      downloadDocument.mutate({
+        filePath: selectedDocument.file_path,
+        fileName: selectedDocument.title + (selectedDocument.file_path.split('.').pop() ? '.' + selectedDocument.file_path.split('.').pop() : ''),
+      });
+    }
+  };
+
+  const navigateDocument = (direction: "prev" | "next") => {
+    if (!documents || !selectedDocument) return;
+    const currentIndex = documents.findIndex(d => d.id === selectedDocument.id);
     if (direction === "prev" && currentIndex > 0) {
-      setSelectedPage(mockPages[currentIndex - 1]);
-    } else if (direction === "next" && currentIndex < mockPages.length - 1) {
-      setSelectedPage(mockPages[currentIndex + 1]);
+      setSelectedDocumentId(documents[currentIndex - 1].id);
+      setRotation(0);
+    } else if (direction === "next" && currentIndex < documents.length - 1) {
+      setSelectedDocumentId(documents[currentIndex + 1].id);
+      setRotation(0);
     }
   };
 
@@ -116,12 +272,28 @@ const QualityReview = () => {
     switch (status) {
       case "approved": return "bg-emerald-500/20 border-emerald-500";
       case "rejected": return "bg-destructive/20 border-destructive";
+      case "completed": return "bg-emerald-500/20 border-emerald-500";
       default: return "bg-muted border-border";
     }
   };
 
+  const currentIndex = documents?.findIndex(d => d.id === selectedDocument?.id) ?? 0;
+
+  if (!batchId) {
+    return (
+      <DashboardLayout title="Revisão de Qualidade" subtitle="Seleccione um lote para revisar">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Nenhum lote seleccionado. Volte ao Centro de Digitalização para seleccionar um lote.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout title="Revisão de Qualidade" subtitle="Lote: BATCH-2024-001 • 8 páginas">
+    <DashboardLayout 
+      title="Revisão de Qualidade" 
+      subtitle={batch ? `Lote: ${batch.batch_number} • ${batch.name} • ${documents?.length || 0} documento(s)` : "A carregar..."}
+    >
       <div className="space-y-4">
         {/* Header Actions */}
         <div className="flex items-center justify-end">
@@ -146,32 +318,52 @@ const QualityReview = () => {
           {/* Left Panel - Thumbnails */}
           <Card className="col-span-2 flex flex-col">
             <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm font-medium">Páginas</CardTitle>
+              <CardTitle className="text-sm font-medium">Documentos</CardTitle>
             </CardHeader>
             <CardContent className="p-2 flex-1 overflow-hidden">
               <ScrollArea className="h-full">
                 <div className="space-y-2 pr-2">
-                  {mockPages.map((page) => (
+                  {isLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="w-full aspect-[3/4]" />
+                    ))
+                  ) : documents?.map((doc, index) => (
                     <button
-                      key={page.id}
-                      onClick={() => setSelectedPage(page)}
+                      key={doc.id}
+                      onClick={() => {
+                        setSelectedDocumentId(doc.id);
+                        setRotation(0);
+                      }}
                       className={cn(
                         "w-full p-2 rounded-lg border-2 transition-all hover:border-primary/50",
-                        selectedPage.id === page.id 
+                        selectedDocument?.id === doc.id 
                           ? "border-primary bg-primary/5" 
-                          : getStatusColor(page.status)
+                          : getStatusColor(doc.status)
                       )}
                     >
-                      <div className="aspect-[3/4] bg-muted rounded mb-2 flex items-center justify-center overflow-hidden">
-                        <FileText className="h-8 w-8 text-muted-foreground" />
+                      <div className="aspect-[3/4] bg-muted rounded mb-2 flex items-center justify-center overflow-hidden relative">
+                        {loadingImages[doc.id] ? (
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        ) : imageUrls[doc.id] && !imageErrors[doc.id] ? (
+                          <img
+                            src={imageUrls[doc.id]}
+                            alt={doc.title || `Documento ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={() => setImageErrors(prev => ({ ...prev, [doc.id]: true }))}
+                          />
+                        ) : (
+                          <FileText className="h-8 w-8 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium">Pág. {page.pageNumber}</span>
-                        {page.status === "approved" && (
-                          <Check className="h-3 w-3 text-emerald-500" />
+                        <span className="text-xs font-medium truncate max-w-[80%]">
+                          {doc.title || `Doc. ${index + 1}`}
+                        </span>
+                        {doc.status === "approved" && (
+                          <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
                         )}
-                        {page.status === "rejected" && (
-                          <X className="h-3 w-3 text-destructive" />
+                        {doc.status === "rejected" && (
+                          <X className="h-3 w-3 text-destructive flex-shrink-0" />
                         )}
                       </div>
                     </button>
@@ -181,7 +373,7 @@ const QualityReview = () => {
             </CardContent>
           </Card>
 
-          {/* Center Panel - Page Viewer */}
+          {/* Center Panel - Document Viewer */}
           <Card className="col-span-6 flex flex-col">
             <CardHeader className="py-3 px-4 flex-row items-center justify-between space-y-0">
               <div className="flex items-center gap-2">
@@ -189,20 +381,20 @@ const QualityReview = () => {
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8"
-                  onClick={() => navigatePage("prev")}
-                  disabled={mockPages.findIndex(p => p.id === selectedPage.id) === 0}
+                  onClick={() => navigateDocument("prev")}
+                  disabled={currentIndex === 0}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm font-medium">
-                  Página {selectedPage.pageNumber} de {mockPages.length}
+                  Documento {currentIndex + 1} de {documents?.length || 0}
                 </span>
                 <Button 
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8"
-                  onClick={() => navigatePage("next")}
-                  disabled={mockPages.findIndex(p => p.id === selectedPage.id) === mockPages.length - 1}
+                  onClick={() => navigateDocument("next")}
+                  disabled={!documents || currentIndex === documents.length - 1}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -226,28 +418,70 @@ const QualityReview = () => {
                 <Button variant="outline" size="icon" className="h-8 w-8">
                   <Maximize2 className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <Download className="h-4 w-4" />
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={handleDownload}
+                  disabled={!selectedDocument?.file_path || downloadDocument.isPending}
+                >
+                  {downloadDocument.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="flex-1 p-4 overflow-auto bg-muted/30">
               <div className="h-full flex items-center justify-center">
-                <div 
-                  className="bg-background shadow-lg rounded-lg overflow-hidden transition-transform"
-                  style={{ 
-                    transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                    transformOrigin: "center center"
-                  }}
-                >
-                  <div className="w-[500px] aspect-[3/4] flex items-center justify-center bg-card border">
-                    <div className="text-center text-muted-foreground">
-                      <FileText className="h-16 w-16 mx-auto mb-4" />
-                      <p className="text-sm">Documento Digitalizado</p>
-                      <p className="text-xs">Página {selectedPage.pageNumber}</p>
+                {selectedDocument && loadingImages[selectedDocument.id] ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">A carregar imagem...</p>
+                  </div>
+                ) : selectedDocument && imageUrls[selectedDocument.id] && !imageErrors[selectedDocument.id] ? (
+                  <div 
+                    className="transition-transform"
+                    style={{ 
+                      transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                      transformOrigin: "center center"
+                    }}
+                  >
+                    <img
+                      src={imageUrls[selectedDocument.id]}
+                      alt={selectedDocument.title || "Documento digitalizado"}
+                      className="max-w-full max-h-[calc(100vh-20rem)] shadow-lg rounded-lg"
+                      onError={() => setImageErrors(prev => ({ ...prev, [selectedDocument.id]: true }))}
+                    />
+                  </div>
+                ) : (
+                  <div 
+                    className="bg-background shadow-lg rounded-lg overflow-hidden transition-transform"
+                    style={{ 
+                      transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                      transformOrigin: "center center"
+                    }}
+                  >
+                    <div className="w-[500px] aspect-[3/4] flex items-center justify-center bg-card border">
+                      <div className="text-center text-muted-foreground">
+                        {imageErrors[selectedDocument?.id || ''] ? (
+                          <>
+                            <ImageOff className="h-16 w-16 mx-auto mb-4" />
+                            <p className="text-sm">Erro ao carregar imagem</p>
+                            <p className="text-xs">Ficheiro indisponível</p>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-16 w-16 mx-auto mb-4" />
+                            <p className="text-sm">Documento Digitalizado</p>
+                            <p className="text-xs">{selectedDocument?.title || "Sem título"}</p>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -260,6 +494,28 @@ const QualityReview = () => {
             <CardContent className="flex-1 overflow-hidden">
               <ScrollArea className="h-full pr-4">
                 <div className="space-y-4">
+                  {/* OCR Quality Score */}
+                  {selectedDocument?.quality_score && (
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-muted-foreground">Qualidade OCR</span>
+                        <Badge variant={selectedDocument.quality_score > 80 ? "default" : selectedDocument.quality_score > 50 ? "secondary" : "destructive"}>
+                          {selectedDocument.quality_score}%
+                        </Badge>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            selectedDocument.quality_score > 80 ? "bg-emerald-500" : 
+                            selectedDocument.quality_score > 50 ? "bg-amber-500" : "bg-destructive"
+                          )}
+                          style={{ width: `${selectedDocument.quality_score}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Título */}
                   <div className="space-y-2">
                     <Label htmlFor="titulo">Título</Label>
@@ -298,6 +554,7 @@ const QualityReview = () => {
                       id="numeroReferencia" 
                       value={metadata.numeroReferencia}
                       onChange={(e) => setMetadata({...metadata, numeroReferencia: e.target.value})}
+                      readOnly
                     />
                   </div>
 
@@ -343,12 +600,13 @@ const QualityReview = () => {
 
                   {/* Descrição */}
                   <div className="space-y-2">
-                    <Label htmlFor="descricao">Descrição</Label>
+                    <Label htmlFor="descricao">Descrição / Texto OCR</Label>
                     <Textarea 
                       id="descricao" 
-                      rows={3}
+                      rows={4}
                       value={metadata.descricao}
                       onChange={(e) => setMetadata({...metadata, descricao: e.target.value})}
+                      placeholder={selectedDocument?.ocr_text ? "Texto extraído via OCR..." : "Descrição do documento..."}
                     />
                   </div>
 
@@ -383,29 +641,31 @@ const QualityReview = () => {
                     </div>
                   </div>
 
-                  {/* AI Suggested Tags */}
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs">Sugestões IA</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {["ministério", "correspondência", "2024", "urgente"].map((suggestion) => (
-                        <Badge 
-                          key={suggestion}
-                          variant="outline"
-                          className="cursor-pointer hover:bg-primary/10 border-dashed"
-                          onClick={() => !tags.includes(suggestion) && setTags([...tags, suggestion])}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          {suggestion}
-                        </Badge>
-                      ))}
+                  {/* AI Suggested Tags based on OCR */}
+                  {selectedDocument?.ocr_text && (
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs">Sugestões IA</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {["digitalizado", "ocr-processado", selectedDocument.priority].filter(Boolean).map((suggestion) => (
+                          <Badge 
+                            key={suggestion}
+                            variant="outline"
+                            className="cursor-pointer hover:bg-primary/10 border-dashed"
+                            onClick={() => !tags.includes(suggestion) && setTags([...tags, suggestion])}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            {suggestion}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <Separator />
 
-                  {/* Page Actions */}
+                  {/* Document Actions */}
                   <div className="space-y-2">
-                    <Label>Acções da Página</Label>
+                    <Label>Acções do Documento</Label>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1">
                         <Check className="h-4 w-4 mr-2" />
