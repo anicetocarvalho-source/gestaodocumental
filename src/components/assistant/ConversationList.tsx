@@ -83,7 +83,7 @@ export function ConversationList({
                   <TooltipTrigger asChild>
                     <div
                       className={cn(
-                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
+                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors overflow-hidden",
                         currentConversation?.id === conv.id
                           ? "bg-primary/10 text-primary"
                           : "hover:bg-muted"
