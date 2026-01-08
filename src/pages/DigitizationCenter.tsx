@@ -74,11 +74,16 @@ import {
   useDigitizationStats,
   useCreateBatch,
   useUpdateBatch,
-  useDeleteScannedDocument,
   type ScannedDocument,
   type DigitizationBatch,
 } from "@/hooks/useDigitization";
 import { useProfiles } from "@/hooks/useReferenceData";
+import {
+  useUploadMultipleDocuments,
+  useDownloadScannedDocument,
+  useDeleteScannedDocumentWithFile,
+  getScannedDocumentUrl,
+} from "@/hooks/useScannedDocumentUpload";
 // Status mapping
 const statusMap = {
   pending: "pendente",
@@ -138,10 +143,67 @@ const DigitizationCenter = () => {
   // Mutations
   const createBatch = useCreateBatch();
   const updateBatch = useUpdateBatch();
-  const deleteDocument = useDeleteScannedDocument();
+  const uploadDocuments = useUploadMultipleDocuments();
+  const downloadDocument = useDownloadScannedDocument();
+  const deleteDocument = useDeleteScannedDocumentWithFile();
 
   // Get operators from profiles
   const operators = profiles;
+
+  // File upload state
+  const [uploadFilesDialogOpen, setUploadFilesDialogOpen] = useState(false);
+  const [selectedBatchForUpload, setSelectedBatchForUpload] = useState<DigitizationBatch | null>(null);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [uploadPriority, setUploadPriority] = useState<"low" | "normal" | "high" | "urgent">("normal");
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setFilesToUpload(Array.from(files));
+    }
+  };
+
+  const handleDropFiles = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files) {
+      setFilesToUpload(prev => [...prev, ...Array.from(files)]);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFilesToUpload(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadFiles = async () => {
+    if (!selectedBatchForUpload || filesToUpload.length === 0) return;
+
+    await uploadDocuments.mutateAsync({
+      batchId: selectedBatchForUpload.id,
+      files: filesToUpload,
+      priority: uploadPriority,
+    });
+
+    setFilesToUpload([]);
+    setUploadFilesDialogOpen(false);
+    setSelectedBatchForUpload(null);
+  };
+
+  const openUploadDialog = (batch: DigitizationBatch) => {
+    setSelectedBatchForUpload(batch);
+    setFilesToUpload([]);
+    setUploadPriority("normal");
+    setUploadFilesDialogOpen(true);
+  };
+
+  const handleDownloadDocument = (doc: ScannedDocument) => {
+    if (doc.file_path) {
+      downloadDocument.mutate({
+        filePath: doc.file_path,
+        fileName: doc.title || doc.document_number,
+      });
+    }
+  };
 
   const toggleDocumentSelection = (id: string) => {
     const newSelected = new Set(selectedDocuments);
@@ -545,14 +607,17 @@ const DigitizationCenter = () => {
                                   Atribuir Operador
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDownloadDocument(doc)}
+                                  disabled={!doc.file_path}
+                                >
                                   <Download className="h-4 w-4 mr-2" />
                                   Transferir
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-destructive"
-                                  onClick={() => deleteDocument.mutate(doc.id)}
+                                  onClick={() => deleteDocument.mutate({ id: doc.id, filePath: doc.file_path })}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Remover
@@ -658,9 +723,9 @@ const DigitizationCenter = () => {
                     )}
 
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => openUploadDialog(batch)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Carregar
                       </Button>
                       <Button 
                         variant={batch.status === "completed" ? "secondary" : "default"} 
@@ -773,6 +838,106 @@ const DigitizationCenter = () => {
                 <Plus className="h-4 w-4 mr-2" />
               )}
               Criar Lote
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Files Dialog */}
+      <Dialog open={uploadFilesDialogOpen} onOpenChange={setUploadFilesDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Carregar Documentos</DialogTitle>
+            <DialogDescription>
+              {selectedBatchForUpload && (
+                <>Adicionar ficheiros ao lote: <strong>{selectedBatchForUpload.name}</strong></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Drop Zone */}
+            <div
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDropFiles}
+              onClick={() => document.getElementById('file-upload')?.click()}
+            >
+              <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm font-medium">Arraste ficheiros para aqui</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                ou clique para seleccionar
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                PDF, JPEG, PNG, TIFF, WebP (máx. 50MB)
+              </p>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif,.webp"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
+
+            {/* Selected Files */}
+            {filesToUpload.length > 0 && (
+              <div className="space-y-2">
+                <Label>Ficheiros seleccionados ({filesToUpload.length})</Label>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {filesToUpload.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span className="text-sm truncate">{file.name}</span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 flex-shrink-0"
+                        onClick={() => handleRemoveFile(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Priority */}
+            <div className="space-y-2">
+              <Label>Prioridade</Label>
+              <Select value={uploadPriority} onValueChange={(v) => setUploadPriority(v as typeof uploadPriority)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="urgent">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadFilesDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUploadFiles} 
+              disabled={filesToUpload.length === 0 || uploadDocuments.isPending}
+            >
+              {uploadDocuments.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              Carregar {filesToUpload.length > 0 && `(${filesToUpload.length})`}
             </Button>
           </DialogFooter>
         </DialogContent>
