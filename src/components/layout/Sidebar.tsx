@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Logo } from "./Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, AppRole, roleLabels } from "@/hooks/useUserRole";
+import { usePendingApprovalsCount } from "@/hooks/usePendingApprovalsCount";
 import {
   LayoutDashboard,
   FileText,
@@ -45,6 +46,7 @@ interface NavItem {
   href: string;
   icon: LucideIcon;
   roles: AppRole[];
+  badge?: number;
 }
 
 const navigation: NavItem[] = [
@@ -86,16 +88,20 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { profile, isAuthenticated, signOut } = useAuth();
   const { primaryRole, hasAnyRole } = useUserRole();
+  const pendingApprovalsCount = usePendingApprovalsCount();
 
   const handleLogout = async () => {
     await signOut();
     navigate("/auth");
   };
 
-  // Filter menu items based on user role
-  const filteredNavigation = navigation.filter(item => 
-    primaryRole && item.roles.includes(primaryRole)
-  );
+  // Filter menu items based on user role and add badge for approvals
+  const filteredNavigation = navigation
+    .filter(item => primaryRole && item.roles.includes(primaryRole))
+    .map(item => ({
+      ...item,
+      badge: item.href === '/approvals' ? pendingApprovalsCount : undefined,
+    }));
   
   const filteredManagement = management.filter(item => 
     primaryRole && item.roles.includes(primaryRole)
@@ -117,7 +123,18 @@ export function Sidebar() {
         aria-current={isActive ? 'page' : undefined}
       >
         <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {!collapsed && <span className="truncate">{item.name}</span>}
+        {!collapsed && <span className="truncate flex-1">{item.name}</span>}
+        {item.badge && item.badge > 0 && (
+          <Badge 
+            variant="destructive" 
+            className={cn(
+              "h-5 min-w-5 px-1.5 text-[10px] font-semibold",
+              collapsed && "absolute -top-1 -right-1"
+            )}
+          >
+            {item.badge > 99 ? '99+' : item.badge}
+          </Badge>
+        )}
       </NavLink>
     );
 
@@ -125,10 +142,17 @@ export function Sidebar() {
       return (
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
-            {linkContent}
+            <div className="relative">
+              {linkContent}
+            </div>
           </TooltipTrigger>
-          <TooltipContent side="right" className="font-medium">
+          <TooltipContent side="right" className="font-medium flex items-center gap-2">
             {item.name}
+            {item.badge && item.badge > 0 && (
+              <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[9px]">
+                {item.badge > 99 ? '99+' : item.badge}
+              </Badge>
+            )}
           </TooltipContent>
         </Tooltip>
       );
