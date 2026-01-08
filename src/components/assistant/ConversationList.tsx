@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Plus, Trash2, Search, X } from "lucide-react";
 import { Conversation } from "@/hooks/useConversations";
@@ -76,40 +77,48 @@ export function ConversationList({
               Nenhum resultado para "{searchQuery}"
             </p>
           ) : (
-            filteredConversations.map((conv) => (
-              <div
-                key={conv.id}
-                className={cn(
-                  "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
-                  currentConversation?.id === conv.id
-                    ? "bg-primary/10 text-primary"
-                    : "hover:bg-muted"
-                )}
-                onClick={() => onSelect(conv)}
-              >
-                <MessageSquare className="h-4 w-4 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{conv.title}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatDistanceToNow(new Date(conv.updated_at), {
-                      addSuffix: true,
-                      locale: pt,
-                    })}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(conv.id);
-                  }}
-                >
-                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                </Button>
-              </div>
-            ))
+            <TooltipProvider>
+              {filteredConversations.map((conv) => (
+                <Tooltip key={conv.id}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
+                        currentConversation?.id === conv.id
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-muted"
+                      )}
+                      onClick={() => onSelect(conv)}
+                    >
+                      <MessageSquare className="h-4 w-4 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{conv.title}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(conv.updated_at), {
+                            addSuffix: true,
+                            locale: pt,
+                          })}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(conv.id);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p className="text-sm">{conv.title}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
           )}
         </div>
       </ScrollArea>
