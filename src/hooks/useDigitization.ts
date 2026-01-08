@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -225,6 +226,35 @@ export interface BatchDocumentStats {
 }
 
 export function useBatchDocumentStats() {
+  const queryClient = useQueryClient();
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('scanned-documents-stats')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scanned_documents'
+        },
+        (payload) => {
+          console.log('Realtime update received:', payload);
+          // Invalidate queries to refresh stats
+          queryClient.invalidateQueries({ queryKey: ['batch-document-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['digitization-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['scanned-documents'] });
+          queryClient.invalidateQueries({ queryKey: ['batch-documents'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ['batch-document-stats'],
     queryFn: async () => {
