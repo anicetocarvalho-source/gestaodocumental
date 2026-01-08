@@ -129,11 +129,11 @@ export function ContextualSuggestions({ messages, onSelectSuggestion, isLoading 
             key={index}
             variant="outline"
             size="sm"
-            className="h-auto py-1.5 px-3 text-xs bg-background hover:bg-primary/5 hover:border-primary/30 transition-colors"
+            className="h-auto py-1.5 px-3 text-xs bg-background hover:bg-primary/5 hover:border-primary/30 transition-colors whitespace-normal text-left max-w-full"
             onClick={() => onSelectSuggestion(suggestion)}
           >
-            <span>{suggestion}</span>
-            <ArrowRight className="h-3 w-3 ml-1.5 opacity-50" />
+            <span className="flex-1 break-words">{suggestion}</span>
+            <ArrowRight className="h-3 w-3 ml-1.5 opacity-50 flex-shrink-0" />
           </Button>
         ))}
       </div>
