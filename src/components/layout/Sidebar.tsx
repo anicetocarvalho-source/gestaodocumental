@@ -43,6 +43,7 @@ import {
 
 interface BadgeInfo {
   count: number;
+  urgent: number;
   hasUrgent: boolean;
 }
 
@@ -106,7 +107,11 @@ export function Sidebar() {
     .map(item => ({
       ...item,
       badge: item.href === '/approvals' && pendingApprovalsCount.total > 0
-        ? { count: pendingApprovalsCount.total, hasUrgent: pendingApprovalsCount.hasUrgent }
+        ? { 
+            count: pendingApprovalsCount.total, 
+            urgent: pendingApprovalsCount.urgent,
+            hasUrgent: pendingApprovalsCount.hasUrgent 
+          }
         : undefined,
     }));
   
@@ -132,16 +137,26 @@ export function Sidebar() {
         <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
         {!collapsed && <span className="truncate flex-1">{item.name}</span>}
         {item.badge && (
-          <Badge 
-            variant={item.badge.hasUrgent ? "destructive" : "secondary"}
-            className={cn(
-              "h-5 min-w-5 px-1.5 text-[10px] font-semibold",
-              collapsed && "absolute -top-1 -right-1",
-              item.badge.hasUrgent && "animate-pulse"
-            )}
-          >
-            {item.badge.count > 99 ? '99+' : item.badge.count}
-          </Badge>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant={item.badge.hasUrgent ? "destructive" : "secondary"}
+                className={cn(
+                  "h-5 min-w-5 px-1.5 text-[10px] font-semibold cursor-help",
+                  collapsed && "absolute -top-1 -right-1",
+                  item.badge.hasUrgent && "animate-pulse"
+                )}
+              >
+                {item.badge.count > 99 ? '99+' : item.badge.count}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {item.badge.hasUrgent 
+                ? `${item.badge.urgent} urgente${item.badge.urgent > 1 ? 's' : ''} de ${item.badge.count} pendente${item.badge.count > 1 ? 's' : ''}`
+                : `${item.badge.count} aprovação${item.badge.count > 1 ? 'ões' : ''} pendente${item.badge.count > 1 ? 's' : ''}`
+              }
+            </TooltipContent>
+          </Tooltip>
         )}
       </NavLink>
     );
@@ -157,12 +172,22 @@ export function Sidebar() {
           <TooltipContent side="right" className="font-medium flex items-center gap-2">
             {item.name}
             {item.badge && (
-              <Badge 
-                variant={item.badge.hasUrgent ? "destructive" : "secondary"} 
-                className={cn("h-4 min-w-4 px-1 text-[9px]", item.badge.hasUrgent && "animate-pulse")}
-              >
-                {item.badge.count > 99 ? '99+' : item.badge.count}
-              </Badge>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant={item.badge.hasUrgent ? "destructive" : "secondary"} 
+                    className={cn("h-4 min-w-4 px-1 text-[9px] cursor-help", item.badge.hasUrgent && "animate-pulse")}
+                  >
+                    {item.badge.count > 99 ? '99+' : item.badge.count}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {item.badge.hasUrgent 
+                    ? `${item.badge.urgent} urgente${item.badge.urgent > 1 ? 's' : ''} de ${item.badge.count}`
+                    : `${item.badge.count} pendente${item.badge.count > 1 ? 's' : ''}`
+                  }
+                </TooltipContent>
+              </Tooltip>
             )}
           </TooltipContent>
         </Tooltip>
