@@ -7,6 +7,7 @@ import { Send, Bot, User, Loader2, Sparkles, FileText, FolderOpen, HelpCircle } 
 import { Message } from "@/hooks/useConversations";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessageActions } from "./MessageActions";
+import { ContextualSuggestions } from "./ContextualSuggestions";
 
 const suggestedQuestions = [
   { icon: FileText, text: "Quais são os documentos mais recentes no sistema?" },
@@ -111,6 +112,15 @@ export function ChatArea({
           </div>
         )}
       </ScrollArea>
+
+      {/* Contextual Suggestions */}
+      {messages.length > 0 && !streamingContent && (
+        <ContextualSuggestions
+          messages={messages}
+          onSelectSuggestion={onSend}
+          isLoading={isLoading}
+        />
+      )}
 
       <div className="border-t border-border p-4 shrink-0">
         <div className="flex gap-2">
