@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Lightbulb, ArrowRight } from "lucide-react";
 import { Message } from "@/hooks/useConversations";
 import { useMemo } from "react";
@@ -123,20 +124,28 @@ export function ContextualSuggestions({ messages, onSelectSuggestion, isLoading 
         <Lightbulb className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-medium text-muted-foreground">Sugestões de seguimento</span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {suggestions.map((suggestion, index) => (
-          <Button
-            key={index}
-            variant="outline"
-            size="sm"
-            className="h-auto py-1.5 px-3 text-xs bg-background hover:bg-primary/5 hover:border-primary/30 transition-colors whitespace-normal text-left max-w-full"
-            onClick={() => onSelectSuggestion(suggestion)}
-          >
-            <span className="flex-1 break-words">{suggestion}</span>
-            <ArrowRight className="h-3 w-3 ml-1.5 opacity-50 flex-shrink-0" />
-          </Button>
-        ))}
-      </div>
+      <TooltipProvider>
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((suggestion, index) => (
+            <Tooltip key={index}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-auto py-1.5 px-3 text-xs bg-background hover:bg-primary/5 hover:border-primary/30 transition-colors max-w-[200px] overflow-hidden"
+                  onClick={() => onSelectSuggestion(suggestion)}
+                >
+                  <span className="truncate">{suggestion}</span>
+                  <ArrowRight className="h-3 w-3 ml-1.5 opacity-50 flex-shrink-0" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-sm">{suggestion}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </TooltipProvider>
     </div>
   );
 }
