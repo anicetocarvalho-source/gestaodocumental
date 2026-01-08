@@ -113,7 +113,7 @@ export function ConversationList({
                       </Button>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs">
+                  <TooltipContent side="bottom" align="start" className="max-w-xs">
                     <p className="text-sm">{conv.title}</p>
                   </TooltipContent>
                 </Tooltip>
