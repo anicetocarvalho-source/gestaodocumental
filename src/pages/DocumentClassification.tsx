@@ -58,6 +58,7 @@ import {
   FileType,
   X,
   Download,
+  Settings2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -65,6 +66,7 @@ import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { ClassificationRulesConfigModal } from "@/components/classification/ClassificationRulesConfigModal";
 
 interface ClassificationHistoryEntry {
   id: string;
@@ -142,6 +144,7 @@ const DocumentClassification = () => {
   const [changeReason, setChangeReason] = useState("");
   const [previewDocId, setPreviewDocId] = useState<string | null>(null);
   const [showBatchRules, setShowBatchRules] = useState(false);
+  const [showRulesConfig, setShowRulesConfig] = useState(false);
 
   // Fetch current user profile
   const { data: currentProfile } = useQuery({
@@ -966,8 +969,34 @@ const DocumentClassification = () => {
           </Card>
         </div>
 
-        {/* Classification Panel */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Classification Rules Config Card */}
+          <Card className="border-muted">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center">
+                    <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Regras de Classificação</p>
+                    <p className="text-xs text-muted-foreground">
+                      {documentTypesWithRules.filter(t => t.default_classification_id).length} de {documentTypesWithRules.length} tipos configurados
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRulesConfig(true)}
+                >
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Configurar Regras
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Batch Classification by Rules */}
           {batchEligibleDocs.length > 0 && (
             <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
@@ -1927,6 +1956,12 @@ const DocumentClassification = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Classification Rules Config Modal */}
+      <ClassificationRulesConfigModal
+        open={showRulesConfig}
+        onOpenChange={setShowRulesConfig}
+      />
     </DashboardLayout>
   );
 };
