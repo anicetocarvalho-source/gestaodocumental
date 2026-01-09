@@ -408,3 +408,31 @@ export function useDeleteClassification() {
     },
   });
 }
+
+// Hook to update document classification (for drag-and-drop)
+export function useUpdateDocumentClassification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      documentIds,
+      classificationId,
+    }: {
+      documentIds: string[];
+      classificationId: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("documents")
+        .update({ classification_id: classificationId })
+        .in("id", documentIds);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents-by-classification"] });
+      queryClient.invalidateQueries({ queryKey: ["repository-documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document-count-by-classification"] });
+      queryClient.invalidateQueries({ queryKey: ["repository-stats"] });
+    },
+  });
+}

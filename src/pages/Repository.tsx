@@ -83,6 +83,7 @@ export default function Repository() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("browse");
   const [showFilters, setShowFilters] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [filters, setFilters] = useState<{
     search: string;
     status: string;
@@ -277,6 +278,7 @@ export default function Repository() {
             <ClassificationTree
               selectedClassification={selectedClassification}
               onSelect={handleSelectClassification}
+              isDragging={isDragging}
             />
 
             {/* Main Content Area */}
@@ -374,6 +376,8 @@ export default function Repository() {
                   selectedItems={selectedItems}
                   onToggleSelect={toggleItemSelection}
                   onToggleSelectAll={toggleSelectAll}
+                  onDragStart={() => setIsDragging(true)}
+                  onDragEnd={() => setIsDragging(false)}
                 />
               ) : (
                 <Card className="flex-1 overflow-hidden">
