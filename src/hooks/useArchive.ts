@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PaginationParams, PaginatedResult, Document } from '@/types/database';
 
 export type ArchiveStatus = 'archived' | 'permanent' | 'pending_destruction';
+export type RetentionStatus = 'pending' | 'approved' | 'rejected' | 'destroyed';
 
 export interface ArchiveFilters {
   search?: string;
@@ -19,6 +20,26 @@ export interface ArchiveStats {
   permanent: number;
   pendingDestruction: number;
   consultedThisMonth: number;
+}
+
+export interface DocumentRetention {
+  id: string;
+  document_id: string;
+  status: RetentionStatus;
+  scheduled_destruction_date: string;
+  retention_reason: string | null;
+  destruction_reason: string | null;
+  legal_basis: string | null;
+  marked_by: string | null;
+  marked_at: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  destroyed_by: string | null;
+  destroyed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  document?: Document;
 }
 
 // =============================================
@@ -112,7 +133,15 @@ export function useArchiveStats() {
 
       if (permanentError) throw permanentError;
 
-      // Documentos consultados este mês (baseado em movements com action_type = 'view' ou similar)
+      // Documentos pendentes de eliminação
+      const { count: pendingDestruction, error: pendingError } = await supabase
+        .from('document_retention')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (pendingError) throw pendingError;
+
+      // Documentos consultados este mês
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -127,10 +156,55 @@ export function useArchiveStats() {
       return {
         total: total || 0,
         permanent: permanent || 0,
-        pendingDestruction: 0, // Para implementar futuramente com tabela de retenção
+        pendingDestruction: pendingDestruction || 0,
         consultedThisMonth: consulted || 0,
       };
     },
+  });
+}
+
+// Query para registos de retenção
+export function useDocumentRetentions(status?: RetentionStatus) {
+  return useQuery({
+    queryKey: ['document-retentions', status],
+    queryFn: async (): Promise<DocumentRetention[]> => {
+      let query = supabase
+        .from('document_retention')
+        .select(`
+          *,
+          document:documents(*)
+        `)
+        .order('scheduled_destruction_date', { ascending: true });
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return (data as unknown as DocumentRetention[]) || [];
+    },
+  });
+}
+
+// Verificar se documento tem registo de retenção
+export function useDocumentRetention(documentId: string) {
+  return useQuery({
+    queryKey: ['document-retention', documentId],
+    queryFn: async (): Promise<DocumentRetention | null> => {
+      const { data, error } = await supabase
+        .from('document_retention')
+        .select('*')
+        .eq('document_id', documentId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return data as DocumentRetention | null;
+    },
+    enabled: !!documentId,
   });
 }
 
@@ -166,7 +240,13 @@ export function useRestoreDocument() {
 
       if (updateError) throw updateError;
 
-      // 2. Registar movimento de restauração
+      // 2. Remover registo de retenção se existir
+      await supabase
+        .from('document_retention')
+        .delete()
+        .eq('document_id', documentId);
+
+      // 3. Registar movimento de restauração
       const { error: movementError } = await supabase
         .from('document_movements')
         .insert({
@@ -183,6 +263,7 @@ export function useRestoreDocument() {
       queryClient.invalidateQueries({ queryKey: ['archived-documents'] });
       queryClient.invalidateQueries({ queryKey: ['archive-stats'] });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document-retentions'] });
     },
   });
 }
@@ -192,38 +273,120 @@ export function useMarkForDestruction() {
 
   return useMutation({
     mutationFn: async ({
-      documentId,
+      documentIds,
       scheduledDate,
-      reason,
+      retentionReason,
+      destructionReason,
+      legalBasis,
+      notes,
     }: {
-      documentId: string;
+      documentIds: string[];
       scheduledDate: Date;
-      reason?: string;
+      retentionReason?: string;
+      destructionReason: string;
+      legalBasis?: string;
+      notes?: string;
     }) => {
-      // Para futuras implementações com tabela de gestão de retenção
-      // Por agora, apenas registamos no campo de notas via movimento
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { data: doc } = await supabase
-        .from('documents')
-        .select('current_unit_id')
-        .eq('id', documentId)
-        .single();
+      // Inserir registos de retenção para cada documento
+      const retentionRecords = documentIds.map(documentId => ({
+        document_id: documentId,
+        status: 'pending' as const,
+        scheduled_destruction_date: scheduledDate.toISOString().split('T')[0],
+        retention_reason: retentionReason || null,
+        destruction_reason: destructionReason,
+        legal_basis: legalBasis || null,
+        marked_by: user?.id,
+        notes: notes || null,
+      }));
 
-      const { error: movementError } = await supabase
-        .from('document_movements')
-        .insert({
-          document_id: documentId,
-          to_unit_id: doc?.current_unit_id,
-          to_user_id: user?.id,
-          action_type: 'archive',
-          notes: `Documento marcado para eliminação em ${scheduledDate.toLocaleDateString('pt-PT')}. Motivo: ${reason || 'Fim do período de retenção'}`,
-        });
+      const { error } = await supabase
+        .from('document_retention')
+        .upsert(retentionRecords, { onConflict: 'document_id' });
 
-      if (movementError) throw movementError;
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['archived-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['archive-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['document-retentions'] });
+    },
+  });
+}
+
+export function useApproveDestruction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (retentionId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from('document_retention')
+        .update({
+          status: 'approved',
+          approved_by: user?.id,
+          approved_at: new Date().toISOString(),
+        })
+        .eq('id', retentionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document-retentions'] });
+      queryClient.invalidateQueries({ queryKey: ['archive-stats'] });
+    },
+  });
+}
+
+export function useRejectDestruction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      retentionId,
+      reason,
+    }: {
+      retentionId: string;
+      reason: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from('document_retention')
+        .update({
+          status: 'rejected',
+          approved_by: user?.id,
+          approved_at: new Date().toISOString(),
+          notes: reason,
+        })
+        .eq('id', retentionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document-retentions'] });
+      queryClient.invalidateQueries({ queryKey: ['archive-stats'] });
+    },
+  });
+}
+
+export function useCancelDestruction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (retentionId: string) => {
+      const { error } = await supabase
+        .from('document_retention')
+        .delete()
+        .eq('id', retentionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document-retentions'] });
+      queryClient.invalidateQueries({ queryKey: ['archive-stats'] });
     },
   });
 }
