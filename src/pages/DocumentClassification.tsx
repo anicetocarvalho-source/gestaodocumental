@@ -311,7 +311,40 @@ const DocumentClassification = () => {
 
   const selectedClassificationId = selectedTipo || selectedSubclass || selectedClass;
 
-  // Update classification mutation
+  // Fetch reason suggestions based on selected classification
+  const { data: reasonSuggestions = [] } = useQuery({
+    queryKey: ['reason-suggestions', selectedClassificationId],
+    queryFn: async () => {
+      if (!selectedClassificationId) return [];
+      
+      const { data, error } = await supabase
+        .from('classification_history')
+        .select('change_reason')
+        .eq('new_classification_id', selectedClassificationId)
+        .not('change_reason', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      // Get unique reasons with count, filtered for minimum length
+      const reasonCounts = new Map<string, number>();
+      data.forEach(entry => {
+        const reason = entry.change_reason?.trim();
+        if (reason && reason.length >= 5) {
+          reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+        }
+      });
+      
+      // Sort by frequency and return top 5
+      return Array.from(reasonCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([reason, count]) => ({ reason, count }));
+    },
+    enabled: !!selectedClassificationId
+  });
+
   const updateClassification = useMutation({
     mutationFn: async ({ documentIds, classificationId, reason }: { documentIds: string[], classificationId: string, reason: string }) => {
       if (!currentProfile?.id) throw new Error("Utilizador não autenticado");
@@ -956,6 +989,33 @@ const DocumentClassification = () => {
                   <Label className="text-sm font-medium">
                     Motivo da Classificação <span className="text-destructive">*</span>
                   </Label>
+                  
+                  {/* Reason Suggestions */}
+                  {reasonSuggestions.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Sugestões baseadas em classificações anteriores:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {reasonSuggestions.map((suggestion, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setChangeReason(suggestion.reason)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-muted hover:bg-accent hover:text-accent-foreground transition-colors border border-border"
+                            title={`Usado ${suggestion.count} vez(es)`}
+                          >
+                            <span className="max-w-[200px] truncate">{suggestion.reason}</span>
+                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                              {suggestion.count}
+                            </Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   <textarea
                     value={changeReason}
                     onChange={(e) => setChangeReason(e.target.value)}
