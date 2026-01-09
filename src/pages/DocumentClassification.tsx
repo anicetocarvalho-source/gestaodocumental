@@ -52,6 +52,12 @@ import {
   History,
   Clock,
   User,
+  Eye,
+  Calendar,
+  Building2,
+  FileType,
+  X,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -124,6 +130,7 @@ const DocumentClassification = () => {
   } | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [changeReason, setChangeReason] = useState("");
+  const [previewDocId, setPreviewDocId] = useState<string | null>(null);
 
   // Fetch current user profile
   const { data: currentProfile } = useQuery({
@@ -210,7 +217,53 @@ const DocumentClassification = () => {
     enabled: showHistory
   });
 
-  // Get unique users from history for filter
+  // Fetch document preview details
+  const { data: previewDocument, isLoading: isLoadingPreview } = useQuery({
+    queryKey: ['document-preview', previewDocId],
+    queryFn: async () => {
+      if (!previewDocId) return null;
+      
+      const { data, error } = await supabase
+        .from('documents')
+        .select(`
+          id,
+          entry_number,
+          title,
+          description,
+          status,
+          priority,
+          confidentiality,
+          created_at,
+          entry_date,
+          origin,
+          sender_name,
+          sender_institution,
+          external_reference,
+          classification_id,
+          classification:classification_codes(id, code, name, description),
+          document_type:document_types(id, code, name),
+          origin_unit:organizational_units!documents_origin_unit_id_fkey(id, name, code),
+          current_unit:organizational_units!documents_current_unit_id_fkey(id, name, code),
+          created_by_profile:profiles!documents_created_by_fkey(id, full_name),
+          responsible_user:profiles!documents_responsible_user_id_fkey(id, full_name)
+        `)
+        .eq('id', previewDocId)
+        .single();
+      
+      if (error) throw error;
+      
+      // Fetch document files
+      const { data: files } = await supabase
+        .from('document_files')
+        .select('*')
+        .eq('document_id', previewDocId)
+        .order('created_at', { ascending: false });
+      
+      return { ...data, files: files || [] };
+    },
+    enabled: !!previewDocId
+  });
+
   const historyUsers = useMemo(() => {
     const users = new Map<string, string>();
     classificationHistory.forEach(entry => {
@@ -692,16 +745,16 @@ const DocumentClassification = () => {
                 ) : (
                   <div className="divide-y divide-border">
                     {filteredDocuments.map((doc) => (
-                      <label
+                      <div
                         key={doc.id}
-                        className="flex items-start gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors"
                       >
                         <Checkbox
                           checked={selectedDocIds.has(doc.id)}
                           onCheckedChange={() => toggleDocument(doc.id)}
                           className="mt-0.5"
                         />
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleDocument(doc.id)}>
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium text-foreground truncate">
@@ -722,7 +775,25 @@ const DocumentClassification = () => {
                             </Badge>
                           )}
                         </div>
-                      </label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewDocId(doc.id);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Pré-visualizar documento</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -1260,6 +1331,243 @@ const DocumentClassification = () => {
           )}
         </div>
       </div>
+
+      {/* Document Preview Sheet */}
+      <Sheet open={!!previewDocId} onOpenChange={(open) => !open && setPreviewDocId(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Pré-visualização do Documento
+            </SheetTitle>
+            <SheetDescription>
+              Detalhes do documento antes de classificar
+            </SheetDescription>
+          </SheetHeader>
+          
+          {isLoadingPreview ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : previewDocument ? (
+            <div className="space-y-6 mt-6">
+              {/* Title and Status */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg leading-tight">{previewDocument.title}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="font-mono">
+                    {previewDocument.entry_number}
+                  </Badge>
+                  <Badge variant={previewDocument.status === 'em_tramite' ? 'default' : 'secondary'}>
+                    {previewDocument.status}
+                  </Badge>
+                  {previewDocument.priority && previewDocument.priority !== 'normal' && (
+                    <Badge variant={previewDocument.priority === 'urgente' ? 'destructive' : 'warning'}>
+                      {previewDocument.priority}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Description */}
+              {previewDocument.description && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <p className="text-sm">{previewDocument.description}</p>
+                </div>
+              )}
+
+              {/* Current Classification */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <FolderTree className="h-3 w-3" />
+                  Classificação Atual
+                </Label>
+                {previewDocument.classification ? (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono">
+                        {(previewDocument.classification as { code: string }).code}
+                      </Badge>
+                      <span className="text-sm font-medium">
+                        {(previewDocument.classification as { name: string }).name}
+                      </span>
+                    </div>
+                    {(previewDocument.classification as { description: string | null }).description && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {(previewDocument.classification as { description: string | null }).description}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                    <span className="text-sm text-warning">Documento não classificado</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Data de Entrada
+                  </Label>
+                  <p className="text-sm font-medium">
+                    {format(new Date(previewDocument.entry_date), "dd/MM/yyyy", { locale: pt })}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Criado em
+                  </Label>
+                  <p className="text-sm font-medium">
+                    {format(new Date(previewDocument.created_at), "dd/MM/yyyy HH:mm", { locale: pt })}
+                  </p>
+                </div>
+                {previewDocument.document_type && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileType className="h-3 w-3" />
+                      Tipo de Documento
+                    </Label>
+                    <p className="text-sm font-medium">
+                      {(previewDocument.document_type as { name: string }).name}
+                    </p>
+                  </div>
+                )}
+                {previewDocument.origin && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Origem
+                    </Label>
+                    <p className="text-sm font-medium">{previewDocument.origin}</p>
+                  </div>
+                )}
+                {previewDocument.origin_unit && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Unidade de Origem
+                    </Label>
+                    <p className="text-sm font-medium">
+                      {(previewDocument.origin_unit as { name: string }).name}
+                    </p>
+                  </div>
+                )}
+                {previewDocument.current_unit && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Unidade Atual
+                    </Label>
+                    <p className="text-sm font-medium">
+                      {(previewDocument.current_unit as { name: string }).name}
+                    </p>
+                  </div>
+                )}
+                {previewDocument.sender_name && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Remetente
+                    </Label>
+                    <p className="text-sm font-medium">{previewDocument.sender_name}</p>
+                    {previewDocument.sender_institution && (
+                      <p className="text-xs text-muted-foreground">{previewDocument.sender_institution}</p>
+                    )}
+                  </div>
+                )}
+                {previewDocument.responsible_user && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Responsável
+                    </Label>
+                    <p className="text-sm font-medium">
+                      {(previewDocument.responsible_user as { full_name: string }).full_name}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Attached Files */}
+              {previewDocument.files && previewDocument.files.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      Ficheiros Anexados ({previewDocument.files.length})
+                    </Label>
+                    <div className="space-y-2">
+                      {previewDocument.files.map((file: {
+                        id: string;
+                        file_name: string;
+                        file_size: number;
+                        mime_type: string;
+                        is_main_file: boolean;
+                      }) => (
+                        <div
+                          key={file.id}
+                          className="flex items-center justify-between p-2 rounded-md bg-muted/50 border border-border"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{file.file_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {(file.file_size / 1024).toFixed(1)} KB
+                                {file.is_main_file && (
+                                  <Badge variant="outline" className="ml-2 text-xs">Principal</Badge>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Actions */}
+              <Separator />
+              <div className="flex items-center gap-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    if (!selectedDocIds.has(previewDocument.id)) {
+                      setSelectedDocIds(prev => new Set(prev).add(previewDocument.id));
+                    }
+                    setPreviewDocId(null);
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Selecionar para Classificar
+                </Button>
+                <Button variant="outline" onClick={() => setPreviewDocId(null)}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground">Documento não encontrado</p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 };
