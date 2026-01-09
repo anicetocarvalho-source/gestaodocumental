@@ -37,6 +37,7 @@ import {
   AlertCircle,
   GitCompare,
   TrendingUp,
+  LineChart as LineChartIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
@@ -57,6 +58,7 @@ import { InteractiveKPICard } from "@/components/reports/InteractiveKPICard";
 import { PeriodComparisonPanel } from "@/components/reports/PeriodComparisonPanel";
 import { SLAAlertsPanel } from "@/components/reports/SLAAlertsPanel";
 import { AdvancedCharts } from "@/components/reports/AdvancedCharts";
+import { TrendForecastCharts } from "@/components/reports/TrendForecastCharts";
 
 const Reports = () => {
   const [filters, setFilters] = useState<ReportFilters>({
@@ -227,6 +229,10 @@ const Reports = () => {
             <TabsTrigger value="advanced" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               Avançados
+            </TabsTrigger>
+            <TabsTrigger value="forecast" className="gap-2">
+              <LineChartIcon className="h-4 w-4" />
+              Tendências
             </TabsTrigger>
           </TabsList>
 
@@ -587,6 +593,11 @@ const Reports = () => {
               dateTo={filters.dateTo} 
               unitId={filters.unitId} 
             />
+          </TabsContent>
+
+          {/* Trend Forecast Tab */}
+          <TabsContent value="forecast" className="space-y-6">
+            <TrendForecastCharts unitId={filters.unitId} />
           </TabsContent>
         </Tabs>
       </div>
