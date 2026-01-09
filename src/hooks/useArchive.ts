@@ -112,6 +112,34 @@ export function useArchivedDocuments(filters?: ArchiveFilters, pagination?: Pagi
   });
 }
 
+// Query para analytics - todos os documentos arquivados sem paginação
+export function useArchiveAnalyticsData() {
+  return useQuery({
+    queryKey: ['archive-analytics'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('documents')
+        .select(`
+          id,
+          title,
+          entry_number,
+          classification_id,
+          current_unit_id,
+          document_type_id,
+          archived_at,
+          status
+        `)
+        .eq('is_archived', true)
+        .order('archived_at', { ascending: false })
+        .limit(500); // Limitar para performance
+
+      if (error) throw error;
+
+      return data || [];
+    },
+  });
+}
+
 export function useArchiveStats() {
   return useQuery({
     queryKey: ['archive-stats'],

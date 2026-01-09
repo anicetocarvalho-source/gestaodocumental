@@ -62,6 +62,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -76,6 +77,7 @@ import {
   useApproveDestruction,
   useRejectDestruction,
   useCancelDestruction,
+  useArchiveAnalyticsData,
   ArchiveFilters 
 } from "@/hooks/useArchive";
 import { useDocumentTypes, useOrganizationalUnits, useClassificationCodes } from "@/hooks/useReferenceData";
@@ -84,6 +86,7 @@ import { Document } from "@/types/database";
 import { MarkForDestructionModal } from "@/components/archive/MarkForDestructionModal";
 import { PendingDestructionList } from "@/components/archive/PendingDestructionList";
 import { RetentionStatusBadge } from "@/components/archive/RetentionStatusBadge";
+import { ArchiveAnalytics } from "@/components/archive/ArchiveAnalytics";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -125,6 +128,8 @@ const Archive = () => {
   const { data: units } = useOrganizationalUnits({ activeOnly: true });
   const { data: classifications } = useClassificationCodes({ activeOnly: true });
   const { data: pendingRetentions, isLoading: retentionsLoading } = useDocumentRetentions('pending');
+  const { data: allRetentions } = useDocumentRetentions();
+  const { data: analyticsDocuments, isLoading: analyticsLoading } = useArchiveAnalyticsData();
   
   const restoreDocument = useRestoreDocument();
   const markForDestruction = useMarkForDestruction();
@@ -480,16 +485,20 @@ const Archive = () => {
         <TabsList>
           <TabsTrigger value="documents" className="gap-2">
             <FolderArchive className="h-4 w-4" />
-            Documentos Arquivados
+            Documentos
           </TabsTrigger>
           <TabsTrigger value="retention" className="gap-2">
             <Clock className="h-4 w-4" />
-            Pendentes Eliminação
+            Eliminação
             {(stats?.pendingDestruction || 0) > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 px-1.5">
                 {stats.pendingDestruction}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Estatísticas
           </TabsTrigger>
         </TabsList>
 
@@ -735,6 +744,16 @@ const Archive = () => {
               toast.success("Marcação cancelada");
             }}
             canApprove={canDo("documents", "archive")}
+          />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <ArchiveAnalytics
+            documents={analyticsDocuments as Document[] || []}
+            retentions={allRetentions || []}
+            classifications={classifications || []}
+            units={units || []}
+            isLoading={analyticsLoading}
           />
         </TabsContent>
       </Tabs>
