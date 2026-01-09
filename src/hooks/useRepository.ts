@@ -1,5 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+
+export interface CreateClassificationInput {
+  code: string;
+  name: string;
+  description?: string | null;
+  parent_id?: string | null;
+  level: number;
+  retention_years?: number | null;
+  final_destination?: string | null;
+}
 
 export interface ClassificationNode {
   id: string;
@@ -318,6 +328,83 @@ export function useDocumentCountByClassification() {
       });
 
       return counts;
+    },
+  });
+}
+
+// Hook to create a new classification
+export function useCreateClassification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateClassificationInput) => {
+      const { data, error } = await supabase
+        .from("classification_codes")
+        .insert({
+          code: input.code,
+          name: input.name,
+          description: input.description,
+          parent_id: input.parent_id,
+          level: input.level,
+          retention_years: input.retention_years,
+          final_destination: input.final_destination,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classification-tree"] });
+      queryClient.invalidateQueries({ queryKey: ["document-count-by-classification"] });
+      queryClient.invalidateQueries({ queryKey: ["repository-stats"] });
+    },
+  });
+}
+
+// Hook to update a classification
+export function useUpdateClassification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...updates
+    }: Partial<CreateClassificationInput> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("classification_codes")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classification-tree"] });
+    },
+  });
+}
+
+// Hook to delete a classification
+export function useDeleteClassification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("classification_codes")
+        .update({ is_active: false })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classification-tree"] });
+      queryClient.invalidateQueries({ queryKey: ["repository-stats"] });
     },
   });
 }

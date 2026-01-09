@@ -1,8 +1,21 @@
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ChevronRight,
   ChevronDown,
@@ -10,9 +23,20 @@ import {
   FolderOpen,
   FileText,
   Search,
+  Plus,
+  MoreVertical,
+  FolderPlus,
+  Edit,
+  Trash2,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ClassificationNode, useClassificationTree, useDocumentCountByClassification } from "@/hooks/useRepository";
+import {
+  ClassificationNode,
+  useClassificationTree,
+  useDocumentCountByClassification,
+} from "@/hooks/useRepository";
+import { CreateClassificationModal } from "./CreateClassificationModal";
 
 interface TreeItemProps {
   node: ClassificationNode;
@@ -22,6 +46,7 @@ interface TreeItemProps {
   documentCounts: Record<string, number>;
   onSelect: (node: ClassificationNode) => void;
   onToggle: (id: string) => void;
+  onAddChild: (parent: ClassificationNode) => void;
 }
 
 function TreeItem({
@@ -32,11 +57,11 @@ function TreeItem({
   documentCounts,
   onSelect,
   onToggle,
+  onAddChild,
 }: TreeItemProps) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
   const isSelected = selectedId === node.id;
-  const docCount = documentCounts[node.id] || 0;
 
   // Calculate total count including children
   const getTotalCount = (n: ClassificationNode): number => {
@@ -51,47 +76,94 @@ function TreeItem({
 
   return (
     <div>
-      <button
-        onClick={() => {
-          onSelect(node);
-          if (hasChildren) onToggle(node.id);
-        }}
+      <div
         className={cn(
-          "w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors text-left group",
+          "group flex items-center rounded-md transition-colors",
           isSelected
-            ? "bg-primary/10 text-primary font-medium"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            ? "bg-primary/10"
+            : "hover:bg-muted"
         )}
-        style={{ paddingLeft: `${level * 12 + 8}px` }}
       >
-        {hasChildren ? (
-          isExpanded ? (
-            <ChevronDown className="h-4 w-4 shrink-0" />
+        <button
+          onClick={() => {
+            onSelect(node);
+            if (hasChildren) onToggle(node.id);
+          }}
+          className={cn(
+            "flex-1 flex items-center gap-2 px-2 py-1.5 text-sm text-left",
+            isSelected
+              ? "text-primary font-medium"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+          style={{ paddingLeft: `${level * 12 + 8}px` }}
+        >
+          {hasChildren ? (
+            isExpanded ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )
           ) : (
-            <ChevronRight className="h-4 w-4 shrink-0" />
-          )
-        ) : (
-          <span className="w-4" />
-        )}
-        {hasChildren ? (
-          isExpanded ? (
-            <FolderOpen className="h-4 w-4 shrink-0 text-warning" />
+            <span className="w-4" />
+          )}
+          {hasChildren || node.level < 3 ? (
+            isExpanded ? (
+              <FolderOpen className="h-4 w-4 shrink-0 text-warning" />
+            ) : (
+              <Folder className="h-4 w-4 shrink-0 text-warning" />
+            )
           ) : (
-            <Folder className="h-4 w-4 shrink-0 text-warning" />
-          )
-        ) : (
-          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-        <span className="truncate flex-1">{node.code} - {node.name}</span>
-        {totalCount > 0 && (
-          <Badge
-            variant="secondary"
-            className="h-5 min-w-5 px-1.5 text-xs opacity-70 group-hover:opacity-100"
-          >
-            {totalCount}
-          </Badge>
-        )}
-      </button>
+            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <span className="truncate flex-1">
+            {node.code} - {node.name}
+          </span>
+          {totalCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="h-5 min-w-5 px-1.5 text-xs opacity-70 group-hover:opacity-100"
+            >
+              {totalCount}
+            </Badge>
+          )}
+        </button>
+
+        {/* Actions dropdown - visible on hover */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity pr-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-6 w-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onAddChild(node)}>
+                <FolderPlus className="h-4 w-4 mr-2" />
+                Nova Sub-classificação
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Info className="h-4 w-4 mr-2" />
+                Detalhes
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Desactivar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
       {hasChildren && isExpanded && (
         <div>
           {node.children.map((child) => (
@@ -104,6 +176,7 @@ function TreeItem({
               documentCounts={documentCounts}
               onSelect={onSelect}
               onToggle={onToggle}
+              onAddChild={onAddChild}
             />
           ))}
         </div>
@@ -123,6 +196,10 @@ export function ClassificationTree({
 }: ClassificationTreeProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [parentForCreate, setParentForCreate] = useState<ClassificationNode | null>(
+    null
+  );
 
   const { data: tree, isLoading } = useClassificationTree();
   const { data: documentCounts } = useDocumentCountByClassification();
@@ -175,48 +252,89 @@ export function ClassificationTree({
     setExpandedIds(newExpanded);
   };
 
+  const handleAddChild = (parent: ClassificationNode) => {
+    setParentForCreate(parent);
+    setCreateModalOpen(true);
+  };
+
+  const handleAddRoot = () => {
+    setParentForCreate(null);
+    setCreateModalOpen(true);
+  };
+
   return (
-    <Card className="w-80 shrink-0 flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <h3 className="font-semibold text-foreground mb-3">
-          Classificação Documental
-        </h3>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Pesquisar classificação..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2">
-        {isLoading ? (
-          <div className="space-y-2 p-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
+    <>
+      <Card className="w-80 shrink-0 flex flex-col h-full">
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-foreground">
+              Classificação Documental
+            </h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleAddRoot}
+                  className="h-7 w-7"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Nova classificação</TooltipContent>
+            </Tooltip>
           </div>
-        ) : filteredTree?.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            Nenhuma classificação encontrada
-          </div>
-        ) : (
-          filteredTree?.map((node) => (
-            <TreeItem
-              key={node.id}
-              node={node}
-              level={0}
-              selectedId={selectedClassification?.id || ""}
-              expandedIds={expandedIds}
-              documentCounts={documentCounts || {}}
-              onSelect={onSelect}
-              onToggle={handleToggle}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar classificação..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
             />
-          ))
-        )}
-      </div>
-    </Card>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2">
+          {isLoading ? (
+            <div className="space-y-2 p-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : filteredTree?.length === 0 ? (
+            <div className="p-4 text-center">
+              <Folder className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm mb-3">
+                Nenhuma classificação encontrada
+              </p>
+              <Button variant="outline" size="sm" onClick={handleAddRoot}>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Primeira
+              </Button>
+            </div>
+          ) : (
+            filteredTree?.map((node) => (
+              <TreeItem
+                key={node.id}
+                node={node}
+                level={0}
+                selectedId={selectedClassification?.id || ""}
+                expandedIds={expandedIds}
+                documentCounts={documentCounts || {}}
+                onSelect={onSelect}
+                onToggle={handleToggle}
+                onAddChild={handleAddChild}
+              />
+            ))
+          )}
+        </div>
+      </Card>
+
+      <CreateClassificationModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        parentClassification={parentForCreate}
+      />
+    </>
   );
 }
