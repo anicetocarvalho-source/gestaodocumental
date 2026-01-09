@@ -772,6 +772,71 @@ export type Database = {
           },
         ]
       }
+      document_retention: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          destroyed_at: string | null
+          destroyed_by: string | null
+          destruction_reason: string | null
+          document_id: string
+          id: string
+          legal_basis: string | null
+          marked_at: string
+          marked_by: string | null
+          notes: string | null
+          retention_reason: string | null
+          scheduled_destruction_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          destroyed_at?: string | null
+          destroyed_by?: string | null
+          destruction_reason?: string | null
+          document_id: string
+          id?: string
+          legal_basis?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          notes?: string | null
+          retention_reason?: string | null
+          scheduled_destruction_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          destroyed_at?: string | null
+          destroyed_by?: string | null
+          destruction_reason?: string | null
+          document_id?: string
+          id?: string
+          legal_basis?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          notes?: string | null
+          retention_reason?: string | null
+          scheduled_destruction_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_retention_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_signatures: {
         Row: {
           device_info: string | null

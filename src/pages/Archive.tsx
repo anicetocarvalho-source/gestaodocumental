@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -60,15 +61,29 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
-import { useArchivedDocuments, useArchiveStats, useRestoreDocument, ArchiveFilters } from "@/hooks/useArchive";
+import { 
+  useArchivedDocuments, 
+  useArchiveStats, 
+  useRestoreDocument, 
+  useDocumentRetentions,
+  useMarkForDestruction,
+  useApproveDestruction,
+  useRejectDestruction,
+  useCancelDestruction,
+  ArchiveFilters 
+} from "@/hooks/useArchive";
 import { useDocumentTypes, useOrganizationalUnits, useClassificationCodes } from "@/hooks/useReferenceData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Document } from "@/types/database";
+import { MarkForDestructionModal } from "@/components/archive/MarkForDestructionModal";
+import { PendingDestructionList } from "@/components/archive/PendingDestructionList";
+import { RetentionStatusBadge } from "@/components/archive/RetentionStatusBadge";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -80,6 +95,8 @@ const Archive = () => {
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [destructionModalOpen, setDestructionModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("documents");
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,8 +124,13 @@ const Archive = () => {
   const { data: documentTypes } = useDocumentTypes({ activeOnly: true });
   const { data: units } = useOrganizationalUnits({ activeOnly: true });
   const { data: classifications } = useClassificationCodes({ activeOnly: true });
+  const { data: pendingRetentions, isLoading: retentionsLoading } = useDocumentRetentions('pending');
   
   const restoreDocument = useRestoreDocument();
+  const markForDestruction = useMarkForDestruction();
+  const approveDestruction = useApproveDestruction();
+  const rejectDestruction = useRejectDestruction();
+  const cancelDestruction = useCancelDestruction();
 
   // Dados processados
   const documents = documentsResult?.data || [];
@@ -201,6 +223,28 @@ const Archive = () => {
     setCurrentPage(1);
   };
 
+  // Handler de marcação para eliminação
+  const handleMarkForDestruction = async (data: {
+    documentIds: string[];
+    scheduledDate: Date;
+    retentionReason?: string;
+    destructionReason: string;
+    legalBasis?: string;
+    notes?: string;
+  }) => {
+    try {
+      await markForDestruction.mutateAsync(data);
+      toast.success("Documentos marcados para eliminação", {
+        description: `${data.documentIds.length} documento(s) agendado(s) para eliminação.`,
+      });
+      setDestructionModalOpen(false);
+      setSelectedDocuments([]);
+    } catch (error) {
+      toast.error("Erro ao marcar documentos para eliminação");
+      console.error(error);
+    }
+  };
+
   const hasActiveFilters = typeFilter !== "all" || unitFilter !== "all" || classificationFilter !== "all" || searchTerm !== "";
   const isAllSelected = documents.length > 0 && selectedDocuments.length === documents.length;
   const hasSelection = selectedDocuments.length > 0;
@@ -285,18 +329,27 @@ const Archive = () => {
               Descarregar
             </Button>
             {canDo("documents", "archive") && (
-              <Button 
-                size="sm" 
-                variant="success"
-                onClick={() => {
-                  // Para restaurar múltiplos, usamos o primeiro seleccionado
-                  const doc = documents.find(d => d.id === selectedDocuments[0]);
-                  if (doc) handleRestoreClick(doc);
-                }}
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Restaurar
-              </Button>
+              <>
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  onClick={() => setDestructionModalOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Marcar Eliminação
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="success"
+                  onClick={() => {
+                    const doc = documents.find(d => d.id === selectedDocuments[0]);
+                    if (doc) handleRestoreClick(doc);
+                  }}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Restaurar
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -422,19 +475,38 @@ const Archive = () => {
         </Card>
       )}
 
-      {/* Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FolderArchive className="h-4 w-4" />
-              Documentos Arquivados
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {totalCount} documento(s)
-            </p>
-          </div>
-        </CardHeader>
+      {/* Tabs for Documents and Pending Destruction */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="documents" className="gap-2">
+            <FolderArchive className="h-4 w-4" />
+            Documentos Arquivados
+          </TabsTrigger>
+          <TabsTrigger value="retention" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Pendentes Eliminação
+            {(stats?.pendingDestruction || 0) > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5">
+                {stats.pendingDestruction}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="documents">
+          {/* Table */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FolderArchive className="h-4 w-4" />
+                  Documentos Arquivados
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {totalCount} documento(s)
+                </p>
+              </div>
+            </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-4 space-y-3">
@@ -643,7 +715,29 @@ const Archive = () => {
             </div>
           )}
         </CardContent>
-      </Card>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="retention">
+          <PendingDestructionList
+            retentionRecords={pendingRetentions || []}
+            isLoading={retentionsLoading}
+            onApprove={async (id) => {
+              await approveDestruction.mutateAsync(id);
+              toast.success("Eliminação aprovada");
+            }}
+            onReject={async (id, reason) => {
+              await rejectDestruction.mutateAsync({ retentionId: id, reason });
+              toast.success("Eliminação rejeitada");
+            }}
+            onCancel={async (id) => {
+              await cancelDestruction.mutateAsync(id);
+              toast.success("Marcação cancelada");
+            }}
+            canApprove={canDo("documents", "archive")}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Restore Confirmation Dialog */}
       <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
@@ -685,6 +779,15 @@ const Archive = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mark for Destruction Modal */}
+      <MarkForDestructionModal
+        open={destructionModalOpen}
+        onOpenChange={setDestructionModalOpen}
+        documents={documents.filter(d => selectedDocuments.includes(d.id))}
+        onConfirm={handleMarkForDestruction}
+        isPending={markForDestruction.isPending}
+      />
     </DashboardLayout>
   );
 };
