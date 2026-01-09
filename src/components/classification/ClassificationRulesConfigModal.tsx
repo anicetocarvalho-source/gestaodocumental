@@ -43,6 +43,8 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -116,6 +118,8 @@ export const ClassificationRulesConfigModal = ({
   const [showValidation, setShowValidation] = useState(true);
   const [sortColumn, setSortColumn] = useState<"name" | "code" | "state" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch document types
   const { data: documentTypes = [], isLoading: isLoadingTypes } = useQuery({
@@ -460,6 +464,17 @@ export const ClassificationRulesConfigModal = ({
     }
   };
 
+  // Pagination calculations
+  const paginatedTypes = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredTypes.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredTypes, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredTypes.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  const resetPagination = () => setCurrentPage(1);
+
   // Stats
   const stats = useMemo(() => {
     const configured = documentTypes.filter(t => t.default_classification_id).length;
@@ -753,11 +768,11 @@ export const ClassificationRulesConfigModal = ({
               <Input
                 placeholder="Pesquisar tipos de documento..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); resetPagination(); }}
                 className="pl-9"
               />
             </div>
-            <Select value={filterMode} onValueChange={(value: "all" | "unconfigured" | "with-suggestions") => setFilterMode(value)}>
+            <Select value={filterMode} onValueChange={(value: "all" | "unconfigured" | "with-suggestions") => { setFilterMode(value); resetPagination(); }}>
               <SelectTrigger className="w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
@@ -802,6 +817,7 @@ export const ClassificationRulesConfigModal = ({
                 </p>
               </div>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -866,7 +882,7 @@ export const ClassificationRulesConfigModal = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTypes.map((type) => {
+                  {paginatedTypes.map((type) => {
                     const typeWarnings = getTypeWarnings(type.id);
                     const hasWarnings = typeWarnings.length > 0;
                     const suggestion = !type.default_classification_id ? getSuggestionForType(type.id) : null;
@@ -1091,6 +1107,62 @@ export const ClassificationRulesConfigModal = ({
                   })}
                 </TableBody>
               </Table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredTypes.length)} de {filteredTypes.length} registros
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => {
+                          // Show first, last, current, and adjacent pages
+                          if (page === 1 || page === totalPages) return true;
+                          if (Math.abs(page - currentPage) <= 1) return true;
+                          return false;
+                        })
+                        .map((page, index, array) => {
+                          const prevPage = array[index - 1];
+                          const showEllipsis = prevPage && page - prevPage > 1;
+                          return (
+                            <div key={page} className="flex items-center">
+                              {showEllipsis && (
+                                <span className="px-2 text-muted-foreground">...</span>
+                              )}
+                              <Button
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                className="min-w-[32px]"
+                                onClick={() => setCurrentPage(page)}
+                              >
+                                {page}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              </>
             )}
           </ScrollArea>
         </div>
