@@ -241,6 +241,26 @@ export function useBatchDocumentStats() {
         },
         (payload) => {
           console.log('Realtime update received:', payload);
+          
+          // Show toast notifications for status changes
+          if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+            const newStatus = (payload.new as { status?: string }).status;
+            const oldStatus = (payload.old as { status?: string }).status;
+            const docNumber = (payload.new as { document_number?: string }).document_number;
+            
+            if (newStatus !== oldStatus) {
+              if (newStatus === 'approved') {
+                toast.success(`Documento ${docNumber || ''} aprovado`, {
+                  description: 'Um documento foi aprovado por outro utilizador'
+                });
+              } else if (newStatus === 'rejected') {
+                toast.error(`Documento ${docNumber || ''} rejeitado`, {
+                  description: 'Um documento foi rejeitado por outro utilizador'
+                });
+              }
+            }
+          }
+          
           // Invalidate queries to refresh stats
           queryClient.invalidateQueries({ queryKey: ['batch-document-stats'] });
           queryClient.invalidateQueries({ queryKey: ['digitization-stats'] });
