@@ -35,6 +35,8 @@ import {
   Bell,
   Send,
   AlertCircle,
+  GitCompare,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
@@ -51,6 +53,10 @@ import {
 import { ReportFiltersPanel } from "@/components/reports/ReportFiltersPanel";
 import { ExportReportButton } from "@/components/reports/ExportReportButton";
 import { ScheduledReportsModal } from "@/components/reports/ScheduledReportsModal";
+import { InteractiveKPICard } from "@/components/reports/InteractiveKPICard";
+import { PeriodComparisonPanel } from "@/components/reports/PeriodComparisonPanel";
+import { SLAAlertsPanel } from "@/components/reports/SLAAlertsPanel";
+import { AdvancedCharts } from "@/components/reports/AdvancedCharts";
 
 const Reports = () => {
   const [filters, setFilters] = useState<ReportFilters>({
@@ -136,173 +142,64 @@ const Reports = () => {
           </CardContent>
         </Card>
 
-        {/* KPI Cards */}
+        {/* KPI Cards - Interactive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              {isLoadingKPI ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Documentos</p>
-                    <p className="text-3xl font-bold mt-1">{stats.totalDocuments.toLocaleString()}</p>
-                    <div className="flex items-center gap-1 mt-2">
-                      {stats.documentsChange >= 0 ? (
-                        <ArrowUpRight className="h-4 w-4 text-success" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 text-destructive" />
-                      )}
-                      <span className={cn(
-                        "text-sm font-medium",
-                        stats.documentsChange >= 0 ? "text-success" : "text-destructive"
-                      )}>
-                        {Math.abs(stats.documentsChange)}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              {isLoadingKPI ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Processos</p>
-                    <p className="text-3xl font-bold mt-1">{stats.totalProcesses.toLocaleString()}</p>
-                    <div className="flex items-center gap-1 mt-2">
-                      {stats.processesChange >= 0 ? (
-                        <ArrowUpRight className="h-4 w-4 text-success" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 text-destructive" />
-                      )}
-                      <span className={cn(
-                        "text-sm font-medium",
-                        stats.processesChange >= 0 ? "text-success" : "text-destructive"
-                      )}>
-                        {Math.abs(stats.processesChange)}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center">
-                    <Activity className="h-6 w-6 text-success" />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              {isLoadingKPI ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Despachos</p>
-                    <p className="text-3xl font-bold mt-1">{stats.totalDispatches.toLocaleString()}</p>
-                    <div className="flex items-center gap-1 mt-2">
-                      {stats.dispatchesChange >= 0 ? (
-                        <ArrowUpRight className="h-4 w-4 text-success" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 text-destructive" />
-                      )}
-                      <span className={cn(
-                        "text-sm font-medium",
-                        stats.dispatchesChange >= 0 ? "text-success" : "text-destructive"
-                      )}>
-                        {Math.abs(stats.dispatchesChange)}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-lg bg-info/10 flex items-center justify-center">
-                    <Send className="h-6 w-6 text-info" />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              {isLoadingKPI ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tempo Médio</p>
-                    <p className="text-3xl font-bold mt-1">{stats.avgProcessingTime}<span className="text-lg text-muted-foreground ml-1">dias</span></p>
-                    <div className="flex items-center gap-1 mt-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">processos concluídos</span>
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-lg bg-warning/10 flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-warning" />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              {isLoadingKPI ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">SLA Compliance</p>
-                    <p className="text-3xl font-bold mt-1">{stats.slaCompliance}%</p>
-                    <div className="flex items-center gap-1 mt-2">
-                      {stats.pendingApprovals > 0 && (
-                        <>
-                          <AlertCircle className="h-4 w-4 text-warning" />
-                          <span className="text-xs text-warning">{stats.pendingApprovals} pendentes</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <Target className="h-6 w-6 text-emerald-500" />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <InteractiveKPICard
+            title="Documentos"
+            value={stats.totalDocuments}
+            change={stats.documentsChange}
+            icon={FileText}
+            iconClassName="bg-primary/10 text-primary"
+            isLoading={isLoadingKPI}
+            navigateTo="/documents"
+          />
+          <InteractiveKPICard
+            title="Processos"
+            value={stats.totalProcesses}
+            change={stats.processesChange}
+            icon={Activity}
+            iconClassName="bg-success/10 text-success"
+            isLoading={isLoadingKPI}
+            navigateTo="/processes"
+          />
+          <InteractiveKPICard
+            title="Despachos"
+            value={stats.totalDispatches}
+            change={stats.dispatchesChange}
+            icon={Send}
+            iconClassName="bg-info/10 text-info"
+            isLoading={isLoadingKPI}
+            navigateTo="/dispatches"
+          />
+          <InteractiveKPICard
+            title="Tempo Médio"
+            value={stats.avgProcessingTime}
+            suffix="dias"
+            icon={Clock}
+            iconClassName="bg-warning/10 text-warning"
+            isLoading={isLoadingKPI}
+            subtext="processos concluídos"
+            subtextIcon={Clock}
+          />
+          <InteractiveKPICard
+            title="SLA Compliance"
+            value={`${stats.slaCompliance}%`}
+            icon={Target}
+            iconClassName="bg-emerald-500/10 text-emerald-500"
+            isLoading={isLoadingKPI}
+            subtext={stats.pendingApprovals > 0 ? `${stats.pendingApprovals} pendentes` : undefined}
+            subtextIcon={stats.pendingApprovals > 0 ? AlertCircle : undefined}
+            drilldownTitle="Detalhes de SLA"
+            drilldownItems={[
+              { label: "No prazo", value: `${stats.slaCompliance}%`, status: "success" },
+              { label: "Aprovações pendentes", value: stats.pendingApprovals, status: stats.pendingApprovals > 0 ? "warning" : "success" },
+            ]}
+          />
         </div>
 
         {/* Charts Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Visão Geral
@@ -318,6 +215,18 @@ const Reports = () => {
             <TabsTrigger value="performance" className="gap-2">
               <Zap className="h-4 w-4" />
               Desempenho
+            </TabsTrigger>
+            <TabsTrigger value="comparison" className="gap-2">
+              <GitCompare className="h-4 w-4" />
+              Comparação
+            </TabsTrigger>
+            <TabsTrigger value="sla" className="gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Alertas SLA
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Avançados
             </TabsTrigger>
           </TabsList>
 
@@ -659,6 +568,25 @@ const Reports = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Comparison Tab */}
+          <TabsContent value="comparison" className="space-y-6">
+            <PeriodComparisonPanel unitId={filters.unitId} />
+          </TabsContent>
+
+          {/* SLA Alerts Tab */}
+          <TabsContent value="sla" className="space-y-6">
+            <SLAAlertsPanel unitId={filters.unitId} />
+          </TabsContent>
+
+          {/* Advanced Charts Tab */}
+          <TabsContent value="advanced" className="space-y-6">
+            <AdvancedCharts 
+              dateFrom={filters.dateFrom} 
+              dateTo={filters.dateTo} 
+              unitId={filters.unitId} 
+            />
           </TabsContent>
         </Tabs>
       </div>
