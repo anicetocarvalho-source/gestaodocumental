@@ -47,6 +47,7 @@ import {
   FileType,
   FolderTree,
   Info,
+  ArrowUpDown,
   Filter,
   Lightbulb,
   Loader2,
@@ -112,6 +113,8 @@ export const ClassificationRulesConfigModal = ({
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [selectedClassificationId, setSelectedClassificationId] = useState<string>("");
   const [showValidation, setShowValidation] = useState(true);
+  const [sortColumn, setSortColumn] = useState<"name" | "code" | "state" | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // Fetch document types
   const { data: documentTypes = [], isLoading: isLoadingTypes } = useQuery({
@@ -394,7 +397,7 @@ export const ClassificationRulesConfigModal = ({
     },
   });
 
-  // Filter document types
+  // Filter and sort document types
   const filteredTypes = useMemo(() => {
     let result = documentTypes;
     
@@ -415,8 +418,46 @@ export const ClassificationRulesConfigModal = ({
       );
     }
     
+    // Apply sorting
+    if (sortColumn) {
+      result = [...result].sort((a, b) => {
+        let comparison = 0;
+        
+        if (sortColumn === "name") {
+          comparison = a.name.localeCompare(b.name, 'pt');
+        } else if (sortColumn === "code") {
+          comparison = a.code.localeCompare(b.code);
+        } else if (sortColumn === "state") {
+          // Sort by: configured (1), with suggestion (2), unconfigured (3)
+          const getStateOrder = (type: DocumentType) => {
+            if (type.default_classification_id) return 1;
+            if (getSuggestionForType(type.id)) return 2;
+            return 3;
+          };
+          comparison = getStateOrder(a) - getStateOrder(b);
+        }
+        
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+    }
+    
     return result;
-  }, [documentTypes, searchQuery, filterMode, getSuggestionForType]);
+  }, [documentTypes, searchQuery, filterMode, getSuggestionForType, sortColumn, sortDirection]);
+
+  // Toggle sort function
+  const toggleSort = (column: "name" | "code" | "state") => {
+    if (sortColumn === column) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortColumn(null);
+        setSortDirection("asc");
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
 
   // Stats
   const stats = useMemo(() => {
@@ -763,9 +804,39 @@ export const ClassificationRulesConfigModal = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">Tipo de Documento</TableHead>
-                    <TableHead>Classificação Padrão</TableHead>
-                    <TableHead className="w-[60px] text-center">Estado</TableHead>
+                    <TableHead className="w-[200px]">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                        onClick={() => toggleSort("name")}
+                      >
+                        Tipo de Documento
+                        <ArrowUpDown className={`ml-1 h-3 w-3 ${sortColumn === "name" ? "text-primary" : "text-muted-foreground"}`} />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                        onClick={() => toggleSort("code")}
+                      >
+                        Classificação Padrão
+                        <ArrowUpDown className={`ml-1 h-3 w-3 ${sortColumn === "code" ? "text-primary" : "text-muted-foreground"}`} />
+                      </Button>
+                    </TableHead>
+                    <TableHead className="w-[80px] text-center">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                        onClick={() => toggleSort("state")}
+                      >
+                        Estado
+                        <ArrowUpDown className={`ml-1 h-3 w-3 ${sortColumn === "state" ? "text-primary" : "text-muted-foreground"}`} />
+                      </Button>
+                    </TableHead>
                     <TableHead className="w-[150px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
