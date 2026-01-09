@@ -48,6 +48,7 @@ import {
   useClassificationTree,
   useDocumentCountByClassification,
   useDeleteClassification,
+  useUpdateDocumentClassification,
 } from "@/hooks/useRepository";
 import { CreateClassificationModal } from "./CreateClassificationModal";
 import { EditClassificationModal } from "./EditClassificationModal";
@@ -58,11 +59,13 @@ interface TreeItemProps {
   selectedId: string;
   expandedIds: Set<string>;
   documentCounts: Record<string, number>;
+  isDragging: boolean;
   onSelect: (node: ClassificationNode) => void;
   onToggle: (id: string) => void;
   onAddChild: (parent: ClassificationNode) => void;
   onEdit: (node: ClassificationNode) => void;
   onDelete: (node: ClassificationNode) => void;
+  onDrop: (node: ClassificationNode, documentIds: string[]) => void;
 }
 
 function TreeItem({
@@ -71,12 +74,15 @@ function TreeItem({
   selectedId,
   expandedIds,
   documentCounts,
+  isDragging,
   onSelect,
   onToggle,
   onAddChild,
   onEdit,
   onDelete,
+  onDrop,
 }: TreeItemProps) {
+  const [isDropTarget, setIsDropTarget] = useState(false);
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
   const isSelected = selectedId === node.id;
@@ -93,14 +99,49 @@ function TreeItem({
   const totalCount = getTotalCount(node);
   const hasDocuments = totalCount > 0;
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDragging) {
+      e.dataTransfer.dropEffect = "move";
+      setIsDropTarget(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropTarget(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropTarget(false);
+    
+    try {
+      const data = e.dataTransfer.getData("application/json");
+      if (data) {
+        const documentIds = JSON.parse(data) as string[];
+        onDrop(node, documentIds);
+      }
+    } catch (error) {
+      console.error("Error parsing drag data:", error);
+    }
+  };
+
   return (
     <div>
       <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
-          "group flex items-center rounded-md transition-colors",
+          "group flex items-center rounded-md transition-all",
           isSelected
             ? "bg-primary/10"
-            : "hover:bg-muted"
+            : "hover:bg-muted",
+          isDropTarget && isDragging && "ring-2 ring-primary ring-offset-1 bg-primary/5"
         )}
       >
         <button
@@ -127,9 +168,15 @@ function TreeItem({
           )}
           {hasChildren || node.level < 3 ? (
             isExpanded ? (
-              <FolderOpen className="h-4 w-4 shrink-0 text-warning" />
+              <FolderOpen className={cn(
+                "h-4 w-4 shrink-0",
+                isDropTarget && isDragging ? "text-primary" : "text-warning"
+              )} />
             ) : (
-              <Folder className="h-4 w-4 shrink-0 text-warning" />
+              <Folder className={cn(
+                "h-4 w-4 shrink-0",
+                isDropTarget && isDragging ? "text-primary" : "text-warning"
+              )} />
             )
           ) : (
             <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -197,11 +244,13 @@ function TreeItem({
               selectedId={selectedId}
               expandedIds={expandedIds}
               documentCounts={documentCounts}
+              isDragging={isDragging}
               onSelect={onSelect}
               onToggle={onToggle}
               onAddChild={onAddChild}
               onEdit={onEdit}
               onDelete={onDelete}
+              onDrop={onDrop}
             />
           ))}
         </div>
@@ -213,11 +262,13 @@ function TreeItem({
 interface ClassificationTreeProps {
   selectedClassification: ClassificationNode | null;
   onSelect: (node: ClassificationNode) => void;
+  isDragging?: boolean;
 }
 
 export function ClassificationTree({
   selectedClassification,
   onSelect,
+  isDragging = false,
 }: ClassificationTreeProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -231,6 +282,7 @@ export function ClassificationTree({
   const { data: tree, isLoading } = useClassificationTree();
   const { data: documentCounts } = useDocumentCountByClassification();
   const deleteMutation = useDeleteClassification();
+  const updateDocumentClassification = useUpdateDocumentClassification();
 
   // Filter tree based on search
   const filteredTree = useMemo(() => {
@@ -314,9 +366,29 @@ export function ClassificationTree({
     }
   };
 
+  const handleDrop = async (node: ClassificationNode, documentIds: string[]) => {
+    try {
+      await updateDocumentClassification.mutateAsync({
+        documentIds,
+        classificationId: node.id,
+      });
+      toast.success(
+        documentIds.length > 1
+          ? `${documentIds.length} documentos movidos para "${node.code} - ${node.name}"`
+          : `Documento movido para "${node.code} - ${node.name}"`
+      );
+    } catch (error) {
+      toast.error("Erro ao mover documento(s)");
+      console.error(error);
+    }
+  };
+
   return (
     <>
-      <Card className="w-80 shrink-0 flex flex-col h-full">
+      <Card className={cn(
+        "w-80 shrink-0 flex flex-col h-full transition-all",
+        isDragging && "ring-2 ring-primary/50 ring-offset-2"
+      )}>
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-foreground">
@@ -345,6 +417,12 @@ export function ClassificationTree({
               className="pl-9 h-9"
             />
           </div>
+          {isDragging && (
+            <p className="text-xs text-primary mt-2 flex items-center gap-1">
+              <Folder className="h-3 w-3" />
+              Arraste para uma classificação
+            </p>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {isLoading ? (
@@ -373,11 +451,13 @@ export function ClassificationTree({
                 selectedId={selectedClassification?.id || ""}
                 expandedIds={expandedIds}
                 documentCounts={documentCounts || {}}
+                isDragging={isDragging}
                 onSelect={onSelect}
                 onToggle={handleToggle}
                 onAddChild={handleAddChild}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onDrop={handleDrop}
               />
             ))
           )}

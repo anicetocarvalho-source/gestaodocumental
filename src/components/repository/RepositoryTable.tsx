@@ -25,6 +25,7 @@ import {
   Tags,
   Edit,
   ArrowUpDown,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepositoryDocument } from "@/hooks/useRepository";
@@ -60,6 +61,8 @@ interface RepositoryTableProps {
   selectedItems: Set<string>;
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
+  onDragStart?: (documentIds: string[]) => void;
+  onDragEnd?: () => void;
 }
 
 type SortKey = "title" | "entry_number" | "created_at" | "status";
@@ -71,9 +74,12 @@ export function RepositoryTable({
   selectedItems,
   onToggleSelect,
   onToggleSelectAll,
+  onDragStart,
+  onDragEnd,
 }: RepositoryTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -102,6 +108,39 @@ export function RepositoryTable({
     }
     return sortDir === "asc" ? comparison : -comparison;
   });
+
+  const handleDragStart = (e: React.DragEvent, docId: string) => {
+    setDraggingId(docId);
+    
+    // If the dragged item is selected, drag all selected items
+    // Otherwise, just drag the single item
+    const idsToMove = selectedItems.has(docId) 
+      ? Array.from(selectedItems) 
+      : [docId];
+    
+    e.dataTransfer.setData("application/json", JSON.stringify(idsToMove));
+    e.dataTransfer.effectAllowed = "move";
+    
+    // Create a custom drag image
+    const dragImage = document.createElement("div");
+    dragImage.className = "bg-primary text-primary-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium";
+    dragImage.textContent = idsToMove.length > 1 
+      ? `${idsToMove.length} documentos` 
+      : "1 documento";
+    dragImage.style.position = "absolute";
+    dragImage.style.top = "-1000px";
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 0, 0);
+    
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+    
+    onDragStart?.(idsToMove);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    onDragEnd?.();
+  };
 
   if (isLoading) {
     return (
@@ -151,6 +190,7 @@ export function RepositoryTable({
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-muted/30">
+              <th className="w-8 px-2 py-3"></th>
               <th className="w-12 px-4 py-3 text-left">
                 <Checkbox
                   checked={
@@ -184,11 +224,18 @@ export function RepositoryTable({
             {sortedDocuments.map((doc) => (
               <tr
                 key={doc.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, doc.id)}
+                onDragEnd={handleDragEnd}
                 className={cn(
-                  "border-b border-border hover:bg-muted/30 transition-colors",
-                  selectedItems.has(doc.id) && "bg-primary/5"
+                  "border-b border-border hover:bg-muted/30 transition-colors cursor-grab active:cursor-grabbing",
+                  selectedItems.has(doc.id) && "bg-primary/5",
+                  draggingId === doc.id && "opacity-50"
                 )}
               >
+                <td className="px-2 py-3">
+                  <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                </td>
                 <td className="px-4 py-3">
                   <Checkbox
                     checked={selectedItems.has(doc.id)}
@@ -207,6 +254,7 @@ export function RepositoryTable({
                       <Link
                         to={`/documents/${doc.id}`}
                         className="font-medium text-foreground hover:text-primary hover:underline truncate block"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {doc.title}
                       </Link>
@@ -246,7 +294,7 @@ export function RepositoryTable({
                 <td className="px-4 py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm">
+                      <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
