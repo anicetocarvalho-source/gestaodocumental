@@ -28,7 +28,8 @@ import {
   Download,
   Loader2,
   ImageOff,
-  Save
+  Save,
+  Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +78,7 @@ const QualityReview = () => {
   const batchId = searchParams.get('batchId');
   
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -143,15 +145,24 @@ const QualityReview = () => {
     enabled: !!batchId,
   });
 
-  // Get selected document
-  const selectedDocument = documents?.find(d => d.id === selectedDocumentId) || documents?.[0];
+  // Filter documents based on status
+  const filteredDocuments = documents?.filter(doc => {
+    if (statusFilter === "all") return true;
+    return doc.status === statusFilter;
+  });
 
-  // Select first document when documents load
+  // Get selected document
+  const selectedDocument = documents?.find(d => d.id === selectedDocumentId) || filteredDocuments?.[0];
+
+  // Select first document when documents load or filter changes
   useEffect(() => {
-    if (documents && documents.length > 0 && !selectedDocumentId) {
-      setSelectedDocumentId(documents[0].id);
+    if (filteredDocuments && filteredDocuments.length > 0) {
+      const isCurrentInFilter = filteredDocuments.some(d => d.id === selectedDocumentId);
+      if (!selectedDocumentId || !isCurrentInFilter) {
+        setSelectedDocumentId(filteredDocuments[0].id);
+      }
     }
-  }, [documents, selectedDocumentId]);
+  }, [filteredDocuments, selectedDocumentId]);
 
   // Update metadata when document changes
   useEffect(() => {
@@ -377,8 +388,8 @@ const QualityReview = () => {
       toast.success('Documento aprovado com sucesso');
       
       // Navigate to next document if available
-      if (documents && currentIndex < documents.length - 1) {
-        setSelectedDocumentId(documents[currentIndex + 1].id);
+      if (filteredDocuments && currentIndex < filteredDocuments.length - 1) {
+        setSelectedDocumentId(filteredDocuments[currentIndex + 1].id);
       }
     } catch (error) {
       console.error('Error approving document:', error);
@@ -415,8 +426,8 @@ const QualityReview = () => {
       setDocumentRejectReason("");
       
       // Navigate to next document if available
-      if (documents && currentIndex < documents.length - 1) {
-        setSelectedDocumentId(documents[currentIndex + 1].id);
+      if (filteredDocuments && currentIndex < filteredDocuments.length - 1) {
+        setSelectedDocumentId(filteredDocuments[currentIndex + 1].id);
       }
     } catch (error) {
       console.error('Error rejecting document:', error);
@@ -427,13 +438,13 @@ const QualityReview = () => {
   };
 
   const navigateDocument = (direction: "prev" | "next") => {
-    if (!documents || !selectedDocument) return;
-    const currentIndex = documents.findIndex(d => d.id === selectedDocument.id);
-    if (direction === "prev" && currentIndex > 0) {
-      setSelectedDocumentId(documents[currentIndex - 1].id);
+    if (!filteredDocuments || !selectedDocument) return;
+    const currentIdx = filteredDocuments.findIndex(d => d.id === selectedDocument.id);
+    if (direction === "prev" && currentIdx > 0) {
+      setSelectedDocumentId(filteredDocuments[currentIdx - 1].id);
       setRotation(0);
-    } else if (direction === "next" && currentIndex < documents.length - 1) {
-      setSelectedDocumentId(documents[currentIndex + 1].id);
+    } else if (direction === "next" && currentIdx < filteredDocuments.length - 1) {
+      setSelectedDocumentId(filteredDocuments[currentIdx + 1].id);
       setRotation(0);
     }
   };
@@ -447,7 +458,7 @@ const QualityReview = () => {
     }
   };
 
-  const currentIndex = documents?.findIndex(d => d.id === selectedDocument?.id) ?? 0;
+  const currentIndex = filteredDocuments?.findIndex(d => d.id === selectedDocument?.id) ?? 0;
 
   if (!batchId) {
     return (
@@ -487,8 +498,20 @@ const QualityReview = () => {
         <div className="grid grid-cols-12 gap-4 h-[calc(100vh-12rem)]">
           {/* Left Panel - Thumbnails */}
           <Card className="col-span-2 flex flex-col">
-            <CardHeader className="py-3 px-4">
+            <CardHeader className="py-3 px-4 space-y-2">
               <CardTitle className="text-sm font-medium">Documentos</CardTitle>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 text-xs">
+                  <Filter className="h-3 w-3 mr-1" />
+                  <SelectValue placeholder="Filtrar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos ({documents?.length || 0})</SelectItem>
+                  <SelectItem value="pending">Pendentes ({documents?.filter(d => d.status === 'pending').length || 0})</SelectItem>
+                  <SelectItem value="approved">Aprovados ({documents?.filter(d => d.status === 'approved').length || 0})</SelectItem>
+                  <SelectItem value="rejected">Rejeitados ({documents?.filter(d => d.status === 'rejected').length || 0})</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent className="p-2 flex-1 overflow-hidden">
               <ScrollArea className="h-full">
@@ -497,7 +520,11 @@ const QualityReview = () => {
                     Array.from({ length: 4 }).map((_, i) => (
                       <Skeleton key={i} className="w-full aspect-[3/4]" />
                     ))
-                  ) : documents?.map((doc, index) => (
+                  ) : filteredDocuments?.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      Nenhum documento encontrado
+                    </p>
+                  ) : filteredDocuments?.map((doc, index) => (
                     <button
                       key={doc.id}
                       onClick={() => {
@@ -557,14 +584,14 @@ const QualityReview = () => {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm font-medium">
-                  Documento {currentIndex + 1} de {documents?.length || 0}
+                  Documento {currentIndex + 1} de {filteredDocuments?.length || 0}
                 </span>
                 <Button 
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8"
                   onClick={() => navigateDocument("next")}
-                  disabled={!documents || currentIndex === documents.length - 1}
+                  disabled={!filteredDocuments || currentIndex === filteredDocuments.length - 1}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
