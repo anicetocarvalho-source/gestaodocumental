@@ -47,6 +47,7 @@ import {
   FileType,
   FolderTree,
   Info,
+  Filter,
   Lightbulb,
   Loader2,
   Save,
@@ -107,6 +108,7 @@ export const ClassificationRulesConfigModal = ({
 }: ClassificationRulesConfigModalProps) => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterMode, setFilterMode] = useState<"all" | "unconfigured" | "with-suggestions">("all");
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [selectedClassificationId, setSelectedClassificationId] = useState<string>("");
   const [showValidation, setShowValidation] = useState(true);
@@ -394,14 +396,27 @@ export const ClassificationRulesConfigModal = ({
 
   // Filter document types
   const filteredTypes = useMemo(() => {
-    if (!searchQuery) return documentTypes;
-    const query = searchQuery.toLowerCase();
-    return documentTypes.filter(
-      (type) =>
-        type.name.toLowerCase().includes(query) ||
-        type.code.toLowerCase().includes(query)
-    );
-  }, [documentTypes, searchQuery]);
+    let result = documentTypes;
+    
+    // Apply filter mode
+    if (filterMode === "unconfigured") {
+      result = result.filter(t => !t.default_classification_id);
+    } else if (filterMode === "with-suggestions") {
+      result = result.filter(t => !t.default_classification_id && getSuggestionForType(t.id) !== null);
+    }
+    
+    // Apply search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (type) =>
+          type.name.toLowerCase().includes(query) ||
+          type.code.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [documentTypes, searchQuery, filterMode, getSuggestionForType]);
 
   // Stats
   const stats = useMemo(() => {
@@ -689,15 +704,43 @@ export const ClassificationRulesConfigModal = ({
             </Collapsible>
           )}
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Pesquisar tipos de documento..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+          {/* Search and Filter */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar tipos de documento..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterMode} onValueChange={(value: "all" | "unconfigured" | "with-suggestions") => setFilterMode(value)}>
+              <SelectTrigger className="w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  <span className="flex items-center gap-2">
+                    Todos os tipos
+                    <Badge variant="secondary" className="text-xs">{stats.total}</Badge>
+                  </span>
+                </SelectItem>
+                <SelectItem value="unconfigured">
+                  <span className="flex items-center gap-2">
+                    Sem regra
+                    <Badge variant="outline" className="text-xs text-warning">{stats.unconfigured}</Badge>
+                  </span>
+                </SelectItem>
+                <SelectItem value="with-suggestions">
+                  <span className="flex items-center gap-2">
+                    Com sugestões
+                    <Badge variant="outline" className="text-xs text-primary">{allSuggestions.length}</Badge>
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Separator />
