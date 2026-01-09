@@ -333,9 +333,14 @@ export function ClassificationTree({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [parentForCreate, setParentForCreate] = useState<ClassificationNode | null>(null);
   const [classificationToEdit, setClassificationToEdit] = useState<ClassificationNode | null>(null);
   const [classificationToDelete, setClassificationToDelete] = useState<ClassificationNode | null>(null);
+  const [pendingMove, setPendingMove] = useState<{
+    targetNode: ClassificationNode;
+    documentIds: string[];
+  } | null>(null);
 
   const { data: tree, isLoading } = useClassificationTree();
   const { data: documentCounts } = useDocumentCountByClassification();
@@ -424,21 +429,36 @@ export function ClassificationTree({
     }
   };
 
-  const handleDrop = async (node: ClassificationNode, documentIds: string[]) => {
+  const handleDrop = (node: ClassificationNode, documentIds: string[]) => {
+    // Show confirmation modal instead of moving immediately
+    setPendingMove({ targetNode: node, documentIds });
+    setMoveDialogOpen(true);
+  };
+
+  const confirmMove = async () => {
+    if (!pendingMove) return;
+
     try {
       await updateDocumentClassification.mutateAsync({
-        documentIds,
-        classificationId: node.id,
+        documentIds: pendingMove.documentIds,
+        classificationId: pendingMove.targetNode.id,
       });
       toast.success(
-        documentIds.length > 1
-          ? `${documentIds.length} documentos movidos para "${node.code} - ${node.name}"`
-          : `Documento movido para "${node.code} - ${node.name}"`
+        pendingMove.documentIds.length > 1
+          ? `${pendingMove.documentIds.length} documentos movidos para "${pendingMove.targetNode.code} - ${pendingMove.targetNode.name}"`
+          : `Documento movido para "${pendingMove.targetNode.code} - ${pendingMove.targetNode.name}"`
       );
+      setMoveDialogOpen(false);
+      setPendingMove(null);
     } catch (error) {
       toast.error("Erro ao mover documento(s)");
       console.error(error);
     }
+  };
+
+  const cancelMove = () => {
+    setMoveDialogOpen(false);
+    setPendingMove(null);
   };
 
   return (
@@ -557,6 +577,59 @@ export function ClassificationTree({
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               Desactivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Move Documents Confirmation Modal */}
+      <AlertDialog open={moveDialogOpen} onOpenChange={(open) => !open && cancelMove()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FolderInput className="h-5 w-5 text-primary" />
+              Mover Documento{pendingMove && pendingMove.documentIds.length > 1 ? "s" : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Tem a certeza que deseja mover{" "}
+                  <strong>
+                    {pendingMove?.documentIds.length === 1
+                      ? "1 documento"
+                      : `${pendingMove?.documentIds.length} documentos`}
+                  </strong>{" "}
+                  para a classificação:
+                </p>
+                {pendingMove && (
+                  <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <Folder className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {pendingMove.targetNode.code}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {pendingMove.targetNode.name}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Esta acção irá alterar a classificação documental dos itens seleccionados.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelMove}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmMove}
+              disabled={updateDocumentClassification.isPending}
+            >
+              {updateDocumentClassification.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
