@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ZoomIn, 
   ZoomOut, 
@@ -29,12 +30,19 @@ import {
   Loader2,
   ImageOff,
   Save,
-  Filter
+  Filter,
+  Columns,
+  History,
+  Keyboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { getScannedDocumentUrl, useDownloadScannedDocument } from "@/hooks/useScannedDocumentUpload";
 import { toast } from "sonner";
+import { FullscreenViewer } from "@/components/quality-review/FullscreenViewer";
+import { ComparisonViewer } from "@/components/quality-review/ComparisonViewer";
+import { RevisionHistory } from "@/components/quality-review/RevisionHistory";
+import { useKeyboardShortcuts, KeyboardShortcutsHelp } from "@/hooks/useKeyboardShortcuts";
 
 interface ScannedDocument {
   id: string;
@@ -96,6 +104,12 @@ const QualityReview = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>("");
+  
+  // New feature states
+  const [showFullscreen, setShowFullscreen] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
 
   const queryClient = useQueryClient();
   const downloadDocument = useDownloadScannedDocument();
@@ -459,6 +473,26 @@ const QualityReview = () => {
   };
 
   const currentIndex = filteredDocuments?.findIndex(d => d.id === selectedDocument?.id) ?? 0;
+  const canNavigatePrev = currentIndex > 0;
+  const canNavigateNext = filteredDocuments ? currentIndex < filteredDocuments.length - 1 : false;
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onNavigatePrev: () => canNavigatePrev && navigateDocument("prev"),
+    onNavigateNext: () => canNavigateNext && navigateDocument("next"),
+    onApprove: () => selectedDocument?.status !== "approved" && !isApprovingDocument && handleApproveDocument(),
+    onReject: () => selectedDocument?.status !== "rejected" && setShowRejectDocumentDialog(true),
+    onZoomIn: handleZoomIn,
+    onZoomOut: handleZoomOut,
+    onRotate: handleRotateRight,
+    onFullscreen: () => setShowFullscreen(true),
+    onCompare: () => setShowComparison(true),
+    enabled: !showFullscreen && !showComparison && !showRejectDialog && !showRejectDocumentDialog,
+  });
+
+  const handleImageError = (docId: string) => {
+    setImageErrors(prev => ({ ...prev, [docId]: true }));
+  };
 
   if (!batchId) {
     return (
@@ -530,7 +564,47 @@ const QualityReview = () => {
         })()}
 
         {/* Header Actions */}
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowComparison(true)}
+                >
+                  <Columns className="h-4 w-4 mr-2" />
+                  Comparar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Comparar documentos lado a lado (C)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowHistory(true)}
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  Histórico
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Ver histórico de revisões</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setShowShortcutsHelp(!showShortcutsHelp)}
+                >
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Atalhos de teclado</TooltipContent>
+            </Tooltip>
+          </div>
           <div className="flex gap-2">
             <Button 
               variant="outline" 
@@ -546,6 +620,11 @@ const QualityReview = () => {
             </Button>
           </div>
         </div>
+
+        {/* Keyboard shortcuts help panel */}
+        {showShortcutsHelp && (
+          <KeyboardShortcutsHelp />
+        )}
 
         {/* Main Content - Three Panel Layout */}
         <div className="grid grid-cols-12 gap-4 h-[calc(100vh-12rem)]">
@@ -665,9 +744,19 @@ const QualityReview = () => {
                   <RotateCw className="h-4 w-4" />
                 </Button>
                 <Separator orientation="vertical" className="h-6 mx-2" />
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => setShowFullscreen(true)}
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Tela cheia (F)</TooltipContent>
+                </Tooltip>
                 <Button 
                   variant="outline" 
                   size="icon" 
@@ -1113,6 +1202,53 @@ const QualityReview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Fullscreen Viewer */}
+      <FullscreenViewer
+        isOpen={showFullscreen}
+        onClose={() => setShowFullscreen(false)}
+        imageUrl={selectedDocument ? imageUrls[selectedDocument.id] || null : null}
+        imageError={selectedDocument ? imageErrors[selectedDocument.id] || false : false}
+        isLoading={selectedDocument ? loadingImages[selectedDocument.id] || false : false}
+        documentTitle={selectedDocument?.title || "Documento"}
+        zoom={zoom}
+        rotation={rotation}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onRotateLeft={handleRotateLeft}
+        onRotateRight={handleRotateRight}
+        onNavigatePrev={() => navigateDocument("prev")}
+        onNavigateNext={() => navigateDocument("next")}
+        onDownload={handleDownload}
+        canNavigatePrev={canNavigatePrev}
+        canNavigateNext={canNavigateNext}
+        currentIndex={currentIndex}
+        totalCount={filteredDocuments?.length || 0}
+        isDownloading={downloadDocument.isPending}
+        onImageError={() => selectedDocument && handleImageError(selectedDocument.id)}
+      />
+
+      {/* Comparison Viewer */}
+      <ComparisonViewer
+        isOpen={showComparison}
+        onClose={() => setShowComparison(false)}
+        documents={filteredDocuments || []}
+        imageUrls={imageUrls}
+        loadingImages={loadingImages}
+        imageErrors={imageErrors}
+        onImageError={handleImageError}
+        initialLeftId={selectedDocument?.id}
+        initialRightId={filteredDocuments && filteredDocuments.length > 1 
+          ? filteredDocuments.find(d => d.id !== selectedDocument?.id)?.id 
+          : undefined}
+      />
+
+      {/* Revision History */}
+      <RevisionHistory
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        batchId={batchId}
+      />
     </DashboardLayout>
   );
 };
