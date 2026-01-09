@@ -47,13 +47,16 @@ import {
   FileType,
   FolderTree,
   Info,
+  Lightbulb,
   Loader2,
   Save,
   Search,
   Settings2,
   ShieldAlert,
+  Sparkles,
   Trash2,
   X,
+  Wand2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -82,6 +85,15 @@ interface ValidationIssue {
   affectedTypes: string[];
   classificationCode?: string;
   classificationName?: string;
+}
+
+interface ClassificationSuggestion {
+  classificationId: string;
+  classificationCode: string;
+  classificationName: string;
+  confidence: number;
+  reason: string;
+  similarTypes: string[];
 }
 
 interface ClassificationRulesConfigModalProps {
@@ -218,6 +230,131 @@ export const ClassificationRulesConfigModal = ({
     return issues;
   }, [documentTypes, classificationCodes]);
 
+  // Generate suggestions for unconfigured types based on similar configured types
+  const getSuggestionForType = useMemo(() => {
+    return (typeId: string): ClassificationSuggestion | null => {
+      const type = documentTypes.find(t => t.id === typeId);
+      if (!type || type.default_classification_id) return null;
+
+      const configuredTypes = documentTypes.filter(t => t.default_classification_id && t.default_classification);
+      if (configuredTypes.length === 0) return null;
+
+      const suggestions: Array<{
+        classification: ClassificationCode;
+        score: number;
+        reasons: string[];
+        similarTypes: string[];
+      }> = [];
+
+      // Helper to calculate word similarity
+      const getWordSimilarity = (str1: string, str2: string): number => {
+        const words1 = str1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const words2 = str2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const commonWords = words1.filter(w => words2.some(w2 => w2.includes(w) || w.includes(w2)));
+        return commonWords.length / Math.max(words1.length, 1);
+      };
+
+      // Helper to calculate prefix similarity
+      const getPrefixSimilarity = (code1: string, code2: string): number => {
+        const minLength = Math.min(code1.length, code2.length);
+        let commonPrefix = 0;
+        for (let i = 0; i < minLength; i++) {
+          if (code1[i].toLowerCase() === code2[i].toLowerCase()) {
+            commonPrefix++;
+          } else {
+            break;
+          }
+        }
+        return commonPrefix / Math.max(code1.length, 1);
+      };
+
+      configuredTypes.forEach(configuredType => {
+        if (!configuredType.default_classification) return;
+
+        let score = 0;
+        const reasons: string[] = [];
+
+        // 1. Code prefix similarity (weight: 40%)
+        const codeSimilarity = getPrefixSimilarity(type.code, configuredType.code);
+        if (codeSimilarity >= 0.5) {
+          score += codeSimilarity * 40;
+          if (codeSimilarity >= 0.75) {
+            reasons.push(`Código similar: ${configuredType.code}`);
+          }
+        }
+
+        // 2. Name word similarity (weight: 35%)
+        const nameSimilarity = getWordSimilarity(type.name, configuredType.name);
+        if (nameSimilarity > 0) {
+          score += nameSimilarity * 35;
+          if (nameSimilarity >= 0.3) {
+            reasons.push(`Nome similar: "${configuredType.name}"`);
+          }
+        }
+
+        // 3. Description similarity if both have descriptions (weight: 15%)
+        if (type.description && configuredType.description) {
+          const descSimilarity = getWordSimilarity(type.description, configuredType.description);
+          if (descSimilarity > 0) {
+            score += descSimilarity * 15;
+          }
+        }
+
+        // 4. First letter match bonus (weight: 10%)
+        if (type.code[0]?.toLowerCase() === configuredType.code[0]?.toLowerCase()) {
+          score += 10;
+        }
+
+        if (score > 20) {
+          // Find existing suggestion for this classification
+          const existingSuggestion = suggestions.find(
+            s => s.classification.id === configuredType.default_classification!.id
+          );
+
+          if (existingSuggestion) {
+            // Aggregate scores
+            existingSuggestion.score = Math.max(existingSuggestion.score, score);
+            existingSuggestion.similarTypes.push(configuredType.name);
+            reasons.forEach(r => {
+              if (!existingSuggestion.reasons.includes(r)) {
+                existingSuggestion.reasons.push(r);
+              }
+            });
+          } else {
+            suggestions.push({
+              classification: configuredType.default_classification,
+              score,
+              reasons,
+              similarTypes: [configuredType.name],
+            });
+          }
+        }
+      });
+
+      if (suggestions.length === 0) return null;
+
+      // Sort by score and get the best one
+      suggestions.sort((a, b) => b.score - a.score);
+      const best = suggestions[0];
+
+      // Confidence based on score (max 100)
+      const confidence = Math.min(Math.round(best.score), 95);
+      
+      if (confidence < 25) return null;
+
+      return {
+        classificationId: best.classification.id,
+        classificationCode: best.classification.code,
+        classificationName: best.classification.name,
+        confidence,
+        reason: best.reasons.length > 0 
+          ? best.reasons.slice(0, 2).join('; ') 
+          : `Baseado em ${best.similarTypes.length} tipo(s) similar(es)`,
+        similarTypes: best.similarTypes.slice(0, 3),
+      };
+    };
+  }, [documentTypes]);
+
   // Get warning count for a specific type
   const getTypeWarnings = (typeId: string) => {
     return validationIssues.filter(issue => {
@@ -277,6 +414,22 @@ export const ClassificationRulesConfigModal = ({
   const startEditing = (type: DocumentType) => {
     setEditingTypeId(type.id);
     setSelectedClassificationId(type.default_classification_id || "");
+  };
+
+  const startEditingWithSuggestion = (type: DocumentType, suggestion: ClassificationSuggestion) => {
+    setEditingTypeId(type.id);
+    setSelectedClassificationId(suggestion.classificationId);
+    toast({
+      title: "Sugestão aplicada",
+      description: `Classificação "${suggestion.classificationCode}" sugerida com ${suggestion.confidence}% confiança.`,
+    });
+  };
+
+  const applySuggestionDirectly = (typeId: string, suggestion: ClassificationSuggestion) => {
+    updateDefaultClassification.mutate({
+      typeId,
+      classificationId: suggestion.classificationId,
+    });
   };
 
   const cancelEditing = () => {
@@ -449,9 +602,10 @@ export const ClassificationRulesConfigModal = ({
                   {filteredTypes.map((type) => {
                     const typeWarnings = getTypeWarnings(type.id);
                     const hasWarnings = typeWarnings.length > 0;
+                    const suggestion = !type.default_classification_id ? getSuggestionForType(type.id) : null;
                     
                     return (
-                      <TableRow key={type.id} className={hasWarnings ? "bg-warning/5" : ""}>
+                      <TableRow key={type.id} className={hasWarnings ? "bg-warning/5" : suggestion ? "bg-primary/5" : ""}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${hasWarnings ? 'bg-warning/10' : 'bg-primary/10'}`}>
@@ -514,6 +668,44 @@ export const ClassificationRulesConfigModal = ({
                                 </TooltipProvider>
                               )}
                             </div>
+                          ) : suggestion ? (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <Lightbulb className="h-4 w-4 text-primary" />
+                                <Badge variant="outline" className="font-mono border-primary/50 text-primary">
+                                  {suggestion.classificationCode}
+                                </Badge>
+                                <span className="text-sm text-primary">{suggestion.classificationName}</span>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                                        {suggestion.confidence}%
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                      <div className="space-y-2">
+                                        <p className="font-medium text-xs">Sugestão automática</p>
+                                        <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
+                                        {suggestion.similarTypes.length > 0 && (
+                                          <div className="pt-1 border-t border-border">
+                                            <p className="text-xs text-muted-foreground mb-1">Tipos similares:</p>
+                                            <div className="flex flex-wrap gap-1">
+                                              {suggestion.similarTypes.map((name, i) => (
+                                                <Badge key={i} variant="secondary" className="text-xs">
+                                                  {name}
+                                                </Badge>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                              <p className="text-xs text-muted-foreground pl-6">{suggestion.reason}</p>
+                            </div>
                           ) : (
                             <span className="text-sm text-muted-foreground italic">
                               Sem classificação definida
@@ -542,6 +734,17 @@ export const ClassificationRulesConfigModal = ({
                             <Badge variant="outline" className="border-success text-success">
                               <CheckCircle2 className="h-3 w-3" />
                             </Badge>
+                          ) : suggestion ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Badge variant="outline" className="border-primary text-primary">
+                                    <Sparkles className="h-3 w-3" />
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>Sugestão disponível</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           ) : (
                             <Badge variant="outline" className="border-muted-foreground text-muted-foreground">
                               <Info className="h-3 w-3" />
@@ -573,13 +776,34 @@ export const ClassificationRulesConfigModal = ({
                             </div>
                           ) : (
                             <div className="flex items-center justify-end gap-1">
+                              {suggestion && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="default"
+                                        className="bg-primary/90 hover:bg-primary"
+                                        onClick={() => applySuggestionDirectly(type.id, suggestion)}
+                                        disabled={updateDefaultClassification.isPending}
+                                      >
+                                        <Wand2 className="h-4 w-4 mr-1" />
+                                        Aplicar
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      Aplicar sugestão: {suggestion.classificationCode}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => startEditing(type)}
+                                onClick={() => suggestion ? startEditingWithSuggestion(type, suggestion) : startEditing(type)}
                               >
                                 <Settings2 className="h-4 w-4 mr-1" />
-                                Editar
+                                {suggestion ? "Revisar" : "Editar"}
                               </Button>
                               {type.default_classification_id && (
                                 <Button
