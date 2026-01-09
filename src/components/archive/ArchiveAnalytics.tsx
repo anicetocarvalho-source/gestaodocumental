@@ -1,7 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   PieChart,
   Pie,
@@ -23,8 +31,21 @@ import {
   TrendingUp,
   Calendar,
   Building2,
+  Filter,
+  X,
 } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { 
+  format, 
+  subMonths, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfYear, 
+  endOfYear, 
+  startOfQuarter, 
+  endOfQuarter,
+  getYear,
+  getQuarter,
+} from "date-fns";
 import { pt } from "date-fns/locale";
 import { Document } from "@/types/database";
 import { DocumentRetention } from "@/hooks/useArchive";
@@ -61,6 +82,17 @@ const COLORS = [
   "hsl(var(--success))",
 ];
 
+// Gerar opções de anos (últimos 5 anos)
+const currentYear = getYear(new Date());
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+const QUARTER_OPTIONS = [
+  { value: "1", label: "1º Trimestre (Jan-Mar)" },
+  { value: "2", label: "2º Trimestre (Abr-Jun)" },
+  { value: "3", label: "3º Trimestre (Jul-Set)" },
+  { value: "4", label: "4º Trimestre (Out-Dez)" },
+];
+
 export function ArchiveAnalytics({
   documents,
   retentions,
@@ -68,11 +100,83 @@ export function ArchiveAnalytics({
   units,
   isLoading,
 }: ArchiveAnalyticsProps) {
+  // Estados dos filtros
+  const [yearFilter, setYearFilter] = useState<string>("all");
+  const [quarterFilter, setQuarterFilter] = useState<string>("all");
+
+  // Filtrar documentos por período
+  const filteredDocuments = useMemo(() => {
+    if (yearFilter === "all" && quarterFilter === "all") {
+      return documents;
+    }
+
+    return documents.filter((doc) => {
+      if (!doc.archived_at) return false;
+      const archivedDate = new Date(doc.archived_at);
+      const docYear = getYear(archivedDate);
+      const docQuarter = getQuarter(archivedDate);
+
+      if (yearFilter !== "all" && docYear !== parseInt(yearFilter)) {
+        return false;
+      }
+
+      if (quarterFilter !== "all" && docQuarter !== parseInt(quarterFilter)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [documents, yearFilter, quarterFilter]);
+
+  // Filtrar retenções por período (baseado na data de marcação)
+  const filteredRetentions = useMemo(() => {
+    if (yearFilter === "all" && quarterFilter === "all") {
+      return retentions;
+    }
+
+    return retentions.filter((r) => {
+      const markedDate = new Date(r.marked_at);
+      const docYear = getYear(markedDate);
+      const docQuarter = getQuarter(markedDate);
+
+      if (yearFilter !== "all" && docYear !== parseInt(yearFilter)) {
+        return false;
+      }
+
+      if (quarterFilter !== "all" && docQuarter !== parseInt(quarterFilter)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [retentions, yearFilter, quarterFilter]);
+
+  const hasActiveFilters = yearFilter !== "all" || quarterFilter !== "all";
+
+  const clearFilters = () => {
+    setYearFilter("all");
+    setQuarterFilter("all");
+  };
+
+  // Período formatado para exibição
+  const periodLabel = useMemo(() => {
+    if (yearFilter === "all" && quarterFilter === "all") {
+      return "Todos os períodos";
+    }
+    if (yearFilter !== "all" && quarterFilter === "all") {
+      return `Ano ${yearFilter}`;
+    }
+    if (yearFilter !== "all" && quarterFilter !== "all") {
+      return `${quarterFilter}º Trim. ${yearFilter}`;
+    }
+    return `${quarterFilter}º Trimestre`;
+  }, [yearFilter, quarterFilter]);
+
   // Dados por classificação
   const classificationData = useMemo(() => {
     const counts: Record<string, number> = {};
     
-    documents.forEach((doc) => {
+    filteredDocuments.forEach((doc) => {
       const classId = doc.classification_id || "sem_classificacao";
       counts[classId] = (counts[classId] || 0) + 1;
     });
@@ -88,13 +192,13 @@ export function ArchiveAnalytics({
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
-  }, [documents, classifications]);
+  }, [filteredDocuments, classifications]);
 
   // Dados por unidade orgânica
   const unitData = useMemo(() => {
     const counts: Record<string, number> = {};
     
-    documents.forEach((doc) => {
+    filteredDocuments.forEach((doc) => {
       const unitId = doc.current_unit_id || "sem_unidade";
       counts[unitId] = (counts[unitId] || 0) + 1;
     });
@@ -110,7 +214,7 @@ export function ArchiveAnalytics({
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
-  }, [documents, units]);
+  }, [filteredDocuments, units]);
 
   // Dados por período de retenção
   const retentionPeriodData = useMemo(() => {
@@ -125,7 +229,7 @@ export function ArchiveAnalytics({
     const now = new Date();
     
     return periods.map((period) => {
-      const count = retentions.filter((r) => {
+      const count = filteredRetentions.filter((r) => {
         const scheduledDate = new Date(r.scheduled_destruction_date);
         const yearsUntil = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365);
         return yearsUntil >= period.min && yearsUntil < period.max;
@@ -136,7 +240,7 @@ export function ArchiveAnalytics({
         pendentes: count,
       };
     });
-  }, [retentions]);
+  }, [filteredRetentions]);
 
   // Tendência de arquivamento (últimos 6 meses)
   const archivingTrend = useMemo(() => {
@@ -171,7 +275,7 @@ export function ArchiveAnalytics({
       rejected: 0,
     };
 
-    retentions.forEach((r) => {
+    filteredRetentions.forEach((r) => {
       if (r.status in statusCounts) {
         statusCounts[r.status as keyof typeof statusCounts]++;
       }
@@ -182,7 +286,7 @@ export function ArchiveAnalytics({
       { name: "Aprovados", value: statusCounts.approved, color: "hsl(var(--destructive))" },
       { name: "Rejeitados", value: statusCounts.rejected, color: "hsl(var(--muted-foreground))" },
     ].filter((d) => d.value > 0);
-  }, [retentions]);
+  }, [filteredRetentions]);
 
   if (isLoading) {
     return (
@@ -219,6 +323,69 @@ export function ArchiveAnalytics({
 
   return (
     <div className="space-y-6">
+      {/* Filtros de período */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtrar por período:</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Select value={yearFilter} onValueChange={setYearFilter}>
+                <SelectTrigger className="w-[120px] h-9">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os anos</SelectItem>
+                  {YEAR_OPTIONS.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={quarterFilter} onValueChange={setQuarterFilter}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="Trimestre" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os trimestres</SelectItem>
+                  {QUARTER_OPTIONS.map((q) => (
+                    <SelectItem key={q.value} value={q.value}>
+                      {q.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {hasActiveFilters && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearFilters}
+                className="h-9 text-muted-foreground"
+              >
+                <X className="mr-1 h-3 w-3" />
+                Limpar
+              </Button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Badge variant={hasActiveFilters ? "default" : "secondary"}>
+                {periodLabel}
+              </Badge>
+              <Badge variant="outline">
+                {filteredDocuments.length} documento{filteredDocuments.length !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Row 1: Classification and Units */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Por Classificação */}
