@@ -123,6 +123,7 @@ const DocumentClassification = () => {
     path: string[];
   } | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [changeReason, setChangeReason] = useState("");
 
   // Fetch current user profile
   const { data: currentProfile } = useQuery({
@@ -312,7 +313,7 @@ const DocumentClassification = () => {
 
   // Update classification mutation
   const updateClassification = useMutation({
-    mutationFn: async ({ documentIds, classificationId }: { documentIds: string[], classificationId: string }) => {
+    mutationFn: async ({ documentIds, classificationId, reason }: { documentIds: string[], classificationId: string, reason: string }) => {
       if (!currentProfile?.id) throw new Error("Utilizador não autenticado");
 
       // Get current classifications for history
@@ -326,12 +327,13 @@ const DocumentClassification = () => {
       
       if (updateError) throw updateError;
 
-      // Insert history entries
+      // Insert history entries with reason
       const historyEntries = docsToUpdate.map(doc => ({
         document_id: doc.id,
         old_classification_id: doc.classification_id,
         new_classification_id: classificationId,
         changed_by: currentProfile.id,
+        change_reason: reason.trim(),
       }));
 
       const { error: historyError } = await supabase
@@ -499,6 +501,7 @@ const DocumentClassification = () => {
     setSelectedTipo("");
     setAiSuggestion(null);
     setValidationErrors([]);
+    setChangeReason("");
   };
 
   const saveClassification = () => {
@@ -521,9 +524,29 @@ const DocumentClassification = () => {
       return;
     }
 
+    const trimmedReason = changeReason.trim();
+    if (!trimmedReason || trimmedReason.length < 5) {
+      toast({
+        title: "Motivo obrigatório",
+        description: "Indique um motivo para a classificação (mínimo 5 caracteres).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (trimmedReason.length > 500) {
+      toast({
+        title: "Motivo demasiado longo",
+        description: "O motivo não pode exceder 500 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     updateClassification.mutate({
       documentIds: Array.from(selectedDocIds),
-      classificationId: selectedClassificationId
+      classificationId: selectedClassificationId,
+      reason: trimmedReason
     });
   };
 
@@ -927,6 +950,30 @@ const DocumentClassification = () => {
                 </div>
               )}
 
+              {/* Change Reason Field */}
+              {selectedClass && selectedCount > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Motivo da Classificação <span className="text-destructive">*</span>
+                  </Label>
+                  <textarea
+                    value={changeReason}
+                    onChange={(e) => setChangeReason(e.target.value)}
+                    placeholder="Indique o motivo para esta classificação (obrigatório, mínimo 5 caracteres)"
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                    maxLength={500}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>
+                      {changeReason.trim().length < 5 && changeReason.length > 0 && (
+                        <span className="text-destructive">Mínimo 5 caracteres</span>
+                      )}
+                    </span>
+                    <span>{changeReason.length}/500</span>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <Button variant="outline" onClick={resetClassification}>
@@ -1123,6 +1170,11 @@ const DocumentClassification = () => {
                                     {entry.new_classification?.code || 'N/A'}
                                   </Badge>
                                 </div>
+                                {entry.change_reason && (
+                                  <p className="text-xs text-muted-foreground mt-2 italic border-l-2 border-muted pl-2">
+                                    "{entry.change_reason}"
+                                  </p>
+                                )}
                               </div>
                               <div className="text-right shrink-0">
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
