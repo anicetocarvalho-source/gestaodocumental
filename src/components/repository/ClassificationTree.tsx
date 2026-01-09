@@ -40,6 +40,8 @@ import {
   Trash2,
   Info,
   Loader2,
+  FolderInput,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -82,7 +84,7 @@ function TreeItem({
   onDelete,
   onDrop,
 }: TreeItemProps) {
-  const [isDropTarget, setIsDropTarget] = useState(false);
+  const [dropState, setDropState] = useState<'none' | 'valid' | 'hover'>('none');
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
   const isSelected = selectedId === node.id;
@@ -98,26 +100,43 @@ function TreeItem({
 
   const totalCount = getTotalCount(node);
   const hasDocuments = totalCount > 0;
+  
+  // Update drop state when dragging starts/stops
+  const isValidDropTarget = isDragging;
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDragging) {
+      setDropState('hover');
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (isDragging) {
       e.dataTransfer.dropEffect = "move";
-      setIsDropTarget(true);
+      if (dropState !== 'hover') {
+        setDropState('hover');
+      }
     }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDropTarget(false);
+    // Only reset if we're actually leaving the element (not entering a child)
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setDropState(isDragging ? 'valid' : 'none');
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDropTarget(false);
+    setDropState('none');
     
     try {
       const data = e.dataTransfer.getData("application/json");
@@ -130,18 +149,36 @@ function TreeItem({
     }
   };
 
+  // Get visual classes based on drop state
+  const getDropStateClasses = () => {
+    if (dropState === 'hover') {
+      return "ring-2 ring-primary bg-primary/15 shadow-lg shadow-primary/20 scale-[1.02]";
+    }
+    if (isValidDropTarget) {
+      return "ring-1 ring-primary/40 bg-primary/5";
+    }
+    return "";
+  };
+
+  const getIconColor = () => {
+    if (dropState === 'hover') return "text-primary";
+    if (isValidDropTarget) return "text-primary/70";
+    return "text-warning";
+  };
+
   return (
     <div>
       <div
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "group flex items-center rounded-md transition-all",
-          isSelected
+          "group flex items-center rounded-md transition-all duration-200",
+          isSelected && dropState === 'none'
             ? "bg-primary/10"
-            : "hover:bg-muted",
-          isDropTarget && isDragging && "ring-2 ring-primary ring-offset-1 bg-primary/5"
+            : dropState === 'none' && "hover:bg-muted",
+          getDropStateClasses()
         )}
       >
         <button
@@ -166,32 +203,53 @@ function TreeItem({
           ) : (
             <span className="w-4" />
           )}
-          {hasChildren || node.level < 3 ? (
+          {dropState === 'hover' ? (
+            <FolderInput className={cn(
+              "h-4 w-4 shrink-0 animate-pulse",
+              getIconColor()
+            )} />
+          ) : hasChildren || node.level < 3 ? (
             isExpanded ? (
               <FolderOpen className={cn(
-                "h-4 w-4 shrink-0",
-                isDropTarget && isDragging ? "text-primary" : "text-warning"
+                "h-4 w-4 shrink-0 transition-colors",
+                getIconColor()
               )} />
             ) : (
               <Folder className={cn(
-                "h-4 w-4 shrink-0",
-                isDropTarget && isDragging ? "text-primary" : "text-warning"
+                "h-4 w-4 shrink-0 transition-colors",
+                getIconColor()
               )} />
             )
           ) : (
-            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <FileText className={cn(
+              "h-4 w-4 shrink-0 transition-colors",
+              isValidDropTarget ? "text-primary/70" : "text-muted-foreground"
+            )} />
           )}
-          <span className="truncate flex-1">
+          <span className={cn(
+            "truncate flex-1 transition-colors",
+            dropState === 'hover' && "text-primary font-medium"
+          )}>
             {node.code} - {node.name}
           </span>
-          {totalCount > 0 && (
+          {dropState === 'hover' ? (
+            <Badge
+              variant="default"
+              className="h-5 min-w-5 px-1.5 text-xs bg-primary text-primary-foreground animate-pulse"
+            >
+              <Check className="h-3 w-3" />
+            </Badge>
+          ) : totalCount > 0 ? (
             <Badge
               variant="secondary"
-              className="h-5 min-w-5 px-1.5 text-xs opacity-70 group-hover:opacity-100"
+              className={cn(
+                "h-5 min-w-5 px-1.5 text-xs transition-opacity",
+                isValidDropTarget ? "opacity-100" : "opacity-70 group-hover:opacity-100"
+              )}
             >
               {totalCount}
             </Badge>
-          )}
+          ) : null}
         </button>
 
         {/* Actions dropdown - visible on hover */}
