@@ -119,7 +119,7 @@ export const ClassificationRulesConfigModal = ({
   const [sortColumn, setSortColumn] = useState<"name" | "code" | "state" | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Fetch document types
   const { data: documentTypes = [], isLoading: isLoadingTypes } = useQuery({
@@ -1109,11 +1109,29 @@ export const ClassificationRulesConfigModal = ({
               </Table>
 
               {/* Pagination Controls */}
-              {totalPages > 1 && (
+              {(totalPages > 1 || filteredTypes.length > 10) && (
                 <div className="flex items-center justify-between pt-4 border-t mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredTypes.length)} de {filteredTypes.length} registros
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredTypes.length)} de {filteredTypes.length} registros
+                    </p>
+                    <Select 
+                      value={itemsPerPage.toString()} 
+                      onValueChange={(value) => { 
+                        setItemsPerPage(Number(value)); 
+                        setCurrentPage(1); 
+                      }}
+                    >
+                      <SelectTrigger className="w-[100px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 / pág</SelectItem>
+                        <SelectItem value="25">25 / pág</SelectItem>
+                        <SelectItem value="50">50 / pág</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
