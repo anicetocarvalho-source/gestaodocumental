@@ -411,6 +411,75 @@ export const ClassificationRulesConfigModal = ({
     return { configured, unconfigured, total: documentTypes.length, warnings };
   }, [documentTypes, validationIssues]);
 
+  // Get all available suggestions for unconfigured types
+  const allSuggestions = useMemo(() => {
+    const suggestions: Array<{ typeId: string; typeName: string; suggestion: ClassificationSuggestion }> = [];
+    
+    documentTypes.forEach(type => {
+      if (!type.default_classification_id) {
+        const suggestion = getSuggestionForType(type.id);
+        if (suggestion) {
+          suggestions.push({ typeId: type.id, typeName: type.name, suggestion });
+        }
+      }
+    });
+    
+    return suggestions;
+  }, [documentTypes, getSuggestionForType]);
+
+  // Batch apply all suggestions mutation
+  const batchApplySuggestions = useMutation({
+    mutationFn: async (suggestions: Array<{ typeId: string; classificationId: string }>) => {
+      const errors: string[] = [];
+      let successCount = 0;
+
+      for (const { typeId, classificationId } of suggestions) {
+        const { error } = await supabase
+          .from('document_types')
+          .update({ default_classification_id: classificationId })
+          .eq('id', typeId);
+        
+        if (error) {
+          errors.push(error.message);
+        } else {
+          successCount++;
+        }
+      }
+
+      if (errors.length > 0 && successCount === 0) {
+        throw new Error(errors.join('; '));
+      }
+
+      return { successCount, errorCount: errors.length };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['document-types-config'] });
+      queryClient.invalidateQueries({ queryKey: ['document-types-with-rules'] });
+      toast({
+        title: "Sugestões aplicadas em lote",
+        description: `${result.successCount} regra(s) configurada(s) com sucesso.${result.errorCount > 0 ? ` (${result.errorCount} erro(s))` : ''}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao aplicar sugestões",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const applyAllSuggestions = () => {
+    if (allSuggestions.length === 0) return;
+    
+    const updates = allSuggestions.map(({ typeId, suggestion }) => ({
+      typeId,
+      classificationId: suggestion.classificationId,
+    }));
+    
+    batchApplySuggestions.mutate(updates);
+  };
+
   const startEditing = (type: DocumentType) => {
     setEditingTypeId(type.id);
     setSelectedClassificationId(type.default_classification_id || "");
@@ -498,6 +567,65 @@ export const ClassificationRulesConfigModal = ({
               <p className={`text-2xl font-bold mt-1 ${stats.warnings > 0 ? 'text-destructive' : ''}`}>{stats.warnings}</p>
             </div>
           </div>
+
+          {/* Batch Apply Suggestions Card */}
+          {allSuggestions.length > 0 && (
+            <div className="p-4 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                    <Wand2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Aplicar Sugestões Automáticas</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {allSuggestions.length} tipo(s) de documento têm sugestões baseadas em tipos similares
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {allSuggestions.slice(0, 4).map(({ typeName, suggestion }) => (
+                        <TooltipProvider key={typeName}>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant="secondary" className="text-xs">
+                                {typeName}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                Sugestão: <span className="font-mono">{suggestion.classificationCode}</span> ({suggestion.confidence}%)
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                      {allSuggestions.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{allSuggestions.length - 4} mais
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={applyAllSuggestions}
+                  disabled={batchApplySuggestions.isPending}
+                  className="shrink-0"
+                >
+                  {batchApplySuggestions.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      A aplicar...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Aplicar Todas ({allSuggestions.length})
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Validation Issues */}
           {validationIssues.length > 0 && (
