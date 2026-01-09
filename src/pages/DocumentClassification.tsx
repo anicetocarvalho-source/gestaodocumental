@@ -91,15 +91,25 @@ interface ClassificationCode {
   final_destination: string | null;
 }
 
+interface DocumentType {
+  id: string;
+  code: string;
+  name: string;
+  default_classification_id: string | null;
+  default_classification?: ClassificationCode | null;
+}
+
 interface Document {
   id: string;
   entry_number: string;
   title: string;
   classification_id: string | null;
+  document_type_id: string | null;
   status: string;
   created_at: string;
   selected: boolean;
   classification?: ClassificationCode | null;
+  document_type?: DocumentType | null;
 }
 
 interface ValidationError {
@@ -131,6 +141,7 @@ const DocumentClassification = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [changeReason, setChangeReason] = useState("");
   const [previewDocId, setPreviewDocId] = useState<string | null>(null);
+  const [showBatchRules, setShowBatchRules] = useState(false);
 
   // Fetch current user profile
   const { data: currentProfile } = useQuery({
@@ -175,9 +186,11 @@ const DocumentClassification = () => {
           entry_number,
           title,
           classification_id,
+          document_type_id,
           status,
           created_at,
-          classification:classification_codes(id, code, name, level)
+          classification:classification_codes(id, code, name, level),
+          document_type:document_types(id, code, name, default_classification_id)
         `)
         .order('created_at', { ascending: false });
       
@@ -185,8 +198,30 @@ const DocumentClassification = () => {
       return data.map(doc => ({
         ...doc,
         selected: false,
-        classification: doc.classification as ClassificationCode | null
+        classification: doc.classification as ClassificationCode | null,
+        document_type: doc.document_type as DocumentType | null
       })) as Document[];
+    }
+  });
+
+  // Fetch document types with classification rules
+  const { data: documentTypesWithRules = [] } = useQuery({
+    queryKey: ['document-types-with-rules'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('document_types')
+        .select(`
+          id,
+          code,
+          name,
+          default_classification_id,
+          default_classification:classification_codes(id, code, name)
+        `)
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data as (DocumentType & { default_classification: ClassificationCode | null })[];
     }
   });
 
@@ -449,6 +484,135 @@ const DocumentClassification = () => {
       });
     }
   });
+
+  // Batch classification by document type rules
+  const batchClassifyByRules = useMutation({
+    mutationFn: async () => {
+      if (!currentProfile?.id) throw new Error("Utilizador não autenticado");
+
+      // Get unclassified documents that have a document type with a default classification
+      const docsToClassify = documents.filter(doc => 
+        !doc.classification_id && 
+        doc.document_type?.default_classification_id
+      );
+
+      if (docsToClassify.length === 0) {
+        throw new Error("Nenhum documento elegível para classificação automática");
+      }
+
+      // Group documents by their target classification
+      const groupedByClassification = new Map<string, typeof docsToClassify>();
+      docsToClassify.forEach(doc => {
+        const classificationId = doc.document_type!.default_classification_id!;
+        const existing = groupedByClassification.get(classificationId) || [];
+        existing.push(doc);
+        groupedByClassification.set(classificationId, existing);
+      });
+
+      let successCount = 0;
+      const errors: string[] = [];
+
+      // Process each classification group
+      for (const [classificationId, docs] of groupedByClassification) {
+        const documentIds = docs.map(d => d.id);
+        
+        // Update documents
+        const { error: updateError } = await supabase
+          .from('documents')
+          .update({ classification_id: classificationId })
+          .in('id', documentIds);
+        
+        if (updateError) {
+          errors.push(`Erro ao classificar ${docs.length} documentos: ${updateError.message}`);
+          continue;
+        }
+
+        // Insert history entries
+        const historyEntries = docs.map(doc => ({
+          document_id: doc.id,
+          old_classification_id: doc.classification_id,
+          new_classification_id: classificationId,
+          changed_by: currentProfile.id,
+          change_reason: `Classificação automática baseada no tipo de documento: ${doc.document_type?.name}`,
+        }));
+
+        const { error: historyError } = await supabase
+          .from('classification_history')
+          .insert(historyEntries);
+        
+        if (historyError) {
+          console.error('Failed to insert history:', historyError);
+        }
+
+        successCount += docs.length;
+      }
+
+      if (errors.length > 0 && successCount === 0) {
+        throw new Error(errors.join('; '));
+      }
+
+      return { successCount, errors };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['documents-for-classification'] });
+      queryClient.invalidateQueries({ queryKey: ['classification-history'] });
+      setShowBatchRules(false);
+      toast({
+        title: "Classificação em lote concluída",
+        description: `${result.successCount} documento(s) classificado(s) automaticamente.${result.errors.length > 0 ? ` (${result.errors.length} erros)` : ''}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro na classificação em lote",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Calculate eligible documents for batch classification
+  const batchEligibleDocs = useMemo(() => {
+    return documents.filter(doc => 
+      !doc.classification_id && 
+      doc.document_type?.default_classification_id
+    );
+  }, [documents]);
+
+  // Get stats by document type for batch classification preview
+  const batchPreviewStats = useMemo(() => {
+    const stats = new Map<string, { 
+      typeName: string; 
+      typeCode: string;
+      classificationCode: string;
+      classificationName: string;
+      count: number;
+    }>();
+    
+    batchEligibleDocs.forEach(doc => {
+      if (!doc.document_type) return;
+      
+      const typeId = doc.document_type.id;
+      const existing = stats.get(typeId);
+      
+      if (existing) {
+        existing.count++;
+      } else {
+        const classification = classificationCodes.find(c => c.id === doc.document_type?.default_classification_id);
+        if (classification) {
+          stats.set(typeId, {
+            typeName: doc.document_type.name,
+            typeCode: doc.document_type.code,
+            classificationCode: classification.code,
+            classificationName: classification.name,
+            count: 1,
+          });
+        }
+      }
+    });
+    
+    return Array.from(stats.values());
+  }, [batchEligibleDocs, classificationCodes]);
 
   const toggleDocument = (id: string) => {
     setSelectedDocIds(prev => {
@@ -804,6 +968,70 @@ const DocumentClassification = () => {
 
         {/* Classification Panel */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Batch Classification by Rules */}
+          {batchEligibleDocs.length > 0 && (
+            <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-base">Classificação Automática em Lote</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                    {batchEligibleDocs.length} elegível(eis)
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Documentos com tipo definido podem ser classificados automaticamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {batchPreviewStats.slice(0, 3).map((stat) => (
+                      <div key={stat.typeCode} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">{stat.typeCode}</Badge>
+                          <span>{stat.typeName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                          <Badge variant="secondary" className="font-mono text-xs">{stat.classificationCode}</Badge>
+                          <span className="text-muted-foreground">({stat.count})</span>
+                        </div>
+                      </div>
+                    ))}
+                    {batchPreviewStats.length > 3 && (
+                      <p className="text-center pt-1">
+                        + {batchPreviewStats.length - 3} tipo(s) adicional(ais)
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => setShowBatchRules(true)}
+                      variant="outline"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Regras Detalhadas
+                    </Button>
+                    <Button
+                      onClick={() => batchClassifyByRules.mutate()}
+                      disabled={batchClassifyByRules.isPending}
+                    >
+                      {batchClassifyByRules.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-2" />
+                      )}
+                      Aplicar Regras
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {/* AI Suggestion */}
           <Card>
             <CardHeader className="pb-3">
@@ -1566,6 +1794,137 @@ const DocumentClassification = () => {
               <p className="text-sm text-muted-foreground">Documento não encontrado</p>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Batch Classification Rules Sheet */}
+      <Sheet open={showBatchRules} onOpenChange={setShowBatchRules}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              Regras de Classificação Automática
+            </SheetTitle>
+            <SheetDescription>
+              Regras baseadas no tipo de documento definido
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="space-y-6 mt-6">
+            {/* Summary */}
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Documentos elegíveis</p>
+                  <p className="text-xs text-muted-foreground">
+                    Documentos sem classificação com tipo definido
+                  </p>
+                </div>
+                <Badge className="text-lg px-3 py-1">{batchEligibleDocs.length}</Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Rules by Document Type */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Regras por Tipo de Documento</Label>
+              
+              {batchPreviewStats.length === 0 ? (
+                <div className="text-center py-8">
+                  <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum documento elegível para classificação automática
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure classificações padrão nos tipos de documento
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {batchPreviewStats.map((stat) => (
+                    <div 
+                      key={stat.typeCode} 
+                      className="p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <FileType className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{stat.typeName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Código: {stat.typeCode}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="gap-1">
+                          {stat.count} doc{stat.count !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 pl-13">
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 flex-1">
+                          <Badge variant="secondary" className="font-mono">
+                            {stat.classificationCode}
+                          </Badge>
+                          <span className="text-sm">{stat.classificationName}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Unconfigured Types */}
+            {documentTypesWithRules.filter(t => !t.default_classification_id).length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Tipos sem Regra Configurada
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {documentTypesWithRules
+                      .filter(t => !t.default_classification_id)
+                      .map((type) => (
+                        <Badge key={type.id} variant="outline" className="text-muted-foreground">
+                          {type.name}
+                        </Badge>
+                      ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Configure a classificação padrão destes tipos para incluí-los na classificação automática
+                  </p>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  batchClassifyByRules.mutate();
+                }}
+                disabled={batchClassifyByRules.isPending || batchEligibleDocs.length === 0}
+              >
+                {batchClassifyByRules.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                Classificar {batchEligibleDocs.length} Documento(s)
+              </Button>
+              <Button variant="outline" onClick={() => setShowBatchRules(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     </DashboardLayout>
