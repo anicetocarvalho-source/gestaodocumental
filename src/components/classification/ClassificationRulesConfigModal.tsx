@@ -41,13 +41,14 @@ import {
 } from "@/components/ui/collapsible";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   FileType,
   FolderTree,
   Info,
-  ArrowUpDown,
   Filter,
   Lightbulb,
   Loader2,
@@ -812,7 +813,15 @@ export const ClassificationRulesConfigModal = ({
                         onClick={() => toggleSort("name")}
                       >
                         Tipo de Documento
-                        <ArrowUpDown className={`ml-1 h-3 w-3 ${sortColumn === "name" ? "text-primary" : "text-muted-foreground"}`} />
+                        {sortColumn === "name" ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="ml-1 h-3 w-3 text-primary" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3 w-3 text-primary" />
+                          )
+                        ) : (
+                          <ArrowUp className="ml-1 h-3 w-3 text-muted-foreground/40" />
+                        )}
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -823,7 +832,15 @@ export const ClassificationRulesConfigModal = ({
                         onClick={() => toggleSort("code")}
                       >
                         Classificação Padrão
-                        <ArrowUpDown className={`ml-1 h-3 w-3 ${sortColumn === "code" ? "text-primary" : "text-muted-foreground"}`} />
+                        {sortColumn === "code" ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="ml-1 h-3 w-3 text-primary" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3 w-3 text-primary" />
+                          )
+                        ) : (
+                          <ArrowUp className="ml-1 h-3 w-3 text-muted-foreground/40" />
+                        )}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[80px] text-center">
@@ -834,7 +851,15 @@ export const ClassificationRulesConfigModal = ({
                         onClick={() => toggleSort("state")}
                       >
                         Estado
-                        <ArrowUpDown className={`ml-1 h-3 w-3 ${sortColumn === "state" ? "text-primary" : "text-muted-foreground"}`} />
+                        {sortColumn === "state" ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="ml-1 h-3 w-3 text-primary" />
+                          ) : (
+                            <ArrowDown className="ml-1 h-3 w-3 text-primary" />
+                          )
+                        ) : (
+                          <ArrowUp className="ml-1 h-3 w-3 text-muted-foreground/40" />
+                        )}
                       </Button>
                     </TableHead>
                     <TableHead className="w-[150px] text-right">Ações</TableHead>
