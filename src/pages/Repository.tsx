@@ -399,71 +399,103 @@ export default function Repository() {
                     </div>
                   ) : (
                     <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 overflow-y-auto max-h-[calc(100vh-500px)]">
-                      {documents?.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className={cn(
-                            "group relative flex flex-col items-center p-4 rounded-lg border border-transparent hover:border-border hover:bg-muted/30 transition-all cursor-pointer",
-                            selectedItems.has(doc.id) && "border-primary bg-primary/5"
-                          )}
-                          onClick={() => toggleItemSelection(doc.id)}
-                        >
-                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Checkbox
-                              checked={selectedItems.has(doc.id)}
-                              onCheckedChange={() => toggleItemSelection(doc.id)}
-                            />
-                          </div>
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="h-7 w-7"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/documents/${doc.id}`}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Abrir
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Transferir
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Eliminar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <FileText className="h-16 w-16 text-info mb-3" />
-                          <span className="text-sm font-medium text-foreground text-center line-clamp-2">
-                            {doc.title}
-                          </span>
-                          <Badge
-                            variant="outline"
+                      {documents?.map((doc) => {
+                        const handleGridDragStart = (e: React.DragEvent) => {
+                          setIsDragging(true);
+                          
+                          // If the dragged item is selected, drag all selected items
+                          const idsToMove = selectedItems.has(doc.id) 
+                            ? Array.from(selectedItems) 
+                            : [doc.id];
+                          
+                          e.dataTransfer.setData("application/json", JSON.stringify(idsToMove));
+                          e.dataTransfer.effectAllowed = "move";
+                          
+                          // Create a custom drag image
+                          const dragImage = document.createElement("div");
+                          dragImage.className = "bg-primary text-primary-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium";
+                          dragImage.textContent = idsToMove.length > 1 
+                            ? `${idsToMove.length} documentos` 
+                            : "1 documento";
+                          dragImage.style.position = "absolute";
+                          dragImage.style.top = "-1000px";
+                          document.body.appendChild(dragImage);
+                          e.dataTransfer.setDragImage(dragImage, 0, 0);
+                          
+                          setTimeout(() => document.body.removeChild(dragImage), 0);
+                        };
+
+                        return (
+                          <div
+                            key={doc.id}
+                            draggable
+                            onDragStart={handleGridDragStart}
+                            onDragEnd={() => setIsDragging(false)}
                             className={cn(
-                              "mt-2 text-xs",
-                              statusVariants[doc.status]
+                              "group relative flex flex-col items-center p-4 rounded-lg border border-transparent hover:border-border hover:bg-muted/30 transition-all cursor-grab active:cursor-grabbing",
+                              selectedItems.has(doc.id) && "border-primary bg-primary/5"
                             )}
+                            onClick={() => toggleItemSelection(doc.id)}
                           >
-                            {statusLabels[doc.status] || doc.status}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground mt-1">
-                            {format(parseISO(doc.created_at), "dd/MM/yyyy", {
-                              locale: pt,
-                            })}
-                          </span>
-                        </div>
-                      ))}
+                            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Checkbox
+                                checked={selectedItems.has(doc.id)}
+                                onCheckedChange={() => toggleItemSelection(doc.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="h-7 w-7"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link to={`/documents/${doc.id}`}>
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Abrir
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Transferir
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <FileText className="h-16 w-16 text-info mb-3" />
+                            <span className="text-sm font-medium text-foreground text-center line-clamp-2">
+                              {doc.title}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "mt-2 text-xs",
+                                statusVariants[doc.status]
+                              )}
+                            >
+                              {statusLabels[doc.status] || doc.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              {format(parseISO(doc.created_at), "dd/MM/yyyy", {
+                                locale: pt,
+                              })}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </Card>
