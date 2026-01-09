@@ -49,10 +49,29 @@ import {
   Copy,
   Search,
   Filter,
+  History,
+  Clock,
+  User,
 } from "lucide-react";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface ClassificationHistoryEntry {
+  id: string;
+  document_id: string;
+  old_classification_id: string | null;
+  new_classification_id: string;
+  changed_by: string;
+  change_reason: string | null;
+  created_at: string;
+  old_classification?: ClassificationCode | null;
+  new_classification?: ClassificationCode | null;
+  profile?: { full_name: string } | null;
+}
 
 interface ClassificationCode {
   id: string;
@@ -85,6 +104,7 @@ interface ValidationError {
 
 const DocumentClassification = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
@@ -92,6 +112,7 @@ const DocumentClassification = () => {
   const [selectedSubclass, setSelectedSubclass] = useState<string>("");
   const [selectedTipo, setSelectedTipo] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<{
     classificationId: string;
     code: string;
@@ -100,6 +121,23 @@ const DocumentClassification = () => {
     path: string[];
   } | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+
+  // Fetch current user profile
+  const { data: currentProfile } = useQuery({
+    queryKey: ['current-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id
+  });
 
   // Fetch classification codes
   const { data: classificationCodes = [] } = useQuery({
@@ -140,6 +178,33 @@ const DocumentClassification = () => {
         classification: doc.classification as ClassificationCode | null
       })) as Document[];
     }
+  });
+
+  // Fetch classification history
+  const { data: classificationHistory = [], isLoading: isLoadingHistory } = useQuery({
+    queryKey: ['classification-history'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('classification_history')
+        .select(`
+          id,
+          document_id,
+          old_classification_id,
+          new_classification_id,
+          changed_by,
+          change_reason,
+          created_at,
+          old_classification:classification_codes!classification_history_old_classification_id_fkey(id, code, name),
+          new_classification:classification_codes!classification_history_new_classification_id_fkey(id, code, name),
+          profile:profiles!classification_history_changed_by_fkey(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      return data as ClassificationHistoryEntry[];
+    },
+    enabled: showHistory
   });
 
   // Build classification hierarchy
@@ -202,15 +267,39 @@ const DocumentClassification = () => {
   // Update classification mutation
   const updateClassification = useMutation({
     mutationFn: async ({ documentIds, classificationId }: { documentIds: string[], classificationId: string }) => {
-      const { error } = await supabase
+      if (!currentProfile?.id) throw new Error("Utilizador não autenticado");
+
+      // Get current classifications for history
+      const docsToUpdate = documents.filter(d => documentIds.includes(d.id));
+      
+      // Update documents
+      const { error: updateError } = await supabase
         .from('documents')
         .update({ classification_id: classificationId })
         .in('id', documentIds);
       
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Insert history entries
+      const historyEntries = docsToUpdate.map(doc => ({
+        document_id: doc.id,
+        old_classification_id: doc.classification_id,
+        new_classification_id: classificationId,
+        changed_by: currentProfile.id,
+      }));
+
+      const { error: historyError } = await supabase
+        .from('classification_history')
+        .insert(historyEntries);
+      
+      if (historyError) {
+        console.error('Failed to insert history:', historyError);
+        // Don't throw - classification was successful
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents-for-classification'] });
+      queryClient.invalidateQueries({ queryKey: ['classification-history'] });
       setSelectedDocIds(new Set());
       resetClassification();
       toast({
@@ -832,7 +921,7 @@ const DocumentClassification = () => {
           </Card>
 
           {/* Quick Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <Card className="p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
@@ -866,7 +955,105 @@ const DocumentClassification = () => {
                 </div>
               </div>
             </Card>
+            <Card 
+              className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" 
+              onClick={() => setShowHistory(!showHistory)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <History className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Ver Histórico</p>
+                  <p className="text-xs text-muted-foreground">Alterações recentes</p>
+                </div>
+              </div>
+            </Card>
           </div>
+
+          {/* Classification History Panel */}
+          {showHistory && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-base">Histórico de Classificações</CardTitle>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+                <CardDescription>Últimas 50 alterações de classificação</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[300px]">
+                  {isLoadingHistory ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : classificationHistory.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 text-center p-4">
+                      <History className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Nenhum histórico disponível</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {classificationHistory.map((entry) => {
+                        const doc = documents.find(d => d.id === entry.document_id);
+                        return (
+                          <div key={entry.id} className="p-4 hover:bg-muted/30 transition-colors">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {doc?.title || 'Documento removido'}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {doc?.entry_number || entry.document_id}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  {entry.old_classification ? (
+                                    <>
+                                      <Badge variant="outline" className="text-xs font-mono">
+                                        {entry.old_classification.code}
+                                      </Badge>
+                                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Badge variant="secondary" className="text-xs">
+                                        Sem classificação
+                                      </Badge>
+                                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                    </>
+                                  )}
+                                  <Badge className="text-xs font-mono bg-primary/10 text-primary border-primary/20">
+                                    {entry.new_classification?.code || 'N/A'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <User className="h-3 w-3" />
+                                  <span>{entry.profile?.full_name || 'Utilizador'}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>
+                                    {format(new Date(entry.created_at), "dd MMM yyyy, HH:mm", { locale: pt })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>
