@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RepositoryDocument } from "@/hooks/useRepository";
+import { createDragPreviewElement } from "./DragPreview";
 
 const statusLabels: Record<string, string> = {
   draft: "Rascunho",
@@ -121,16 +122,18 @@ export function RepositoryTable({
     e.dataTransfer.setData("application/json", JSON.stringify(idsToMove));
     e.dataTransfer.effectAllowed = "move";
     
-    // Create a custom drag image
-    const dragImage = document.createElement("div");
-    dragImage.className = "bg-primary text-primary-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium";
-    dragImage.textContent = idsToMove.length > 1 
-      ? `${idsToMove.length} documentos` 
-      : "1 documento";
-    dragImage.style.position = "absolute";
-    dragImage.style.top = "-1000px";
+    // Get document info for the drag preview
+    const docsToMove = documents.filter(d => idsToMove.includes(d.id)).map(d => ({
+      id: d.id,
+      title: d.title,
+      entry_number: d.entry_number,
+      status: d.status,
+    }));
+    
+    // Create sophisticated drag preview
+    const dragImage = createDragPreviewElement(docsToMove);
     document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, 0, 0);
+    e.dataTransfer.setDragImage(dragImage, 20, 20);
     
     setTimeout(() => document.body.removeChild(dragImage), 0);
     
