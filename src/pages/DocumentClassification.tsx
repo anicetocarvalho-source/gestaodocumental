@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -45,104 +47,35 @@ import {
   ExternalLink,
   Loader2,
   Copy,
+  Search,
+  Filter,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-interface ClassificationLevel {
+interface ClassificationCode {
+  id: string;
   code: string;
   name: string;
-  description?: string;
+  description: string | null;
+  level: number;
+  parent_id: string | null;
+  is_active: boolean;
+  retention_years: number | null;
+  final_destination: string | null;
 }
 
 interface Document {
   id: string;
-  name: string;
-  type: string;
-  currentClassification?: string;
+  entry_number: string;
+  title: string;
+  classification_id: string | null;
+  status: string;
+  created_at: string;
   selected: boolean;
+  classification?: ClassificationCode | null;
 }
-
-const classOptions: ClassificationLevel[] = [
-  { code: "100", name: "Organização e Funcionamento", description: "Documentos relativos à organização administrativa" },
-  { code: "200", name: "Recursos Humanos", description: "Gestão de pessoal e carreiras" },
-  { code: "300", name: "Recursos Financeiros", description: "Gestão orçamental e contabilística" },
-  { code: "400", name: "Recursos Patrimoniais", description: "Gestão de património e equipamentos" },
-  { code: "500", name: "Comunicação e Documentação", description: "Gestão documental e arquivo" },
-];
-
-const subclassOptions: Record<string, ClassificationLevel[]> = {
-  "100": [
-    { code: "100.10", name: "Planeamento e Organização" },
-    { code: "100.20", name: "Regulamentação e Normalização" },
-    { code: "100.30", name: "Relações Institucionais" },
-  ],
-  "200": [
-    { code: "200.10", name: "Recrutamento e Seleção" },
-    { code: "200.20", name: "Formação Profissional" },
-    { code: "200.30", name: "Avaliação de Desempenho" },
-  ],
-  "300": [
-    { code: "300.10", name: "Orçamento" },
-    { code: "300.20", name: "Contabilidade" },
-    { code: "300.30", name: "Tesouraria" },
-  ],
-  "400": [
-    { code: "400.10", name: "Aquisições" },
-    { code: "400.20", name: "Gestão de Inventário" },
-    { code: "400.30", name: "Manutenção" },
-  ],
-  "500": [
-    { code: "500.10", name: "Correspondência" },
-    { code: "500.20", name: "Arquivo" },
-    { code: "500.30", name: "Comunicação Interna" },
-  ],
-};
-
-const tipoOptions: Record<string, ClassificationLevel[]> = {
-  "100.10": [
-    { code: "100.10.01", name: "Planos Estratégicos" },
-    { code: "100.10.02", name: "Planos de Actividades" },
-  ],
-  "100.20": [
-    { code: "100.20.01", name: "Regulamentos Internos" },
-    { code: "100.20.02", name: "Normas e Procedimentos" },
-  ],
-  "200.10": [
-    { code: "200.10.01", name: "Concursos Públicos" },
-    { code: "200.10.02", name: "Mobilidade Interna" },
-  ],
-  "300.10": [
-    { code: "300.10.01", name: "Propostas Orçamentais" },
-    { code: "300.10.02", name: "Alterações Orçamentais" },
-  ],
-  "500.10": [
-    { code: "500.10.01", name: "Correspondência Recebida" },
-    { code: "500.10.02", name: "Correspondência Expedida" },
-  ],
-};
-
-const subtipoOptions: Record<string, ClassificationLevel[]> = {
-  "100.10.01": [
-    { code: "100.10.01.01", name: "Plano Estratégico Plurianual" },
-    { code: "100.10.01.02", name: "Revisão do Plano Estratégico" },
-  ],
-  "200.10.01": [
-    { code: "200.10.01.01", name: "Abertura de Procedimento" },
-    { code: "200.10.01.02", name: "Lista de Candidatos" },
-  ],
-  "500.10.01": [
-    { code: "500.10.01.01", name: "Ofícios Recebidos" },
-    { code: "500.10.01.02", name: "Requerimentos" },
-  ],
-};
-
-const mockDocuments: Document[] = [
-  { id: "1", name: "Contrato_Prestacao_Servicos_2024.pdf", type: "PDF", selected: true },
-  { id: "2", name: "Despacho_Ministerial_0045.pdf", type: "PDF", selected: true, currentClassification: "100.20.02" },
-  { id: "3", name: "Relatorio_Financeiro_Q4.pdf", type: "PDF", selected: false },
-  { id: "4", name: "Acta_Reuniao_Conselho.pdf", type: "PDF", selected: false },
-  { id: "5", name: "Circular_Interna_2024_001.pdf", type: "PDF", selected: true },
-];
 
 interface ValidationError {
   field: string;
@@ -151,71 +84,189 @@ interface ValidationError {
 }
 
 const DocumentClassification = () => {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubclass, setSelectedSubclass] = useState<string>("");
   const [selectedTipo, setSelectedTipo] = useState<string>("");
-  const [selectedSubtipo, setSelectedSubtipo] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<{
-    class: string;
-    subclass: string;
-    tipo: string;
+    classificationId: string;
+    code: string;
+    name: string;
     confidence: number;
+    path: string[];
   } | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
-  const selectedCount = documents.filter((d) => d.selected).length;
-  const fullClassificationCode = [selectedClass, selectedSubclass, selectedTipo, selectedSubtipo]
-    .filter(Boolean)
-    .pop() || "";
+  // Fetch classification codes
+  const { data: classificationCodes = [] } = useQuery({
+    queryKey: ['classification-codes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('classification_codes')
+        .select('*')
+        .eq('is_active', true)
+        .order('code');
+      
+      if (error) throw error;
+      return data as ClassificationCode[];
+    }
+  });
+
+  // Fetch documents
+  const { data: documents = [], isLoading: isLoadingDocs } = useQuery({
+    queryKey: ['documents-for-classification'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('documents')
+        .select(`
+          id,
+          entry_number,
+          title,
+          classification_id,
+          status,
+          created_at,
+          classification:classification_codes(id, code, name, level)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data.map(doc => ({
+        ...doc,
+        selected: false,
+        classification: doc.classification as ClassificationCode | null
+      })) as Document[];
+    }
+  });
+
+  // Build classification hierarchy
+  const classHierarchy = useMemo(() => {
+    const level1 = classificationCodes.filter(c => c.level === 1);
+    const level2 = classificationCodes.filter(c => c.level === 2);
+    const level3 = classificationCodes.filter(c => c.level === 3);
+    
+    return { level1, level2, level3 };
+  }, [classificationCodes]);
+
+  // Get subclasses for selected class
+  const availableSubclasses = useMemo(() => {
+    if (!selectedClass) return [];
+    return classHierarchy.level2.filter(c => c.parent_id === selectedClass);
+  }, [selectedClass, classHierarchy.level2]);
+
+  // Get tipos for selected subclass
+  const availableTipos = useMemo(() => {
+    if (!selectedSubclass) return [];
+    return classHierarchy.level3.filter(c => c.parent_id === selectedSubclass);
+  }, [selectedSubclass, classHierarchy.level3]);
+
+  // Filter documents
+  const filteredDocuments = useMemo(() => {
+    return documents.filter(doc => {
+      const matchesSearch = searchQuery === "" || 
+        doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.entry_number.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === "all" ||
+        (statusFilter === "classified" && doc.classification_id) ||
+        (statusFilter === "unclassified" && !doc.classification_id);
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [documents, searchQuery, statusFilter]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const classified = documents.filter(d => d.classification_id).length;
+    const unclassified = documents.filter(d => !d.classification_id).length;
+    const total = documents.length;
+    const progress = total > 0 ? Math.round((classified / total) * 100) : 0;
+    return { classified, unclassified, total, progress };
+  }, [documents]);
+
+  const selectedCount = selectedDocIds.size;
+
+  // Get full classification code
+  const fullClassificationCode = useMemo(() => {
+    const code = classificationCodes.find(c => 
+      c.id === selectedTipo || c.id === selectedSubclass || c.id === selectedClass
+    );
+    return code?.code || "";
+  }, [selectedClass, selectedSubclass, selectedTipo, classificationCodes]);
+
+  const selectedClassificationId = selectedTipo || selectedSubclass || selectedClass;
+
+  // Update classification mutation
+  const updateClassification = useMutation({
+    mutationFn: async ({ documentIds, classificationId }: { documentIds: string[], classificationId: string }) => {
+      const { error } = await supabase
+        .from('documents')
+        .update({ classification_id: classificationId })
+        .in('id', documentIds);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents-for-classification'] });
+      setSelectedDocIds(new Set());
+      resetClassification();
+      toast({
+        title: "Classificação guardada",
+        description: `${selectedCount} documento(s) classificado(s) com sucesso.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao guardar",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   const toggleDocument = (id: string) => {
-    setDocuments((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, selected: !d.selected } : d))
-    );
+    setSelectedDocIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const selectAll = () => {
-    setDocuments((prev) => prev.map((d) => ({ ...d, selected: true })));
+    setSelectedDocIds(new Set(filteredDocuments.map(d => d.id)));
   };
 
   const deselectAll = () => {
-    setDocuments((prev) => prev.map((d) => ({ ...d, selected: false })));
+    setSelectedDocIds(new Set());
   };
 
   const handleClassChange = (value: string) => {
     setSelectedClass(value);
     setSelectedSubclass("");
     setSelectedTipo("");
-    setSelectedSubtipo("");
-    validateClassification(value, "", "", "");
+    setAiSuggestion(null);
+    validateClassification(value, "", "");
   };
 
   const handleSubclassChange = (value: string) => {
     setSelectedSubclass(value);
     setSelectedTipo("");
-    setSelectedSubtipo("");
-    validateClassification(selectedClass, value, "", "");
+    validateClassification(selectedClass, value, "");
   };
 
   const handleTipoChange = (value: string) => {
     setSelectedTipo(value);
-    setSelectedSubtipo("");
-    validateClassification(selectedClass, selectedSubclass, value, "");
+    validateClassification(selectedClass, selectedSubclass, value);
   };
 
-  const handleSubtipoChange = (value: string) => {
-    setSelectedSubtipo(value);
-    validateClassification(selectedClass, selectedSubclass, selectedTipo, value);
-  };
-
-  const validateClassification = (
-    classVal: string,
-    subclass: string,
-    tipo: string,
-    subtipo: string
-  ) => {
+  const validateClassification = (classVal: string, subclass: string, tipo: string) => {
     const errors: ValidationError[] = [];
 
     if (!classVal) {
@@ -226,38 +277,80 @@ const DocumentClassification = () => {
       errors.push({ field: "subclass", message: "Subclasse é recomendada para classificação completa", type: "warning" });
     }
 
-    // Simulated conflict check
-    if (classVal === "300" && documents.some((d) => d.selected && d.name.toLowerCase().includes("contrato"))) {
-      errors.push({
-        field: "conflict",
-        message: "Documento 'Contrato' pode pertencer a classe diferente (100 - Organização)",
-        type: "warning",
-      });
-    }
-
     setValidationErrors(errors);
   };
 
   const handleAiAnalysis = async () => {
+    if (selectedDocIds.size === 0) return;
+    
     setIsAnalyzing(true);
-    // Simulate AI analysis
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setAiSuggestion({
-      class: "500",
-      subclass: "500.10",
-      tipo: "500.10.01",
-      confidence: 87,
-    });
-    setIsAnalyzing(false);
+    
+    try {
+      // Get first selected document for analysis
+      const docId = Array.from(selectedDocIds)[0];
+      const doc = documents.find(d => d.id === docId);
+      
+      if (!doc) throw new Error("Documento não encontrado");
+
+      const { data, error } = await supabase.functions.invoke('analyze-document', {
+        body: { ocrText: doc.title + " " + (doc.entry_number || "") }
+      });
+
+      if (error) throw error;
+
+      // Find matching classification
+      const suggestedCode = data.analysis?.classification_suggestion?.code;
+      if (suggestedCode) {
+        const matchingClass = classificationCodes.find(c => 
+          c.code.startsWith(suggestedCode.split('.')[0])
+        );
+        
+        if (matchingClass) {
+          setAiSuggestion({
+            classificationId: matchingClass.id,
+            code: matchingClass.code,
+            name: matchingClass.name,
+            confidence: Math.round((data.analysis?.confidence || 0.7) * 100),
+            path: [matchingClass.name]
+          });
+        }
+      } else {
+        // Fallback suggestion based on document title patterns
+        const fallbackClass = classHierarchy.level1[0];
+        if (fallbackClass) {
+          setAiSuggestion({
+            classificationId: fallbackClass.id,
+            code: fallbackClass.code,
+            name: fallbackClass.name,
+            confidence: 65,
+            path: [fallbackClass.name]
+          });
+        }
+      }
+    } catch (error) {
+      console.error('AI Analysis error:', error);
+      // Provide fallback suggestion
+      const fallbackClass = classHierarchy.level1[0];
+      if (fallbackClass) {
+        setAiSuggestion({
+          classificationId: fallbackClass.id,
+          code: fallbackClass.code,
+          name: fallbackClass.name,
+          confidence: 60,
+          path: [fallbackClass.name]
+        });
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const applyAiSuggestion = () => {
     if (aiSuggestion) {
-      setSelectedClass(aiSuggestion.class);
-      setSelectedSubclass(aiSuggestion.subclass);
-      setSelectedTipo(aiSuggestion.tipo);
-      setSelectedSubtipo("");
-      validateClassification(aiSuggestion.class, aiSuggestion.subclass, aiSuggestion.tipo, "");
+      setSelectedClass(aiSuggestion.classificationId);
+      setSelectedSubclass("");
+      setSelectedTipo("");
+      validateClassification(aiSuggestion.classificationId, "", "");
       toast({
         title: "Sugestão aplicada",
         description: "A classificação sugerida pela IA foi aplicada.",
@@ -269,7 +362,6 @@ const DocumentClassification = () => {
     setSelectedClass("");
     setSelectedSubclass("");
     setSelectedTipo("");
-    setSelectedSubtipo("");
     setAiSuggestion(null);
     setValidationErrors([]);
   };
@@ -285,9 +377,18 @@ const DocumentClassification = () => {
       return;
     }
 
-    toast({
-      title: "Classificação guardada",
-      description: `${selectedCount} documento(s) classificado(s) com o código ${fullClassificationCode}`,
+    if (!selectedClassificationId) {
+      toast({
+        title: "Classificação incompleta",
+        description: "Seleccione pelo menos uma classe.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateClassification.mutate({
+      documentIds: Array.from(selectedDocIds),
+      classificationId: selectedClassificationId
     });
   };
 
@@ -302,28 +403,44 @@ const DocumentClassification = () => {
   };
 
   const getClassificationPath = () => {
-    const parts = [];
+    const parts: string[] = [];
     if (selectedClass) {
-      const cls = classOptions.find((c) => c.code === selectedClass);
+      const cls = classificationCodes.find((c) => c.id === selectedClass);
       if (cls) parts.push(cls.name);
     }
-    if (selectedSubclass && subclassOptions[selectedClass]) {
-      const sub = subclassOptions[selectedClass].find((s) => s.code === selectedSubclass);
+    if (selectedSubclass) {
+      const sub = classificationCodes.find((s) => s.id === selectedSubclass);
       if (sub) parts.push(sub.name);
     }
-    if (selectedTipo && tipoOptions[selectedSubclass]) {
-      const tipo = tipoOptions[selectedSubclass].find((t) => t.code === selectedTipo);
+    if (selectedTipo) {
+      const tipo = classificationCodes.find((t) => t.id === selectedTipo);
       if (tipo) parts.push(tipo.name);
-    }
-    if (selectedSubtipo && subtipoOptions[selectedTipo]) {
-      const subtipo = subtipoOptions[selectedTipo].find((s) => s.code === selectedSubtipo);
-      if (subtipo) parts.push(subtipo.name);
     }
     return parts;
   };
 
   return (
     <DashboardLayout title="Classificação de Documentos" subtitle="Módulo de classificação segundo taxonomia ministerial">
+      {/* Progress Overview */}
+      <Card className="mb-6">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <span className="text-sm font-medium">{stats.classified} classificados</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <span className="text-sm font-medium">{stats.unclassified} pendentes</span>
+              </div>
+            </div>
+            <span className="text-sm text-muted-foreground">{stats.progress}% completo</span>
+          </div>
+          <Progress value={stats.progress} className="h-2" />
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Document Selection Panel */}
         <div className="lg:col-span-1">
@@ -334,10 +451,34 @@ const DocumentClassification = () => {
                   <CardTitle className="text-base">Documentos</CardTitle>
                   <CardDescription>{selectedCount} seleccionado(s)</CardDescription>
                 </div>
-                <Badge variant="outline">{documents.length} total</Badge>
+                <Badge variant="outline">{filteredDocuments.length} de {documents.length}</Badge>
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              {/* Search and Filter */}
+              <div className="px-4 pb-3 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar documentos..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-9">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os documentos</SelectItem>
+                    <SelectItem value="unclassified">Por classificar</SelectItem>
+                    <SelectItem value="classified">Classificados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div className="flex items-center gap-2 px-4 pb-3">
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAll}>
                   Seleccionar todos
@@ -348,36 +489,52 @@ const DocumentClassification = () => {
               </div>
               <Separator />
               <ScrollArea className="h-[400px]">
-                <div className="divide-y divide-border">
-                  {documents.map((doc) => (
-                    <label
-                      key={doc.id}
-                      className="flex items-start gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={doc.selected}
-                        onCheckedChange={() => toggleDocument(doc.id)}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {doc.name}
-                          </span>
-                        </div>
-                        {doc.currentClassification && (
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {doc.currentClassification}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">classificado</span>
+                {isLoadingDocs ? (
+                  <div className="flex items-center justify-center h-32">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredDocuments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-center p-4">
+                    <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Nenhum documento encontrado</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {filteredDocuments.map((doc) => (
+                      <label
+                        key={doc.id}
+                        className="flex items-start gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      >
+                        <Checkbox
+                          checked={selectedDocIds.has(doc.id)}
+                          onCheckedChange={() => toggleDocument(doc.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {doc.title}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{doc.entry_number}</p>
+                          {doc.classification ? (
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-xs font-mono">
+                                {doc.classification.code}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">classificado</span>
+                            </div>
+                          ) : (
+                            <Badge variant="secondary" className="mt-1 text-xs">
+                              Por classificar
+                            </Badge>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
@@ -424,10 +581,10 @@ const DocumentClassification = () => {
                         </Badge>
                       </div>
                       <p className="text-sm text-foreground">
-                        Classificação sugerida: <span className="font-mono font-medium">{aiSuggestion.tipo}</span>
+                        Classificação sugerida: <span className="font-mono font-medium">{aiSuggestion.code}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Comunicação e Documentação → Correspondência → Correspondência Recebida
+                        {aiSuggestion.path.join(' → ')}
                       </p>
                     </div>
                     <Button size="sm" onClick={applyAiSuggestion}>
@@ -464,20 +621,27 @@ const DocumentClassification = () => {
                     </SheetHeader>
                     <ScrollArea className="h-[calc(100vh-120px)] mt-4 pr-4">
                       <div className="space-y-6">
-                        {classOptions.map((cls) => (
-                          <div key={cls.code} className="space-y-2">
+                        {classHierarchy.level1.map((cls) => (
+                          <div key={cls.id} className="space-y-2">
                             <h4 className="font-medium text-sm">
                               <span className="font-mono text-muted-foreground mr-2">{cls.code}</span>
                               {cls.name}
                             </h4>
                             <p className="text-xs text-muted-foreground pl-12">{cls.description}</p>
-                            {subclassOptions[cls.code] && (
+                            {classHierarchy.level2.filter(s => s.parent_id === cls.id).length > 0 && (
                               <div className="pl-6 space-y-1">
-                                {subclassOptions[cls.code].map((sub) => (
-                                  <p key={sub.code} className="text-xs">
-                                    <span className="font-mono text-muted-foreground mr-2">{sub.code}</span>
-                                    {sub.name}
-                                  </p>
+                                {classHierarchy.level2.filter(s => s.parent_id === cls.id).map((sub) => (
+                                  <div key={sub.id}>
+                                    <p className="text-xs">
+                                      <span className="font-mono text-muted-foreground mr-2">{sub.code}</span>
+                                      {sub.name}
+                                    </p>
+                                    {sub.retention_years && (
+                                      <p className="text-xs text-muted-foreground ml-16">
+                                        Retenção: {sub.retention_years} anos
+                                      </p>
+                                    )}
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -491,7 +655,7 @@ const DocumentClassification = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Hierarchical Dropdowns */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
                     Classe <span className="text-destructive">*</span>
@@ -501,8 +665,8 @@ const DocumentClassification = () => {
                       <SelectValue placeholder="Seleccione a classe" />
                     </SelectTrigger>
                     <SelectContent>
-                      {classOptions.map((option) => (
-                        <SelectItem key={option.code} value={option.code}>
+                      {classHierarchy.level1.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-xs text-muted-foreground">{option.code}</span>
                             <span>{option.name}</span>
@@ -518,21 +682,20 @@ const DocumentClassification = () => {
                   <Select
                     value={selectedSubclass}
                     onValueChange={handleSubclassChange}
-                    disabled={!selectedClass}
+                    disabled={!selectedClass || availableSubclasses.length === 0}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccione a subclasse" />
                     </SelectTrigger>
                     <SelectContent>
-                      {selectedClass &&
-                        subclassOptions[selectedClass]?.map((option) => (
-                          <SelectItem key={option.code} value={option.code}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-muted-foreground">{option.code}</span>
-                              <span>{option.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                      {availableSubclasses.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground">{option.code}</span>
+                            <span>{option.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -542,45 +705,20 @@ const DocumentClassification = () => {
                   <Select
                     value={selectedTipo}
                     onValueChange={handleTipoChange}
-                    disabled={!selectedSubclass}
+                    disabled={!selectedSubclass || availableTipos.length === 0}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {selectedSubclass &&
-                        tipoOptions[selectedSubclass]?.map((option) => (
-                          <SelectItem key={option.code} value={option.code}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-muted-foreground">{option.code}</span>
-                              <span>{option.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Subtipo</Label>
-                  <Select
-                    value={selectedSubtipo}
-                    onValueChange={handleSubtipoChange}
-                    disabled={!selectedTipo}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione o subtipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedTipo &&
-                        subtipoOptions[selectedTipo]?.map((option) => (
-                          <SelectItem key={option.code} value={option.code}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-muted-foreground">{option.code}</span>
-                              <span>{option.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                      {availableTipos.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground">{option.code}</span>
+                            <span>{option.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -676,8 +814,15 @@ const DocumentClassification = () => {
                       </Tooltip>
                     </TooltipProvider>
                   )}
-                  <Button onClick={saveClassification} disabled={selectedCount === 0 || !selectedClass}>
-                    <Save className="h-4 w-4 mr-2" />
+                  <Button 
+                    onClick={saveClassification} 
+                    disabled={selectedCount === 0 || !selectedClass || updateClassification.isPending}
+                  >
+                    {updateClassification.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
                     Guardar Classificação
                     {selectedCount > 1 && <span className="ml-1">({selectedCount})</span>}
                   </Button>
@@ -694,9 +839,7 @@ const DocumentClassification = () => {
                   <CheckCircle2 className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-foreground">
-                    {documents.filter((d) => d.currentClassification).length}
-                  </p>
+                  <p className="text-2xl font-semibold text-foreground">{stats.classified}</p>
                   <p className="text-xs text-muted-foreground">Classificados</p>
                 </div>
               </div>
@@ -707,9 +850,7 @@ const DocumentClassification = () => {
                   <AlertTriangle className="h-5 w-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-foreground">
-                    {documents.filter((d) => !d.currentClassification).length}
-                  </p>
+                  <p className="text-2xl font-semibold text-foreground">{stats.unclassified}</p>
                   <p className="text-xs text-muted-foreground">Por classificar</p>
                 </div>
               </div>
