@@ -12,6 +12,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -29,14 +39,18 @@ import {
   Edit,
   Trash2,
   Info,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   ClassificationNode,
   useClassificationTree,
   useDocumentCountByClassification,
+  useDeleteClassification,
 } from "@/hooks/useRepository";
 import { CreateClassificationModal } from "./CreateClassificationModal";
+import { EditClassificationModal } from "./EditClassificationModal";
 
 interface TreeItemProps {
   node: ClassificationNode;
@@ -47,6 +61,8 @@ interface TreeItemProps {
   onSelect: (node: ClassificationNode) => void;
   onToggle: (id: string) => void;
   onAddChild: (parent: ClassificationNode) => void;
+  onEdit: (node: ClassificationNode) => void;
+  onDelete: (node: ClassificationNode) => void;
 }
 
 function TreeItem({
@@ -58,6 +74,8 @@ function TreeItem({
   onSelect,
   onToggle,
   onAddChild,
+  onEdit,
+  onDelete,
 }: TreeItemProps) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
@@ -73,6 +91,7 @@ function TreeItem({
   };
 
   const totalCount = getTotalCount(node);
+  const hasDocuments = totalCount > 0;
 
   return (
     <div>
@@ -146,18 +165,22 @@ function TreeItem({
                 <FolderPlus className="h-4 w-4 mr-2" />
                 Nova Sub-classificação
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEdit(node)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSelect(node)}>
                 <Info className="h-4 w-4 mr-2" />
                 Detalhes
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={() => onDelete(node)}
+                disabled={hasDocuments || hasChildren}
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Desactivar
+                {hasDocuments || hasChildren ? "Não pode eliminar" : "Desactivar"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -177,6 +200,8 @@ function TreeItem({
               onSelect={onSelect}
               onToggle={onToggle}
               onAddChild={onAddChild}
+              onEdit={onEdit}
+              onDelete={onDelete}
             />
           ))}
         </div>
@@ -197,12 +222,15 @@ export function ClassificationTree({
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [parentForCreate, setParentForCreate] = useState<ClassificationNode | null>(
-    null
-  );
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [parentForCreate, setParentForCreate] = useState<ClassificationNode | null>(null);
+  const [classificationToEdit, setClassificationToEdit] = useState<ClassificationNode | null>(null);
+  const [classificationToDelete, setClassificationToDelete] = useState<ClassificationNode | null>(null);
 
   const { data: tree, isLoading } = useClassificationTree();
   const { data: documentCounts } = useDocumentCountByClassification();
+  const deleteMutation = useDeleteClassification();
 
   // Filter tree based on search
   const filteredTree = useMemo(() => {
@@ -260,6 +288,30 @@ export function ClassificationTree({
   const handleAddRoot = () => {
     setParentForCreate(null);
     setCreateModalOpen(true);
+  };
+
+  const handleEdit = (node: ClassificationNode) => {
+    setClassificationToEdit(node);
+    setEditModalOpen(true);
+  };
+
+  const handleDelete = (node: ClassificationNode) => {
+    setClassificationToDelete(node);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!classificationToDelete) return;
+
+    try {
+      await deleteMutation.mutateAsync(classificationToDelete.id);
+      toast.success("Classificação desactivada com sucesso");
+      setDeleteDialogOpen(false);
+      setClassificationToDelete(null);
+    } catch (error) {
+      toast.error("Erro ao desactivar classificação");
+      console.error(error);
+    }
   };
 
   return (
@@ -324,6 +376,8 @@ export function ClassificationTree({
                 onSelect={onSelect}
                 onToggle={handleToggle}
                 onAddChild={handleAddChild}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))
           )}
@@ -335,6 +389,40 @@ export function ClassificationTree({
         onOpenChange={setCreateModalOpen}
         parentClassification={parentForCreate}
       />
+
+      <EditClassificationModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        classification={classificationToEdit}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desactivar Classificação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que deseja desactivar a classificação{" "}
+              <strong>
+                {classificationToDelete?.code} - {classificationToDelete?.name}
+              </strong>
+              ? Esta acção pode ser revertida pelo administrador do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Desactivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
