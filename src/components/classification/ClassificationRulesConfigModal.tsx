@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -111,15 +111,46 @@ export const ClassificationRulesConfigModal = ({
   onOpenChange,
 }: ClassificationRulesConfigModalProps) => {
   const queryClient = useQueryClient();
+  
+  // Load preferences from localStorage
+  const getStoredPreferences = () => {
+    try {
+      const stored = localStorage.getItem('classification-rules-preferences');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  };
+  
+  const storedPrefs = getStoredPreferences();
+  
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterMode, setFilterMode] = useState<"all" | "unconfigured" | "with-suggestions">("all");
+  const [filterMode, setFilterMode] = useState<"all" | "unconfigured" | "with-suggestions">(
+    storedPrefs?.filterMode || "all"
+  );
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [selectedClassificationId, setSelectedClassificationId] = useState<string>("");
-  const [showValidation, setShowValidation] = useState(true);
-  const [sortColumn, setSortColumn] = useState<"name" | "code" | "state" | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showValidation, setShowValidation] = useState(storedPrefs?.showValidation ?? true);
+  const [sortColumn, setSortColumn] = useState<"name" | "code" | "state" | null>(
+    storedPrefs?.sortColumn || null
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(
+    storedPrefs?.sortDirection || "asc"
+  );
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(storedPrefs?.itemsPerPage || 10);
+
+  // Persist preferences to localStorage
+  useEffect(() => {
+    const preferences = {
+      filterMode,
+      showValidation,
+      sortColumn,
+      sortDirection,
+      itemsPerPage,
+    };
+    localStorage.setItem('classification-rules-preferences', JSON.stringify(preferences));
+  }, [filterMode, showValidation, sortColumn, sortDirection, itemsPerPage]);
 
   // Fetch document types
   const { data: documentTypes = [], isLoading: isLoadingTypes } = useQuery({
