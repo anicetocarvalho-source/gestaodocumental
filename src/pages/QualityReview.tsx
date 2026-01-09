@@ -476,6 +476,59 @@ const QualityReview = () => {
       subtitle={batch ? `Lote: ${batch.batch_number} • ${batch.name} • ${documents?.length || 0} documento(s)` : "A carregar..."}
     >
       <div className="space-y-4">
+        {/* Progress Header */}
+        {documents && documents.length > 0 && (() => {
+          const pendingCount = documents.filter(d => d.status === 'pending').length;
+          const approvedCount = documents.filter(d => d.status === 'approved').length;
+          const rejectedCount = documents.filter(d => d.status === 'rejected').length;
+          const totalCount = documents.length;
+          const reviewedCount = approvedCount + rejectedCount;
+          const progressPercent = totalCount > 0 ? Math.round((reviewedCount / totalCount) * 100) : 0;
+          
+          return (
+            <Card className="bg-muted/30">
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center justify-between gap-6">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-muted-foreground/50" />
+                      <span className="text-sm">
+                        <span className="font-semibold">{pendingCount}</span>
+                        <span className="text-muted-foreground ml-1">pendente{pendingCount !== 1 ? 's' : ''}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                      <span className="text-sm">
+                        <span className="font-semibold">{approvedCount}</span>
+                        <span className="text-muted-foreground ml-1">aprovado{approvedCount !== 1 ? 's' : ''}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-destructive" />
+                      <span className="text-sm">
+                        <span className="font-semibold">{rejectedCount}</span>
+                        <span className="text-muted-foreground ml-1">rejeitado{rejectedCount !== 1 ? 's' : ''}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 min-w-[200px]">
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-emerald-500 transition-all duration-300"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      {progressPercent}% revisado
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* Header Actions */}
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
