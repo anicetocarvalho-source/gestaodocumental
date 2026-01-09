@@ -60,6 +60,7 @@ import {
   ShieldAlert,
   Sparkles,
   Trash2,
+  RotateCcw,
   X,
   Wand2,
 } from "lucide-react";
@@ -506,6 +507,22 @@ export const ClassificationRulesConfigModal = ({
   // Reset to page 1 when filters change
   const resetPagination = () => setCurrentPage(1);
 
+  // Reset all preferences to defaults
+  const resetPreferences = () => {
+    setFilterMode("all");
+    setShowValidation(true);
+    setSortColumn(null);
+    setSortDirection("asc");
+    setItemsPerPage(10);
+    setCurrentPage(1);
+    setSearchQuery("");
+    localStorage.removeItem('classification-rules-preferences');
+    toast({
+      title: "Preferências restauradas",
+      description: "Todas as preferências foram restauradas para os valores padrão.",
+    });
+  };
+
   // Stats
   const stats = useMemo(() => {
     const configured = documentTypes.filter(t => t.default_classification_id).length;
@@ -829,6 +846,21 @@ export const ClassificationRulesConfigModal = ({
                 </SelectItem>
               </SelectContent>
             </Select>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={resetPreferences}
+                  className="shrink-0"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Restaurar preferências padrão</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <Separator />
