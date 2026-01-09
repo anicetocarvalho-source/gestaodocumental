@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -25,6 +29,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Archive as ArchiveIcon,
   Search,
   Filter,
@@ -37,158 +53,193 @@ import {
   Building2,
   RotateCcw,
   History,
+  AlertCircle,
+  RefreshCw,
+  MoreVertical,
+  X,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
+import { useArchivedDocuments, useArchiveStats, useRestoreDocument, ArchiveFilters } from "@/hooks/useArchive";
+import { useDocumentTypes, useOrganizationalUnits, useClassificationCodes } from "@/hooks/useReferenceData";
+import { usePermissions } from "@/hooks/usePermissions";
+import { Document } from "@/types/database";
 
-type ArchivedDocument = {
-  id: string;
-  title: string;
-  type: string;
-  archivedDate: string;
-  originalDate: string;
-  unit: string;
-  retentionYears: number;
-  status: "archived" | "permanent" | "pending_destruction";
-  classification: string;
-};
-
-type AuditLogEntry = {
-  id: string;
-  action: string;
-  documentId: string;
-  documentTitle: string;
-  timestamp: Date;
-  user: string;
-  details: string;
-};
-
-const initialArchivedDocs: ArchivedDocument[] = [
-  {
-    id: "ARQ-2024-001",
-    title: "Relatório Anual de Actividades 2020",
-    type: "Relatório",
-    archivedDate: "2024-01-15",
-    originalDate: "2020-12-31",
-    unit: "Gabinete do Ministro",
-    retentionYears: 10,
-    status: "archived",
-    classification: "Administrativo",
-  },
-  {
-    id: "ARQ-2024-002",
-    title: "Contrato de Fornecimento - Equipamentos Agrícolas",
-    type: "Contrato",
-    archivedDate: "2024-02-20",
-    originalDate: "2019-06-15",
-    unit: "Direcção de Logística",
-    retentionYears: 15,
-    status: "permanent",
-    classification: "Jurídico",
-  },
-  {
-    id: "ARQ-2024-003",
-    title: "Actas de Reunião - Conselho Directivo 2018",
-    type: "Acta",
-    archivedDate: "2024-03-10",
-    originalDate: "2018-12-20",
-    unit: "Secretaria-Geral",
-    retentionYears: 20,
-    status: "archived",
-    classification: "Institucional",
-  },
-  {
-    id: "ARQ-2024-004",
-    title: "Processos de Licenciamento Florestal 2017",
-    type: "Processo",
-    archivedDate: "2024-01-05",
-    originalDate: "2017-08-30",
-    unit: "Direcção Florestal",
-    retentionYears: 5,
-    status: "pending_destruction",
-    classification: "Operacional",
-  },
-  {
-    id: "ARQ-2024-005",
-    title: "Correspondência Oficial - Protocolo Internacional",
-    type: "Correspondência",
-    archivedDate: "2024-04-01",
-    originalDate: "2021-03-15",
-    unit: "Gabinete de Relações Internacionais",
-    retentionYears: 25,
-    status: "permanent",
-    classification: "Diplomático",
-  },
-];
-
-const stats = [
-  { label: "Total Arquivado", value: "12.847", icon: FolderArchive, color: "text-primary" },
-  { label: "Arquivo Permanente", value: "3.421", icon: ArchiveIcon, color: "text-success" },
-  { label: "Pendente Eliminação", value: "234", icon: Clock, color: "text-warning" },
-  { label: "Consultados (Mês)", value: "156", icon: Eye, color: "text-info" },
-];
+const ITEMS_PER_PAGE = 15;
 
 const Archive = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [archivedDocs, setArchivedDocs] = useState<ArchivedDocument[]>(initialArchivedDocs);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  // Estados de UI
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<ArchivedDocument | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showAuditLog, setShowAuditLog] = useState(false);
 
-  const filteredDocs = archivedDocs.filter((doc) => {
-    const matchesSearch =
-      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === "all" || doc.type === typeFilter;
-    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [unitFilter, setUnitFilter] = useState("all");
+  const [classificationFilter, setClassificationFilter] = useState("all");
 
-  const handleRestoreClick = (doc: ArchivedDocument) => {
+  // Permissões
+  const { canDo } = usePermissions();
+
+  // Construir filtros
+  const filters: ArchiveFilters = useMemo(() => ({
+    search: searchTerm || undefined,
+    document_type_id: typeFilter !== "all" ? typeFilter : undefined,
+    unit_id: unitFilter !== "all" ? unitFilter : undefined,
+    classification_id: classificationFilter !== "all" ? classificationFilter : undefined,
+  }), [searchTerm, typeFilter, unitFilter, classificationFilter]);
+
+  // Dados
+  const { data: documentsResult, isLoading, error, refetch } = useArchivedDocuments(
+    filters,
+    { page: currentPage, pageSize: ITEMS_PER_PAGE }
+  );
+  const { data: stats, isLoading: statsLoading } = useArchiveStats();
+  const { data: documentTypes } = useDocumentTypes({ activeOnly: true });
+  const { data: units } = useOrganizationalUnits({ activeOnly: true });
+  const { data: classifications } = useClassificationCodes({ activeOnly: true });
+  
+  const restoreDocument = useRestoreDocument();
+
+  // Dados processados
+  const documents = documentsResult?.data || [];
+  const totalPages = documentsResult?.totalPages || 1;
+  const totalCount = documentsResult?.total || 0;
+
+  // Estatísticas
+  const statsData = [
+    { 
+      label: "Total Arquivado", 
+      value: statsLoading ? "..." : stats?.total.toLocaleString('pt-PT') || "0", 
+      icon: FolderArchive, 
+      color: "text-primary" 
+    },
+    { 
+      label: "Arquivo Permanente", 
+      value: statsLoading ? "..." : stats?.permanent.toLocaleString('pt-PT') || "0", 
+      icon: ArchiveIcon, 
+      color: "text-success" 
+    },
+    { 
+      label: "Pendente Eliminação", 
+      value: statsLoading ? "..." : stats?.pendingDestruction.toLocaleString('pt-PT') || "0", 
+      icon: Clock, 
+      color: "text-warning" 
+    },
+    { 
+      label: "Consultados (Mês)", 
+      value: statsLoading ? "..." : stats?.consultedThisMonth.toLocaleString('pt-PT') || "0", 
+      icon: Eye, 
+      color: "text-info" 
+    },
+  ];
+
+  // Handlers de selecção
+  const handleSelectDocument = (docId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedDocuments(prev => [...prev, docId]);
+    } else {
+      setSelectedDocuments(prev => prev.filter(id => id !== docId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedDocuments(documents.map(doc => doc.id));
+    } else {
+      setSelectedDocuments([]);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedDocuments([]);
+  };
+
+  // Handlers de restauração
+  const handleRestoreClick = (doc: Document) => {
     setSelectedDocument(doc);
     setRestoreDialogOpen(true);
   };
 
-  const handleRestoreConfirm = () => {
+  const handleRestoreConfirm = async () => {
     if (!selectedDocument) return;
 
-    // Create audit log entry
-    const auditEntry: AuditLogEntry = {
-      id: `AUD-${Date.now()}`,
-      action: "RESTORE",
-      documentId: selectedDocument.id,
-      documentTitle: selectedDocument.title,
-      timestamp: new Date(),
-      user: "Utilizador Actual",
-      details: `Documento restaurado do arquivo para o sistema activo. Classificação: ${selectedDocument.classification}. Unidade: ${selectedDocument.unit}.`,
-    };
+    try {
+      await restoreDocument.mutateAsync({
+        documentId: selectedDocument.id,
+        targetUnitId: selectedDocument.current_unit_id || '',
+        notes: 'Documento restaurado do arquivo',
+      });
 
-    setAuditLogs((prev) => [auditEntry, ...prev]);
+      toast.success("Documento restaurado com sucesso", {
+        description: `${selectedDocument.title} foi movido para o sistema activo.`,
+      });
 
-    // Remove from archived documents
-    setArchivedDocs((prev) => prev.filter((doc) => doc.id !== selectedDocument.id));
-
-    toast.success("Documento restaurado com sucesso", {
-      description: `${selectedDocument.title} foi movido para o sistema activo.`,
-    });
-
-    setRestoreDialogOpen(false);
-    setSelectedDocument(null);
-  };
-
-  const getStatusBadge = (status: ArchivedDocument["status"]) => {
-    switch (status) {
-      case "archived":
-        return <Badge variant="secondary">Arquivado</Badge>;
-      case "permanent":
-        return <Badge className="bg-success/10 text-success border-success/20">Permanente</Badge>;
-      case "pending_destruction":
-        return <Badge variant="destructive">Pendente Eliminação</Badge>;
+      setRestoreDialogOpen(false);
+      setSelectedDocument(null);
+    } catch (error) {
+      toast.error("Erro ao restaurar documento");
+      console.error(error);
     }
   };
+
+  // Handlers de filtros
+  const clearFilters = () => {
+    setSearchTerm("");
+    setTypeFilter("all");
+    setUnitFilter("all");
+    setClassificationFilter("all");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = typeFilter !== "all" || unitFilter !== "all" || classificationFilter !== "all" || searchTerm !== "";
+  const isAllSelected = documents.length > 0 && selectedDocuments.length === documents.length;
+  const hasSelection = selectedDocuments.length > 0;
+
+  // Helpers
+  const getDocumentTypeName = (typeId: string | null) => {
+    if (!typeId) return "—";
+    return documentTypes?.find(t => t.id === typeId)?.name || "—";
+  };
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId) return "—";
+    return units?.find(u => u.id === unitId)?.name || "—";
+  };
+
+  const getClassificationCode = (classificationId: string | null) => {
+    if (!classificationId) return null;
+    return classifications?.find(c => c.id === classificationId);
+  };
+
+  // Estado de erro
+  if (error) {
+    return (
+      <DashboardLayout title="Arquivo" subtitle="Gestão de documentos e processos arquivados">
+        <PageBreadcrumb items={[{ label: "Arquivo" }]} />
+        <Card className="mt-6">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar arquivo</h3>
+            <p className="text-muted-foreground mb-4">Não foi possível obter a lista de documentos arquivados.</p>
+            <Button onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -199,7 +250,7 @@ const Archive = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat, i) => (
+        {statsData.map((stat, i) => (
           <Card key={i}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -216,52 +267,140 @@ const Archive = () => {
         ))}
       </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar no arquivo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Tipos</SelectItem>
-                <SelectItem value="Relatório">Relatório</SelectItem>
-                <SelectItem value="Contrato">Contrato</SelectItem>
-                <SelectItem value="Acta">Acta</SelectItem>
-                <SelectItem value="Processo">Processo</SelectItem>
-                <SelectItem value="Correspondência">Correspondência</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Estados</SelectItem>
-                <SelectItem value="archived">Arquivado</SelectItem>
-                <SelectItem value="permanent">Permanente</SelectItem>
-                <SelectItem value="pending_destruction">Pendente Eliminação</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant={showAuditLog ? "default" : "outline"}
-              onClick={() => setShowAuditLog(!showAuditLog)}
-              className="gap-2"
-            >
-              <History className="h-4 w-4" />
-              Auditoria ({auditLogs.length})
+      {/* Selection Bar */}
+      {hasSelection && (
+        <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <Badge variant="default" className="font-medium">
+              {selectedDocuments.length} documento{selectedDocuments.length > 1 ? 's' : ''} selecionado{selectedDocuments.length > 1 ? 's' : ''}
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+              <X className="h-4 w-4 mr-1" />
+              Limpar
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Descarregar
+            </Button>
+            {canDo("documents", "archive") && (
+              <Button 
+                size="sm" 
+                variant="success"
+                onClick={() => {
+                  // Para restaurar múltiplos, usamos o primeiro seleccionado
+                  const doc = documents.find(d => d.id === selectedDocuments[0]);
+                  if (doc) handleRestoreClick(doc);
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Restaurar
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <Card variant="toolbar" className="mb-6">
+        <CardContent className="py-3">
+          <div className="toolbar">
+            <div className="toolbar-actions">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar no arquivo..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10 h-9"
+                />
+              </div>
+              <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon-sm" className={hasActiveFilters ? "border-primary text-primary" : ""}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="start">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Filtros</h4>
+                      {hasActiveFilters && (
+                        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 text-xs">
+                          Limpar filtros
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tipo de Documento</label>
+                      <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); setCurrentPage(1); }}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Todos os tipos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os tipos</SelectItem>
+                          {documentTypes?.map(type => (
+                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Unidade Orgânica</label>
+                      <Select value={unitFilter} onValueChange={(value) => { setUnitFilter(value); setCurrentPage(1); }}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Todas as unidades" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as unidades</SelectItem>
+                          {units?.map(unit => (
+                            <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Classificação</label>
+                      <Select value={classificationFilter} onValueChange={(value) => { setClassificationFilter(value); setCurrentPage(1); }}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Todas as classificações" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as classificações</SelectItem>
+                          {classifications?.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.code} - {c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-muted-foreground">
+                  <X className="mr-1 h-3 w-3" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+            <div className="toolbar-buttons">
+              <Button
+                variant={showAuditLog ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowAuditLog(!showAuditLog)}
+                className="gap-2"
+              >
+                <History className="h-4 w-4" />
+                Auditoria
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -276,38 +415,9 @@ const Archive = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {auditLogs.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum registo de auditoria disponível.
-              </p>
-            ) : (
-              <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                {auditLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-3 p-3 bg-background rounded-lg border"
-                  >
-                    <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                      <RotateCcw className="h-4 w-4 text-success" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">
-                          {log.action === "RESTORE" ? "Documento Restaurado" : log.action}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {log.timestamp.toLocaleString("pt-PT")}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {log.documentId} - {log.documentTitle}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">{log.details}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Consulte o módulo de <Link to="/audit-logs" className="text-primary hover:underline">Logs de Auditoria</Link> para ver o histórico completo de acções no arquivo.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -321,78 +431,217 @@ const Archive = () => {
               Documentos Arquivados
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {filteredDocs.length} documento(s)
+              {totalCount} documento(s)
             </p>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Referência</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                <TableHead className="hidden lg:table-cell">Unidade</TableHead>
-                <TableHead className="hidden md:table-cell">Data Arquivo</TableHead>
-                <TableHead className="hidden lg:table-cell">Retenção</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acções</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDocs.map((doc) => (
-                <TableRow key={doc.id}>
-                  <TableCell className="font-medium text-xs">{doc.id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate max-w-[200px]">{doc.title}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Badge variant="outline" className="text-xs">{doc.type}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Building2 className="h-3 w-3" />
-                      <span className="truncate max-w-[120px]">{doc.unit}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(doc.archivedDate).toLocaleDateString("pt-PT")}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <span className="text-xs text-muted-foreground">{doc.retentionYears} anos</span>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                      {doc.status === "archived" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-success hover:text-success hover:bg-success/10"
-                          onClick={() => handleRestoreClick(doc)}
-                          title="Restaurar documento"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <FolderArchive className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium mb-1">Arquivo vazio</h3>
+              <p className="text-sm text-muted-foreground">
+                {hasActiveFilters 
+                  ? "Nenhum documento encontrado com os filtros aplicados."
+                  : "Ainda não existem documentos arquivados no sistema."}
+              </p>
+              {hasActiveFilters && (
+                <Button variant="link" onClick={clearFilters} className="mt-2">
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox 
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>Referência</TableHead>
+                  <TableHead>Título</TableHead>
+                  <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                  <TableHead className="hidden lg:table-cell">Unidade</TableHead>
+                  <TableHead className="hidden md:table-cell">Data Arquivo</TableHead>
+                  <TableHead className="hidden lg:table-cell">Classificação</TableHead>
+                  <TableHead className="text-right">Acções</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {documents.map((doc) => {
+                  const classification = getClassificationCode(doc.classification_id);
+                  const isSelected = selectedDocuments.includes(doc.id);
+                  
+                  return (
+                    <TableRow key={doc.id} className={cn(isSelected && "bg-primary/5")}>
+                      <TableCell>
+                        <Checkbox 
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectDocument(doc.id, !!checked)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium text-xs">{doc.entry_number}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm truncate max-w-[200px] cursor-default">{doc.title}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">{doc.title}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline" className="text-xs">
+                          {getDocumentTypeName(doc.document_type_id)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Building2 className="h-3 w-3" />
+                          <span className="truncate max-w-[120px]">{getUnitName(doc.current_unit_id)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {doc.archived_at 
+                            ? format(new Date(doc.archived_at), "dd/MM/yyyy", { locale: pt })
+                            : "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {classification ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="text-xs cursor-default">
+                                {classification.code}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{classification.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                                <Link to={`/documents/${doc.id}`}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Link>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Ver documento</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Descarregar</TooltipContent>
+                          </Tooltip>
+                          {canDo("documents", "archive") && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-success hover:text-success hover:bg-success/10"
+                                  onClick={() => handleRestoreClick(doc)}
+                                  title="Restaurar documento"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Restaurar do arquivo</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link to={`/documents/${doc.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver detalhes
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Download className="mr-2 h-4 w-4" />
+                                Descarregar
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <History className="mr-2 h-4 w-4" />
+                                Ver histórico
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <p className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Seguinte
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -400,18 +649,37 @@ const Archive = () => {
       <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restaurar Documento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem a certeza que deseja restaurar o documento{" "}
-              <strong>{selectedDocument?.title}</strong> para o sistema activo?
-              <br />
-              <br />
-              Esta acção será registada no log de auditoria.
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-success" />
+              Restaurar Documento
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Tem a certeza que deseja restaurar o documento para o sistema activo?
+                </p>
+                {selectedDocument && (
+                  <div className="p-3 bg-muted rounded-lg border">
+                    <p className="font-medium text-foreground">{selectedDocument.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedDocument.entry_number}
+                    </p>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Esta acção será registada no log de auditoria.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestoreConfirm} className="bg-success hover:bg-success/90">
+            <AlertDialogAction 
+              onClick={handleRestoreConfirm} 
+              className="bg-success hover:bg-success/90"
+              disabled={restoreDocument.isPending}
+            >
+              {restoreDocument.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Restaurar
             </AlertDialogAction>
           </AlertDialogFooter>
