@@ -113,6 +113,8 @@ const DocumentClassification = () => {
   const [selectedTipo, setSelectedTipo] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyPeriod, setHistoryPeriod] = useState<string>("all");
+  const [historyUserFilter, setHistoryUserFilter] = useState<string>("all");
   const [aiSuggestion, setAiSuggestion] = useState<{
     classificationId: string;
     code: string;
@@ -206,6 +208,50 @@ const DocumentClassification = () => {
     },
     enabled: showHistory
   });
+
+  // Get unique users from history for filter
+  const historyUsers = useMemo(() => {
+    const users = new Map<string, string>();
+    classificationHistory.forEach(entry => {
+      if (entry.changed_by && entry.profile?.full_name) {
+        users.set(entry.changed_by, entry.profile.full_name);
+      }
+    });
+    return Array.from(users.entries()).map(([id, name]) => ({ id, name }));
+  }, [classificationHistory]);
+
+  // Filter history by period and user
+  const filteredHistory = useMemo(() => {
+    return classificationHistory.filter(entry => {
+      // Filter by period
+      if (historyPeriod !== "all") {
+        const entryDate = new Date(entry.created_at);
+        const now = new Date();
+        
+        switch (historyPeriod) {
+          case "today":
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            if (entryDate < todayStart) return false;
+            break;
+          case "week":
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            if (entryDate < weekAgo) return false;
+            break;
+          case "month":
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            if (entryDate < monthAgo) return false;
+            break;
+        }
+      }
+      
+      // Filter by user
+      if (historyUserFilter !== "all" && entry.changed_by !== historyUserFilter) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [classificationHistory, historyPeriod, historyUserFilter]);
 
   // Build classification hierarchy
   const classHierarchy = useMemo(() => {
@@ -979,12 +1025,54 @@ const DocumentClassification = () => {
                   <div className="flex items-center gap-2">
                     <History className="h-4 w-4 text-muted-foreground" />
                     <CardTitle className="text-base">Histórico de Classificações</CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      {filteredHistory.length} de {classificationHistory.length}
+                    </Badge>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>
                     <XCircle className="h-4 w-4" />
                   </Button>
                 </div>
-                <CardDescription>Últimas 50 alterações de classificação</CardDescription>
+                <div className="flex gap-2 mt-3">
+                  <Select value={historyPeriod} onValueChange={setHistoryPeriod}>
+                    <SelectTrigger className="h-8 w-[140px]">
+                      <Clock className="h-3 w-3 mr-1" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todo o período</SelectItem>
+                      <SelectItem value="today">Hoje</SelectItem>
+                      <SelectItem value="week">Última semana</SelectItem>
+                      <SelectItem value="month">Último mês</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={historyUserFilter} onValueChange={setHistoryUserFilter}>
+                    <SelectTrigger className="h-8 w-[160px]">
+                      <User className="h-3 w-3 mr-1" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os utilizadores</SelectItem>
+                      {historyUsers.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(historyPeriod !== "all" || historyUserFilter !== "all") && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8"
+                      onClick={() => {
+                        setHistoryPeriod("all");
+                        setHistoryUserFilter("all");
+                      }}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Limpar
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[300px]">
@@ -992,14 +1080,18 @@ const DocumentClassification = () => {
                     <div className="flex items-center justify-center h-32">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  ) : classificationHistory.length === 0 ? (
+                  ) : filteredHistory.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-32 text-center p-4">
                       <History className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">Nenhum histórico disponível</p>
+                      <p className="text-sm text-muted-foreground">
+                        {classificationHistory.length > 0 
+                          ? "Nenhum resultado para os filtros aplicados" 
+                          : "Nenhum histórico disponível"}
+                      </p>
                     </div>
                   ) : (
                     <div className="divide-y divide-border">
-                      {classificationHistory.map((entry) => {
+                      {filteredHistory.map((entry) => {
                         const doc = documents.find(d => d.id === entry.document_id);
                         return (
                           <div key={entry.id} className="p-4 hover:bg-muted/30 transition-colors">
