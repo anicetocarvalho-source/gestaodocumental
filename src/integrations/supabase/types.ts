@@ -61,6 +61,65 @@ export type Database = {
           },
         ]
       }
+      classification_history: {
+        Row: {
+          change_reason: string | null
+          changed_by: string
+          created_at: string
+          document_id: string
+          id: string
+          new_classification_id: string
+          old_classification_id: string | null
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by: string
+          created_at?: string
+          document_id: string
+          id?: string
+          new_classification_id: string
+          old_classification_id?: string | null
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          new_classification_id?: string
+          old_classification_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classification_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classification_history_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classification_history_new_classification_id_fkey"
+            columns: ["new_classification_id"]
+            isOneToOne: false
+            referencedRelation: "classification_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classification_history_old_classification_id_fkey"
+            columns: ["old_classification_id"]
+            isOneToOne: false
+            referencedRelation: "classification_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
