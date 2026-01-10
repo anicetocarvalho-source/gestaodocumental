@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
   TableBody,
@@ -63,6 +64,8 @@ import {
   ChevronRight,
   Trash2,
   BarChart3,
+  Mail,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -100,6 +103,7 @@ const Archive = () => {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [destructionModalOpen, setDestructionModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("documents");
+  const [sendingAlerts, setSendingAlerts] = useState(false);
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState("");
@@ -247,6 +251,33 @@ const Archive = () => {
     } catch (error) {
       toast.error("Erro ao marcar documentos para eliminação");
       console.error(error);
+    }
+  };
+
+  // Handler de envio manual de alertas
+  const handleSendRetentionAlerts = async () => {
+    setSendingAlerts(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('retention-alerts');
+      
+      if (error) throw error;
+      
+      if (data.alertsSent > 0) {
+        toast.success(`Alertas enviados com sucesso`, {
+          description: `${data.alertsSent} email(s) enviado(s) para documentos próximos da eliminação.`,
+        });
+      } else {
+        toast.info("Nenhum alerta a enviar", {
+          description: "Não existem documentos com eliminação agendada para os próximos 30 dias.",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending retention alerts:", error);
+      toast.error("Erro ao enviar alertas", {
+        description: "Não foi possível enviar os alertas de retenção.",
+      });
+    } finally {
+      setSendingAlerts(false);
     }
   };
 
@@ -449,6 +480,27 @@ const Archive = () => {
               )}
             </div>
             <div className="toolbar-buttons">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendRetentionAlerts}
+                    disabled={sendingAlerts}
+                    className="gap-2"
+                  >
+                    {sendingAlerts ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Bell className="h-4 w-4" />
+                    )}
+                    Enviar Alertas
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Enviar alertas por email para documentos com eliminação próxima</p>
+                </TooltipContent>
+              </Tooltip>
               <Button
                 variant={showAuditLog ? "default" : "outline"}
                 size="sm"
