@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.ocr-document]
 verify_jwt = false
+
+[functions.retention-alerts]
+verify_jwt = false
