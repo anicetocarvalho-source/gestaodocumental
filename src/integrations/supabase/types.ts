@@ -888,6 +888,45 @@ export type Database = {
           },
         ]
       }
+      document_templates: {
+        Row: {
+          category: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          file_path: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_types: {
         Row: {
           code: string
@@ -1046,6 +1085,48 @@ export type Database = {
           },
         ]
       }
+      integration_connections: {
+        Row: {
+          config: Json | null
+          connected_at: string | null
+          connected_by: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          icon: string | null
+          id: string
+          integration_name: string
+          is_connected: boolean
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          icon?: string | null
+          id?: string
+          integration_name: string
+          is_connected?: boolean
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          icon?: string | null
+          id?: string
+          integration_name?: string
+          is_connected?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -1165,6 +1246,36 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      organization_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_type: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_type?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_type?: string
+          setting_value?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
