@@ -568,6 +568,5 @@ input[type="radio"]:checked {
 }
 
 .driver-overlay {
-  background: rgba(0, 0, 0, 0.4) !important;
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.25) !important;
 }
