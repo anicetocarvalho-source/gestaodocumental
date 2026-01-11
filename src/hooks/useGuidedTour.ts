@@ -162,7 +162,7 @@ export function useGuidedTour() {
       showProgress: true,
       animate: true,
       allowClose: true,
-      overlayOpacity: 0.35,
+      overlayOpacity: 0.2,
       stagePadding: 10,
       stageRadius: 10,
       popoverClass: "minagrif-tour-popover",
