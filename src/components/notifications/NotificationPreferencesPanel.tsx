@@ -16,7 +16,17 @@ import {
   Archive,
   Save,
   Loader2,
+  Mail,
+  AlertTriangle,
+  Calendar,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useNotificationPreferences,
   useSaveNotificationPreferences,
@@ -78,11 +88,14 @@ export function NotificationPreferencesPanel() {
         movement_arquivamento: preferences.movement_arquivamento,
         show_toast: preferences.show_toast,
         play_sound: preferences.play_sound,
+        email_retention_alerts: preferences.email_retention_alerts,
+        email_retention_urgent_only: preferences.email_retention_urgent_only,
+        email_digest_frequency: preferences.email_digest_frequency,
       });
     }
   }, [preferences]);
 
-  const handleChange = (key: keyof NotificationPreferences, value: boolean) => {
+  const handleChange = (key: keyof NotificationPreferences, value: boolean | string) => {
     setLocalPrefs(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
@@ -103,6 +116,9 @@ export function NotificationPreferencesPanel() {
         movement_arquivamento: preferences.movement_arquivamento,
         show_toast: preferences.show_toast,
         play_sound: preferences.play_sound,
+        email_retention_alerts: preferences.email_retention_alerts,
+        email_retention_urgent_only: preferences.email_retention_urgent_only,
+        email_digest_frequency: preferences.email_digest_frequency,
       });
       setHasChanges(false);
     }
@@ -191,6 +207,90 @@ export function NotificationPreferencesPanel() {
               </div>
             );
           })}
+        </div>
+
+        <Separator />
+
+        {/* Email Retention Alerts */}
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Alertas de Retenção por Email
+          </h4>
+          
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-primary">
+                <Mail className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="email_retention_alerts" className="text-sm font-medium cursor-pointer">
+                  Alertas de Eliminação
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receber emails sobre documentos próximos da eliminação
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="email_retention_alerts"
+              checked={localPrefs.email_retention_alerts ?? true}
+              onCheckedChange={(checked) => handleChange('email_retention_alerts', checked)}
+            />
+          </div>
+
+          {localPrefs.email_retention_alerts && (
+            <>
+              <div className="flex items-center justify-between py-2 pl-11">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <Label htmlFor="email_retention_urgent_only" className="text-sm font-medium cursor-pointer">
+                      Apenas Urgentes
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Só receber alertas para eliminações em menos de 7 dias
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="email_retention_urgent_only"
+                  checked={Boolean(localPrefs.email_retention_urgent_only)}
+                  onCheckedChange={(checked) => handleChange('email_retention_urgent_only', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 pl-11">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-secondary-foreground">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <Label htmlFor="email_digest_frequency" className="text-sm font-medium cursor-pointer">
+                      Frequência de Envio
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Com que frequência receber o resumo de alertas
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={localPrefs.email_digest_frequency || 'daily'}
+                  onValueChange={(value) => handleChange('email_digest_frequency', value)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Diário</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="never">Nunca</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
         </div>
 
         <Separator />
