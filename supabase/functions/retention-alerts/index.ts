@@ -97,6 +97,22 @@ const handler = async (req: Request): Promise<Response> => {
       throw profilesError;
     }
 
+    // Fetch notification preferences for all users
+    const { data: notificationPrefs, error: prefsError } = await supabase
+      .from("notification_preferences")
+      .select("user_id, email_retention_alerts, email_retention_urgent_only, email_digest_frequency")
+      .in("user_id", allUserIds);
+
+    if (prefsError) {
+      console.error("Error fetching notification preferences:", prefsError);
+      // Continue anyway, default to sending emails
+    }
+
+    // Create a map of user preferences
+    const userPrefsMap = new Map(
+      (notificationPrefs || []).map((p: any) => [p.user_id, p])
+    );
+
     console.log(`Found ${profiles?.length || 0} users to notify`);
 
     // Group documents by urgency
@@ -116,6 +132,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     for (const profile of (profiles || [])) {
       try {
+        // Check user's notification preferences
+        const userPrefs = userPrefsMap.get(profile.user_id);
+        
+        // Skip if user has disabled email retention alerts
+        if (userPrefs?.email_retention_alerts === false) {
+          console.log(`Skipping ${profile.email} - email retention alerts disabled`);
+          continue;
+        }
+        
+        // Skip if frequency is set to 'never'
+        if (userPrefs?.email_digest_frequency === 'never') {
+          console.log(`Skipping ${profile.email} - digest frequency set to never`);
+          continue;
+        }
+
         const urgentDocs = urgent.filter((r: any) => 
           r.documents?.responsible_user_id === profile.user_id || 
           adminUserIds.includes(profile.user_id)
@@ -129,6 +160,15 @@ const handler = async (req: Request): Promise<Response> => {
         if (urgentDocs.length === 0 && approachingDocs.length === 0) {
           continue;
         }
+        
+        // If user only wants urgent alerts, skip if no urgent docs
+        if (userPrefs?.email_retention_urgent_only && urgentDocs.length === 0) {
+          console.log(`Skipping ${profile.email} - only urgent alerts enabled and no urgent docs`);
+          continue;
+        }
+        
+        // If user only wants urgent alerts, don't include approaching docs
+        const docsToShowApproaching = userPrefs?.email_retention_urgent_only ? [] : approachingDocs;
 
         const urgentSection = urgentDocs.length > 0 ? `
           <div style="background-color: #FEE2E2; border-left: 4px solid #DC2626; padding: 16px; margin-bottom: 20px; border-radius: 4px;">
@@ -154,9 +194,9 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
         ` : '';
 
-        const approachingSection = approachingDocs.length > 0 ? `
+        const approachingSection = docsToShowApproaching.length > 0 ? `
           <div style="background-color: #FEF3C7; border-left: 4px solid #D97706; padding: 16px; margin-bottom: 20px; border-radius: 4px;">
-            <h3 style="color: #D97706; margin: 0 0 12px 0;">📅 Eliminação em 7-30 dias (${approachingDocs.length} documento${approachingDocs.length > 1 ? 's' : ''})</h3>
+            <h3 style="color: #D97706; margin: 0 0 12px 0;">📅 Eliminação em 7-30 dias (${docsToShowApproaching.length} documento${docsToShowApproaching.length > 1 ? 's' : ''})</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
                 <tr style="background-color: rgba(217, 119, 6, 0.1);">
@@ -166,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </tr>
               </thead>
               <tbody>
-                ${approachingDocs.map((r: any) => `
+                ${docsToShowApproaching.map((r: any) => `
                   <tr>
                     <td style="padding: 8px; border-bottom: 1px solid #FDE68A;">${r.documents?.entry_number || 'N/A'}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #FDE68A;">${r.documents?.title || 'Sem título'}</td>
@@ -216,7 +256,7 @@ const handler = async (req: Request): Promise<Response> => {
           </html>
         `;
 
-        const totalDocs = urgentDocs.length + approachingDocs.length;
+        const totalDocs = urgentDocs.length + docsToShowApproaching.length;
         const subject = urgentDocs.length > 0
           ? `⚠️ URGENTE: ${urgentDocs.length} documento(s) com eliminação próxima`
           : `📅 Alerta: ${totalDocs} documento(s) aproximam-se da data de eliminação`;

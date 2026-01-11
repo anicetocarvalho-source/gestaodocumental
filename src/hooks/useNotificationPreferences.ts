@@ -12,6 +12,9 @@ export interface NotificationPreferences {
   movement_arquivamento: boolean;
   show_toast: boolean;
   play_sound: boolean;
+  email_retention_alerts: boolean;
+  email_retention_urgent_only: boolean;
+  email_digest_frequency: 'daily' | 'weekly' | 'never';
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +27,9 @@ const defaultPreferences: Omit<NotificationPreferences, 'id' | 'user_id' | 'crea
   movement_arquivamento: true,
   show_toast: true,
   play_sound: false,
+  email_retention_alerts: true,
+  email_retention_urgent_only: false,
+  email_digest_frequency: 'daily',
 };
 
 export function useNotificationPreferences() {

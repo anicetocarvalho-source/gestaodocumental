@@ -1081,6 +1081,9 @@ export type Database = {
       notification_preferences: {
         Row: {
           created_at: string
+          email_digest_frequency: string | null
+          email_retention_alerts: boolean | null
+          email_retention_urgent_only: boolean | null
           id: string
           movement_arquivamento: boolean
           movement_despacho: boolean
@@ -1094,6 +1097,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_digest_frequency?: string | null
+          email_retention_alerts?: boolean | null
+          email_retention_urgent_only?: boolean | null
           id?: string
           movement_arquivamento?: boolean
           movement_despacho?: boolean
@@ -1107,6 +1113,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_digest_frequency?: string | null
+          email_retention_alerts?: boolean | null
+          email_retention_urgent_only?: boolean | null
           id?: string
           movement_arquivamento?: boolean
           movement_despacho?: boolean
