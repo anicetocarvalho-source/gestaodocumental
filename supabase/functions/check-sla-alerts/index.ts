@@ -32,7 +32,7 @@ const handler = async (req: Request): Promise<Response> => {
         process_number,
         subject,
         status,
-        sla_deadline,
+        deadline,
         current_unit_id,
         responsible_user_id,
         created_by,
@@ -40,9 +40,9 @@ const handler = async (req: Request): Promise<Response> => {
           name
         )
       `)
-      .not("status", "in", '("concluido","arquivado","cancelado")')
-      .not("sla_deadline", "is", null)
-      .lte("sla_deadline", in24Hours.toISOString());
+      .not("status", "in", '("concluido","arquivado")')
+      .not("deadline", "is", null)
+      .lte("deadline", in24Hours.toISOString());
 
     if (processError) {
       console.error("Error fetching processes:", processError);
@@ -59,16 +59,13 @@ const handler = async (req: Request): Promise<Response> => {
         dispatch_number,
         subject,
         status,
-        due_date,
+        deadline,
         created_by,
-        destination_unit_id,
-        organizational_units!dispatches_destination_unit_id_fkey (
-          name
-        )
+        origin_unit_id
       `)
-      .not("status", "in", '("concluido","arquivado","cancelado")')
-      .not("due_date", "is", null)
-      .lte("due_date", in24Hours.toISOString());
+      .not("status", "in", '("concluido","cancelado")')
+      .not("deadline", "is", null)
+      .lte("deadline", in24Hours.toISOString());
 
     if (dispatchError) {
       console.error("Error fetching dispatches:", dispatchError);
@@ -84,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const process of (processes || [])) {
       try {
         const hoursRemaining = Math.round(
-          (new Date(process.sla_deadline).getTime() - now.getTime()) / (1000 * 60 * 60)
+          (new Date(process.deadline).getTime() - now.getTime()) / (1000 * 60 * 60)
         );
 
         const usersToNotify = new Set<string>();
@@ -145,7 +142,7 @@ const handler = async (req: Request): Promise<Response> => {
                 itemNumber: process.process_number,
                 subject: process.subject,
                 hoursRemaining: hoursRemaining,
-                deadline: new Date(process.sla_deadline).toLocaleDateString('pt-PT', {
+                deadline: new Date(process.deadline).toLocaleDateString('pt-PT', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
@@ -174,7 +171,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const dispatch of (dispatches || [])) {
       try {
         const hoursRemaining = Math.round(
-          (new Date(dispatch.due_date).getTime() - now.getTime()) / (1000 * 60 * 60)
+          (new Date(dispatch.deadline).getTime() - now.getTime()) / (1000 * 60 * 60)
         );
 
         const usersToNotify = new Set<string>();
@@ -220,7 +217,7 @@ const handler = async (req: Request): Promise<Response> => {
                 itemNumber: dispatch.dispatch_number,
                 subject: dispatch.subject,
                 hoursRemaining: hoursRemaining,
-                deadline: new Date(dispatch.due_date).toLocaleDateString('pt-PT', {
+                deadline: new Date(dispatch.deadline).toLocaleDateString('pt-PT', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
