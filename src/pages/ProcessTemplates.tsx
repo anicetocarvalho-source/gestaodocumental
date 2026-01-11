@@ -55,12 +55,15 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import {
   useProcessTemplates,
+  useCreateProcessTemplate,
   useDeleteProcessTemplate,
   useDuplicateProcessTemplate,
   useToggleFavorite,
   ProcessTemplate,
 } from "@/hooks/useProcessTemplates";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const categories = [
   "Todos",
@@ -83,8 +86,20 @@ const ProcessTemplates = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<ProcessTemplate | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    description: "",
+    category: "Geral",
+    process_type: "Administrativo",
+    estimated_days: 5,
+    tags: [] as string[],
+    is_active: true,
+  });
+  const [tagInput, setTagInput] = useState("");
 
   const { data: templates = [], isLoading } = useProcessTemplates();
+  const createTemplate = useCreateProcessTemplate();
   const deleteTemplate = useDeleteProcessTemplate();
   const duplicateTemplate = useDuplicateProcessTemplate();
   const toggleFavorite = useToggleFavorite();
@@ -123,6 +138,42 @@ const ProcessTemplates = () => {
     deleteTemplate.mutate(templateToDelete.id);
     setDeleteDialogOpen(false);
     setTemplateToDelete(null);
+  };
+
+  const handleCreateTemplate = () => {
+    if (!newTemplate.name.trim()) return;
+    createTemplate.mutate(newTemplate, {
+      onSuccess: () => {
+        setCreateDialogOpen(false);
+        setNewTemplate({
+          name: "",
+          description: "",
+          category: "Geral",
+          process_type: "Administrativo",
+          estimated_days: 5,
+          tags: [],
+          is_active: true,
+        });
+        setTagInput("");
+      },
+    });
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !newTemplate.tags.includes(tagInput.trim())) {
+      setNewTemplate(prev => ({
+        ...prev,
+        tags: [...prev.tags, tagInput.trim()],
+      }));
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setNewTemplate(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tag),
+    }));
   };
 
   const openPreview = (template: ProcessTemplate) => {
@@ -290,7 +341,7 @@ const ProcessTemplates = () => {
                   <Upload className="h-4 w-4 mr-2" />
                   Importar
                 </Button>
-                <Button onClick={() => navigate("/workflow-builder")}>
+                <Button onClick={() => setCreateDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Novo Template
                 </Button>
@@ -310,7 +361,7 @@ const ProcessTemplates = () => {
                   ? "Tente ajustar os filtros de pesquisa"
                   : "Crie o primeiro template de processo"}
               </p>
-              <Button onClick={() => navigate("/workflow-builder")}>
+              <Button onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Template
               </Button>
@@ -598,6 +649,146 @@ const ProcessTemplates = () => {
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Template Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Novo Template de Processo</DialogTitle>
+            <DialogDescription>
+              Crie um novo template reutilizável para workflows de processo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome do Template *</Label>
+              <Input
+                id="name"
+                placeholder="Ex: Aprovação de Despesas"
+                value={newTemplate.name}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                placeholder="Descreva o propósito deste template..."
+                value={newTemplate.description}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Select 
+                  value={newTemplate.category} 
+                  onValueChange={(value) => setNewTemplate(prev => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.slice(1).map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="process_type">Tipo de Processo</Label>
+                <Select 
+                  value={newTemplate.process_type} 
+                  onValueChange={(value) => setNewTemplate(prev => ({ ...prev, process_type: value }))}
+                >
+                  <SelectTrigger id="process_type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Administrativo">Administrativo</SelectItem>
+                    <SelectItem value="Técnico">Técnico</SelectItem>
+                    <SelectItem value="Financeiro">Financeiro</SelectItem>
+                    <SelectItem value="Legal">Legal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estimated_days">Duração Estimada (dias)</Label>
+              <Input
+                id="estimated_days"
+                type="number"
+                min={1}
+                value={newTemplate.estimated_days}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, estimated_days: parseInt(e.target.value) || 1 }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Adicionar tag..."
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+                />
+                <Button type="button" variant="outline" onClick={handleAddTag}>
+                  Adicionar
+                </Button>
+              </div>
+              {newTemplate.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {newTemplate.tags.map(tag => (
+                    <Badge 
+                      key={tag} 
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() => handleRemoveTag(tag)}
+                    >
+                      {tag} ×
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={newTemplate.is_active}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, is_active: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="is_active" className="font-normal">
+                Template activo (disponível para uso imediato)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateTemplate}
+              disabled={!newTemplate.name.trim() || createTemplate.isPending}
+            >
+              {createTemplate.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Criar Template
             </Button>
           </DialogFooter>
         </DialogContent>
