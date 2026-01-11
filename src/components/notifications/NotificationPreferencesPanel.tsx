@@ -19,6 +19,9 @@ import {
   Mail,
   AlertTriangle,
   Calendar,
+  Clock,
+  FileCheck,
+  Send,
 } from "lucide-react";
 import {
   Select,
@@ -91,6 +94,10 @@ export function NotificationPreferencesPanel() {
         email_retention_alerts: preferences.email_retention_alerts,
         email_retention_urgent_only: preferences.email_retention_urgent_only,
         email_digest_frequency: preferences.email_digest_frequency,
+        email_pending_approvals: preferences.email_pending_approvals,
+        email_sla_alerts: preferences.email_sla_alerts,
+        email_movements: preferences.email_movements,
+        email_dispatch_updates: preferences.email_dispatch_updates,
       });
     }
   }, [preferences]);
@@ -119,6 +126,10 @@ export function NotificationPreferencesPanel() {
         email_retention_alerts: preferences.email_retention_alerts,
         email_retention_urgent_only: preferences.email_retention_urgent_only,
         email_digest_frequency: preferences.email_digest_frequency,
+        email_pending_approvals: preferences.email_pending_approvals,
+        email_sla_alerts: preferences.email_sla_alerts,
+        email_movements: preferences.email_movements,
+        email_dispatch_updates: preferences.email_dispatch_updates,
       });
       setHasChanges(false);
     }
@@ -211,6 +222,99 @@ export function NotificationPreferencesPanel() {
 
         <Separator />
 
+        {/* Email Notifications */}
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Notificações por Email
+          </h4>
+          
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-primary">
+                <FileCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="email_pending_approvals" className="text-sm font-medium cursor-pointer">
+                  Aprovações Pendentes
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receber email quando tiver aprovações a aguardar
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="email_pending_approvals"
+              checked={localPrefs.email_pending_approvals ?? true}
+              onCheckedChange={(checked) => handleChange('email_pending_approvals', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-warning">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="email_sla_alerts" className="text-sm font-medium cursor-pointer">
+                  Alertas de SLA
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receber email quando prazos SLA estiverem próximos ou vencidos
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="email_sla_alerts"
+              checked={localPrefs.email_sla_alerts ?? true}
+              onCheckedChange={(checked) => handleChange('email_sla_alerts', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-info">
+                <ArrowLeftRight className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="email_movements" className="text-sm font-medium cursor-pointer">
+                  Movimentações
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receber email quando documentos forem movimentados para si
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="email_movements"
+              checked={localPrefs.email_movements ?? true}
+              onCheckedChange={(checked) => handleChange('email_movements', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-success">
+                <Send className="h-4 w-4" />
+              </div>
+              <div>
+                <Label htmlFor="email_dispatch_updates" className="text-sm font-medium cursor-pointer">
+                  Actualizações de Despachos
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receber email sobre aprovações/rejeições de despachos
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="email_dispatch_updates"
+              checked={localPrefs.email_dispatch_updates ?? true}
+              onCheckedChange={(checked) => handleChange('email_dispatch_updates', checked)}
+            />
+          </div>
+        </div>
+
+        <Separator />
+
         {/* Email Retention Alerts */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -219,7 +323,7 @@ export function NotificationPreferencesPanel() {
           
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-primary">
+              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-destructive">
                 <Mail className="h-4 w-4" />
               </div>
               <div>

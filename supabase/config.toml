@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.retention-alerts]
 verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false
+
+[functions.check-sla-alerts]
+verify_jwt = false
