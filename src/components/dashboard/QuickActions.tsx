@@ -33,7 +33,7 @@ export function QuickActions() {
   const navigate = useNavigate();
 
   return (
-    <div className="animate-slide-up">
+    <div className="animate-slide-up" data-tour="quick-actions">
       <h3 className="text-sm font-semibold text-foreground mb-4">Acções Rápidas</h3>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         {actions.map((action) => {

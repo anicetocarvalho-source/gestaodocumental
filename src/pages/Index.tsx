@@ -6,6 +6,7 @@ import { ActiveProcesses } from "@/components/dashboard/ActiveProcesses";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { RetentionSummary } from "@/components/dashboard/RetentionSummary";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,7 +146,7 @@ const Index = () => {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-tour="stats-cards">
         {/* Total Documentos */}
         <Card variant="stat" className="p-5">
           <div className="flex items-start justify-between gap-3">
@@ -473,6 +474,9 @@ const Index = () => {
 
       {/* Retention Summary */}
       <RetentionSummary />
+
+      {/* Onboarding Checklist for new users */}
+      <OnboardingChecklist />
 
       {/* Quick Actions */}
       <QuickActions />
