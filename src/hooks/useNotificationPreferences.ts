@@ -15,6 +15,10 @@ export interface NotificationPreferences {
   email_retention_alerts: boolean;
   email_retention_urgent_only: boolean;
   email_digest_frequency: 'daily' | 'weekly' | 'never';
+  email_pending_approvals: boolean;
+  email_sla_alerts: boolean;
+  email_movements: boolean;
+  email_dispatch_updates: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +34,10 @@ const defaultPreferences: Omit<NotificationPreferences, 'id' | 'user_id' | 'crea
   email_retention_alerts: true,
   email_retention_urgent_only: false,
   email_digest_frequency: 'daily',
+  email_pending_approvals: true,
+  email_sla_alerts: true,
+  email_movements: true,
+  email_dispatch_updates: true,
 };
 
 export function useNotificationPreferences() {

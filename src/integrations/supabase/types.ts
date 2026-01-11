@@ -1121,6 +1121,48 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          recipient_user_id: string | null
+          reference_id: string | null
+          reference_type: string | null
+          sent_at: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          recipient_user_id?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          sent_at?: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_user_id?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       integration_connections: {
         Row: {
           config: Json | null
@@ -1199,8 +1241,12 @@ export type Database = {
         Row: {
           created_at: string
           email_digest_frequency: string | null
+          email_dispatch_updates: boolean | null
+          email_movements: boolean | null
+          email_pending_approvals: boolean | null
           email_retention_alerts: boolean | null
           email_retention_urgent_only: boolean | null
+          email_sla_alerts: boolean | null
           id: string
           movement_arquivamento: boolean
           movement_despacho: boolean
@@ -1215,8 +1261,12 @@ export type Database = {
         Insert: {
           created_at?: string
           email_digest_frequency?: string | null
+          email_dispatch_updates?: boolean | null
+          email_movements?: boolean | null
+          email_pending_approvals?: boolean | null
           email_retention_alerts?: boolean | null
           email_retention_urgent_only?: boolean | null
+          email_sla_alerts?: boolean | null
           id?: string
           movement_arquivamento?: boolean
           movement_despacho?: boolean
@@ -1231,8 +1281,12 @@ export type Database = {
         Update: {
           created_at?: string
           email_digest_frequency?: string | null
+          email_dispatch_updates?: boolean | null
+          email_movements?: boolean | null
+          email_pending_approvals?: boolean | null
           email_retention_alerts?: boolean | null
           email_retention_urgent_only?: boolean | null
+          email_sla_alerts?: boolean | null
           id?: string
           movement_arquivamento?: boolean
           movement_despacho?: boolean
