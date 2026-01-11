@@ -207,6 +207,7 @@ export function Sidebar() {
         collapsed ? "w-16" : "w-60"
       )}
       aria-label="Navegação principal"
+      data-tour="sidebar"
     >
       {/* Cabeçalho */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
