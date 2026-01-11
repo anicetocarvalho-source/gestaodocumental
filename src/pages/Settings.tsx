@@ -5,6 +5,7 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,18 @@ import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationPreferencesPanel } from "@/components/notifications/NotificationPreferencesPanel";
+import { 
+  useOrganizationSettings, 
+  useSaveOrganizationSettings,
+  useDocumentTemplates,
+  useCreateDocumentTemplate,
+  useUpdateDocumentTemplate,
+  useDeleteDocumentTemplate,
+  useIntegrationConnections,
+  useToggleIntegration,
+} from "@/hooks/useSettings";
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -37,7 +49,11 @@ import {
   Check,
   ExternalLink,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 // Animation variants with proper typing
@@ -247,36 +263,91 @@ const FormInputWrapper = ({ label, error, children }: FormInputProps) => (
 
 // ========== SECÇÃO GERAL ==========
 const GeralSection = () => {
+  const { data: settings, isLoading } = useOrganizationSettings();
+  const saveSettings = useSaveOrganizationSettings();
+
   const form = useForm<z.infer<typeof organizacaoSchema>>({
     resolver: zodResolver(organizacaoSchema),
     defaultValues: {
-      orgName: "MINAGRIF",
-      orgCode: "MINAGRIF-001",
-      adminEmail: "admin@minagrif.gov.mz",
-      phone: "+258 21 000 000",
-      address: "Av. 25 de Setembro, Maputo, Moçambique",
+      orgName: "",
+      orgCode: "",
+      adminEmail: "",
+      phone: "",
+      address: "",
     },
   });
 
-  const [isSaving, setIsSaving] = useState(false);
+  const [preferences, setPreferences] = useState({
+    auto_save_drafts: false,
+    dark_mode: false,
+    compact_view: false,
+  });
+
+  // Load data from database
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        orgName: settings.org_name,
+        orgCode: settings.org_code,
+        adminEmail: settings.admin_email,
+        phone: settings.phone,
+        address: settings.address,
+      });
+      setPreferences({
+        auto_save_drafts: settings.auto_save_drafts,
+        dark_mode: settings.dark_mode,
+        compact_view: settings.compact_view,
+      });
+    }
+  }, [settings, form]);
 
   const onSubmit = async (data: z.infer<typeof organizacaoSchema>) => {
-    setIsSaving(true);
-    // Simular API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    toast({
-      title: "Alterações guardadas",
-      description: "As definições da organização foram actualizadas com sucesso.",
-    });
-    console.log(data);
+    try {
+      await saveSettings.mutateAsync({
+        org_name: data.orgName,
+        org_code: data.orgCode,
+        admin_email: data.adminEmail,
+        phone: data.phone,
+        address: data.address,
+      });
+      toast({
+        title: "Alterações guardadas",
+        description: "As definições da organização foram actualizadas com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível guardar as alterações.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const preferences = [
-    { label: "Guardar rascunhos automaticamente", description: "Guardar automaticamente rascunhos de documentos", enabled: false },
-    { label: "Modo escuro", description: "Utilizar tema escuro na interface", enabled: false },
-    { label: "Vista compacta", description: "Mostrar mais itens com espaçamento reduzido", enabled: false },
+  const handlePreferenceChange = async (key: keyof typeof preferences, value: boolean) => {
+    setPreferences(prev => ({ ...prev, [key]: value }));
+    try {
+      await saveSettings.mutateAsync({ [key]: value });
+    } catch (error) {
+      // Revert on error
+      setPreferences(prev => ({ ...prev, [key]: !value }));
+    }
+  };
+
+  const preferencesList = [
+    { key: 'auto_save_drafts' as const, label: "Guardar rascunhos automaticamente", description: "Guardar automaticamente rascunhos de documentos" },
+    { key: 'dark_mode' as const, label: "Modo escuro", description: "Utilizar tema escuro na interface" },
+    { key: 'compact_view' as const, label: "Vista compacta", description: "Mostrar mais itens com espaçamento reduzido" },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -286,8 +357,8 @@ const GeralSection = () => {
           <p className="text-sm text-muted-foreground">Gerir as definições e preferências da organização</p>
         </div>
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving}>
-            {isSaving ? (
+          <Button onClick={form.handleSubmit(onSubmit)} disabled={saveSettings.isPending}>
+            {saveSettings.isPending ? (
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -296,7 +367,7 @@ const GeralSection = () => {
             ) : (
               <CheckCircle2 className="h-4 w-4 mr-2" />
             )}
-            {isSaving ? "A guardar..." : "Guardar Alterações"}
+            {saveSettings.isPending ? "A guardar..." : "Guardar Alterações"}
           </Button>
         </motion.div>
       </motion.div>
@@ -483,9 +554,9 @@ const GeralSection = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {preferences.map((pref, i) => (
+              {preferencesList.map((pref, i) => (
                 <motion.div 
-                  key={i} 
+                  key={pref.key} 
                   className="flex items-center justify-between py-3 border-b border-border last:border-0"
                   whileHover={{ x: 4, backgroundColor: "hsl(var(--muted) / 0.3)" }}
                   transition={{ duration: 0.2 }}
@@ -494,7 +565,12 @@ const GeralSection = () => {
                     <Label htmlFor={`pref-${i}`} className="text-sm font-medium cursor-pointer">{pref.label}</Label>
                     <p className="text-xs text-muted-foreground">{pref.description}</p>
                   </div>
-                  <Switch id={`pref-${i}`} defaultChecked={pref.enabled} aria-label={pref.label} />
+                  <Switch 
+                    id={`pref-${i}`} 
+                    checked={preferences[pref.key]} 
+                    onCheckedChange={(checked) => handlePreferenceChange(pref.key, checked)}
+                    aria-label={pref.label} 
+                  />
                 </motion.div>
               ))}
             </div>
@@ -1285,13 +1361,39 @@ const NotificacoesSection = () => {
 
 // ========== SECÇÃO INTEGRAÇÕES ==========
 const IntegracoesSection = () => {
-  const integrations = [
-    { name: "Microsoft 365", description: "Sincronizar com Outlook, OneDrive e SharePoint", connected: true, icon: "M" },
-    { name: "Google Workspace", description: "Integrar com Gmail, Drive e Calendar", connected: false, icon: "G" },
-    { name: "SIGOF", description: "Sistema de Gestão Orçamental e Financeira", connected: true, icon: "S" },
-    { name: "eSISTAFE", description: "Sistema de Administração Financeira do Estado", connected: true, icon: "E" },
-    { name: "Portal do Governo", description: "Integração com portal gov.mz", connected: false, icon: "P" },
-  ];
+  const { data: integrations, isLoading } = useIntegrationConnections();
+  const toggleIntegration = useToggleIntegration();
+
+  const handleToggle = async (id: string, currentlyConnected: boolean) => {
+    try {
+      await toggleIntegration.mutateAsync({ id, connect: !currentlyConnected });
+      toast({
+        title: currentlyConnected ? "Desconectado" : "Conectado",
+        description: currentlyConnected 
+          ? "Integração desconectada com sucesso." 
+          : "Integração conectada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar a integração.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -1303,9 +1405,9 @@ const IntegracoesSection = () => {
       </motion.div>
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {integrations.map((integration, i) => (
+        {(integrations || []).map((integration, i) => (
           <motion.div
-            key={integration.name}
+            key={integration.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
@@ -1319,12 +1421,12 @@ const IntegracoesSection = () => {
                     whileHover={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 0.3 }}
                   >
-                    {integration.icon}
+                    {integration.icon || integration.display_name.charAt(0)}
                   </motion.div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="font-medium">{integration.name}</h3>
-                      {integration.connected ? (
+                      <h3 className="font-medium">{integration.display_name}</h3>
+                      {integration.is_connected ? (
                         <Badge variant="success">Conectado</Badge>
                       ) : (
                         <Badge variant="secondary">Desconectado</Badge>
@@ -1332,18 +1434,30 @@ const IntegracoesSection = () => {
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{integration.description}</p>
                     <div className="mt-3">
-                      {integration.connected ? (
+                      {integration.is_connected ? (
                         <div className="flex gap-2">
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                             <Button variant="outline" size="sm">Configurar</Button>
                           </motion.div>
                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button variant="ghost" size="sm" className="text-destructive">Desconectar</Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-destructive"
+                              onClick={() => handleToggle(integration.id, true)}
+                              disabled={toggleIntegration.isPending}
+                            >
+                              Desconectar
+                            </Button>
                           </motion.div>
                         </div>
                       ) : (
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button size="sm">
+                          <Button 
+                            size="sm"
+                            onClick={() => handleToggle(integration.id, false)}
+                            disabled={toggleIntegration.isPending}
+                          >
                             <Plug className="h-4 w-4 mr-2" />
                             Conectar
                           </Button>
@@ -1400,7 +1514,12 @@ const FluxosSection = () => {
           <p className="text-sm text-muted-foreground">Configurar fluxos e automações</p>
         </div>
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button>Novo Fluxo</Button>
+          <Button asChild>
+            <Link to="/workflow-builder">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Fluxo
+            </Link>
+          </Button>
         </motion.div>
       </motion.div>
 
@@ -1424,7 +1543,9 @@ const FluxosSection = () => {
                 Configure e personalize os fluxos de aprovação e tramitação de documentos.
               </p>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button variant="outline">Ir para Configuração de Fluxos</Button>
+                <Button variant="outline" asChild>
+                  <Link to="/workflow-builder">Ir para Configuração de Fluxos</Link>
+                </Button>
               </motion.div>
             </motion.div>
           </CardContent>
@@ -1436,6 +1557,69 @@ const FluxosSection = () => {
 
 // ========== SECÇÃO MODELOS ==========
 const ModelosSection = () => {
+  const { data: templates, isLoading } = useDocumentTemplates();
+  const createTemplate = useCreateDocumentTemplate();
+  const updateTemplate = useUpdateDocumentTemplate();
+  const deleteTemplate = useDeleteDocumentTemplate();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDescription, setNewTemplateDescription] = useState("");
+  const [newTemplateCategory, setNewTemplateCategory] = useState("geral");
+
+  const handleCreate = async () => {
+    if (!newTemplateName.trim()) {
+      toast({ title: "Erro", description: "O nome é obrigatório.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createTemplate.mutateAsync({
+        name: newTemplateName.trim(),
+        description: newTemplateDescription.trim() || null,
+        category: newTemplateCategory,
+        content: null,
+        file_path: null,
+        is_active: true,
+      });
+      toast({ title: "Sucesso", description: "Modelo criado com sucesso." });
+      setShowCreateForm(false);
+      setNewTemplateName("");
+      setNewTemplateDescription("");
+      setNewTemplateCategory("geral");
+    } catch (error) {
+      toast({ title: "Erro", description: "Não foi possível criar o modelo.", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTemplate.mutateAsync(id);
+      toast({ title: "Sucesso", description: "Modelo eliminado com sucesso." });
+    } catch (error) {
+      toast({ title: "Erro", description: "Não foi possível eliminar o modelo.", variant: "destructive" });
+    }
+  };
+
+  const handleToggleActive = async (id: string, currentActive: boolean) => {
+    try {
+      await updateTemplate.mutateAsync({ id, is_active: !currentActive });
+      toast({ title: "Sucesso", description: currentActive ? "Modelo desactivado." : "Modelo activado." });
+    } catch (error) {
+      toast({ title: "Erro", description: "Não foi possível actualizar o modelo.", variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  const categories = ["geral", "ofício", "memorando", "circular", "relatório", "contrato"];
+
   return (
     <>
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1444,33 +1628,123 @@ const ModelosSection = () => {
           <p className="text-sm text-muted-foreground">Gerir modelos e templates</p>
         </div>
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button>Novo Modelo</Button>
+          <Button onClick={() => setShowCreateForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Modelo
+          </Button>
         </motion.div>
       </motion.div>
 
+      {showCreateForm && (
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Criar Novo Modelo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome *</Label>
+                  <Input 
+                    value={newTemplateName} 
+                    onChange={(e) => setNewTemplateName(e.target.value)}
+                    placeholder="Ex: Ofício Padrão"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <select 
+                    className="w-full h-10 px-3 border border-input rounded-md bg-background text-sm"
+                    value={newTemplateCategory}
+                    onChange={(e) => setNewTemplateCategory(e.target.value)}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Input 
+                  value={newTemplateDescription} 
+                  onChange={(e) => setNewTemplateDescription(e.target.value)}
+                  placeholder="Breve descrição do modelo"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleCreate} disabled={createTemplate.isPending}>
+                  {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Criar Modelo
+                </Button>
+                <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancelar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       <motion.div variants={itemVariants}>
         <Card>
-          <CardContent className="p-6">
-            <motion.div 
-              className="text-center py-8"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Biblioteca de Modelos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!templates?.length ? (
+              <div className="text-center py-8">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              </motion.div>
-              <h3 className="font-medium mb-2">Biblioteca de Modelos</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Crie e gira modelos de documentos para agilizar a criação de novos documentos.
-              </p>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button variant="outline">Ver Modelos</Button>
-              </motion.div>
-            </motion.div>
+                <h3 className="font-medium mb-2">Sem modelos</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Crie o seu primeiro modelo de documento.
+                </p>
+                <Button variant="outline" onClick={() => setShowCreateForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Modelo
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {templates.map((template, i) => (
+                  <motion.div
+                    key={template.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-primary-muted rounded-lg flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{template.name}</p>
+                          <Badge variant={template.is_active ? "success" : "secondary"}>
+                            {template.is_active ? "Activo" : "Inactivo"}
+                          </Badge>
+                          <Badge variant="outline">{template.category}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{template.description || "Sem descrição"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        checked={template.is_active}
+                        onCheckedChange={() => handleToggleActive(template.id, template.is_active)}
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm"
+                        onClick={() => handleDelete(template.id)}
+                        disabled={deleteTemplate.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -1612,7 +1886,12 @@ const AuditoriaSection = () => {
           <p className="text-sm text-muted-foreground">Ver histórico de actividades do sistema</p>
         </div>
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button variant="outline">Exportar Registos</Button>
+          <Button variant="outline" asChild>
+            <Link to="/audit-logs">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Exportar Registos
+            </Link>
+          </Button>
         </motion.div>
       </motion.div>
 
@@ -1637,7 +1916,7 @@ const AuditoriaSection = () => {
               </p>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button variant="outline" asChild>
-                  <a href="/audit-logs">Ver Registos Completos</a>
+                  <Link to="/audit-logs">Ver Registos Completos</Link>
                 </Button>
               </motion.div>
             </motion.div>
