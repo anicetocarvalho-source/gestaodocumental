@@ -38,175 +38,29 @@ import {
   Trash2,
   Play,
   Clock,
-  User,
   Calendar,
-  FileText,
   CheckCircle,
   Circle,
   Square,
   Diamond,
   ArrowRight,
-  Download,
   Upload,
   Star,
   StarOff,
-  Filter,
   LayoutGrid,
   List,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-
-// Types
-interface ProcessTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  version: string;
-  author: string;
-  createdAt: string;
-  updatedAt: string;
-  usageCount: number;
-  isFavorite: boolean;
-  status: "active" | "draft" | "archived";
-  nodes: number;
-  estimatedDuration: string;
-  tags: string[];
-}
-
-// Sample Data
-const templates: ProcessTemplate[] = [
-  {
-    id: "tpl-001",
-    name: "Aprovação de Despesas",
-    description: "Workflow padrão para aprovação de despesas com múltiplos níveis de autorização baseado em valor.",
-    category: "Financeiro",
-    version: "2.1",
-    author: "Maria Santos",
-    createdAt: "2024-01-10",
-    updatedAt: "2024-01-15",
-    usageCount: 45,
-    isFavorite: true,
-    status: "active",
-    nodes: 8,
-    estimatedDuration: "3-5 dias",
-    tags: ["despesas", "aprovação", "financeiro"],
-  },
-  {
-    id: "tpl-002",
-    name: "Contratação de Pessoal",
-    description: "Processo completo de contratação desde a requisição até a integração do colaborador.",
-    category: "Recursos Humanos",
-    version: "1.5",
-    author: "João Costa",
-    createdAt: "2024-01-08",
-    updatedAt: "2024-01-12",
-    usageCount: 23,
-    isFavorite: true,
-    status: "active",
-    nodes: 12,
-    estimatedDuration: "15-30 dias",
-    tags: ["RH", "contratação", "recrutamento"],
-  },
-  {
-    id: "tpl-003",
-    name: "Aquisição de Bens",
-    description: "Workflow para aquisição de bens e equipamentos com processo de cotação e aprovação.",
-    category: "Compras",
-    version: "3.0",
-    author: "Ana Rodrigues",
-    createdAt: "2024-01-05",
-    updatedAt: "2024-01-14",
-    usageCount: 67,
-    isFavorite: false,
-    status: "active",
-    nodes: 10,
-    estimatedDuration: "10-15 dias",
-    tags: ["compras", "aquisição", "equipamentos"],
-  },
-  {
-    id: "tpl-004",
-    name: "Aprovação de Férias",
-    description: "Processo simplificado para solicitação e aprovação de férias dos colaboradores.",
-    category: "Recursos Humanos",
-    version: "1.2",
-    author: "Pedro Almeida",
-    createdAt: "2024-01-03",
-    updatedAt: "2024-01-10",
-    usageCount: 89,
-    isFavorite: false,
-    status: "active",
-    nodes: 5,
-    estimatedDuration: "2-3 dias",
-    tags: ["RH", "férias", "ausências"],
-  },
-  {
-    id: "tpl-005",
-    name: "Revisão de Contratos",
-    description: "Workflow para revisão e aprovação de contratos com parecer jurídico obrigatório.",
-    category: "Jurídico",
-    version: "2.0",
-    author: "Carlos Ferreira",
-    createdAt: "2024-01-01",
-    updatedAt: "2024-01-08",
-    usageCount: 34,
-    isFavorite: true,
-    status: "active",
-    nodes: 9,
-    estimatedDuration: "5-10 dias",
-    tags: ["jurídico", "contratos", "revisão"],
-  },
-  {
-    id: "tpl-006",
-    name: "Onboarding de Colaboradores",
-    description: "Processo de integração de novos colaboradores com todas as etapas necessárias.",
-    category: "Recursos Humanos",
-    version: "1.0",
-    author: "Teresa Gomes",
-    createdAt: "2023-12-20",
-    updatedAt: "2024-01-05",
-    usageCount: 12,
-    isFavorite: false,
-    status: "draft",
-    nodes: 15,
-    estimatedDuration: "5-7 dias",
-    tags: ["RH", "onboarding", "integração"],
-  },
-  {
-    id: "tpl-007",
-    name: "Gestão de Incidentes",
-    description: "Workflow para registo e resolução de incidentes de TI.",
-    category: "TI",
-    version: "1.3",
-    author: "António Ribeiro",
-    createdAt: "2023-12-15",
-    updatedAt: "2024-01-02",
-    usageCount: 156,
-    isFavorite: false,
-    status: "active",
-    nodes: 7,
-    estimatedDuration: "1-3 dias",
-    tags: ["TI", "incidentes", "suporte"],
-  },
-  {
-    id: "tpl-008",
-    name: "Pedido de Viagem",
-    description: "Processo para solicitação e aprovação de viagens de serviço.",
-    category: "Administrativo",
-    version: "1.1",
-    author: "Maria Santos",
-    createdAt: "2023-12-10",
-    updatedAt: "2023-12-28",
-    usageCount: 28,
-    isFavorite: false,
-    status: "archived",
-    nodes: 6,
-    estimatedDuration: "3-5 dias",
-    tags: ["viagens", "despesas", "administrativo"],
-  },
-];
+import {
+  useProcessTemplates,
+  useDeleteProcessTemplate,
+  useDuplicateProcessTemplate,
+  useToggleFavorite,
+  ProcessTemplate,
+} from "@/hooks/useProcessTemplates";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const categories = [
   "Todos",
@@ -216,6 +70,7 @@ const categories = [
   "Jurídico",
   "TI",
   "Administrativo",
+  "Geral",
 ];
 
 const ProcessTemplates = () => {
@@ -228,29 +83,30 @@ const ProcessTemplates = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<ProcessTemplate | null>(null);
-  const [localTemplates, setLocalTemplates] = useState(templates);
+
+  const { data: templates = [], isLoading } = useProcessTemplates();
+  const deleteTemplate = useDeleteProcessTemplate();
+  const duplicateTemplate = useDuplicateProcessTemplate();
+  const toggleFavorite = useToggleFavorite();
 
   // Filter templates
-  const filteredTemplates = localTemplates.filter(t => {
+  const filteredTemplates = templates.filter(t => {
     const matchesSearch = !searchQuery || 
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      (t.description?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      t.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "active" && t.is_active) ||
+      (statusFilter === "draft" && !t.is_active);
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const toggleFavorite = (id: string) => {
-    setLocalTemplates(localTemplates.map(t => 
-      t.id === id ? { ...t, isFavorite: !t.isFavorite } : t
-    ));
-    const template = localTemplates.find(t => t.id === id);
-    toast.success(template?.isFavorite ? "Removido dos favoritos" : "Adicionado aos favoritos");
+  const handleToggleFavorite = (template: ProcessTemplate) => {
+    toggleFavorite.mutate({ id: template.id, is_favorite: !template.is_favorite });
   };
 
   const handleUseTemplate = (template: ProcessTemplate) => {
-    toast.success(`Template "${template.name}" seleccionado`);
     navigate("/workflow-builder");
   };
 
@@ -259,26 +115,14 @@ const ProcessTemplates = () => {
   };
 
   const handleDuplicate = (template: ProcessTemplate) => {
-    const newTemplate: ProcessTemplate = {
-      ...template,
-      id: `tpl-${Date.now()}`,
-      name: `${template.name} (cópia)`,
-      version: "1.0",
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
-      usageCount: 0,
-      status: "draft",
-    };
-    setLocalTemplates([newTemplate, ...localTemplates]);
-    toast.success("Template duplicado com sucesso");
+    duplicateTemplate.mutate(template);
   };
 
   const handleDelete = () => {
     if (!templateToDelete) return;
-    setLocalTemplates(localTemplates.filter(t => t.id !== templateToDelete.id));
+    deleteTemplate.mutate(templateToDelete.id);
     setDeleteDialogOpen(false);
     setTemplateToDelete(null);
-    toast.success("Template eliminado");
   };
 
   const openPreview = (template: ProcessTemplate) => {
@@ -291,24 +135,36 @@ const ProcessTemplates = () => {
     setDeleteDialogOpen(true);
   };
 
-  const getStatusBadge = (status: ProcessTemplate["status"]) => {
-    switch (status) {
-      case "active":
-        return <Badge variant="success">Activo</Badge>;
-      case "draft":
-        return <Badge variant="secondary">Rascunho</Badge>;
-      case "archived":
-        return <Badge variant="outline">Arquivado</Badge>;
-    }
+  const getStatusBadge = (isActive: boolean) => {
+    return isActive ? 
+      <Badge variant="success">Activo</Badge> : 
+      <Badge variant="secondary">Rascunho</Badge>;
   };
 
   // Stats
   const stats = {
-    total: localTemplates.length,
-    active: localTemplates.filter(t => t.status === "active").length,
-    favorites: localTemplates.filter(t => t.isFavorite).length,
-    totalUsage: localTemplates.reduce((acc, t) => acc + t.usageCount, 0),
+    total: templates.length,
+    active: templates.filter(t => t.is_active).length,
+    favorites: templates.filter(t => t.is_favorite).length,
+    totalUsage: templates.reduce((acc, t) => acc + (t.usage_count || 0), 0),
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Templates de Processo" subtitle="Gerir templates de workflow reutilizáveis">
+        <PageBreadcrumb items={[{ label: "Processos", href: "/processes" }, { label: "Templates" }]} />
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
+          </div>
+          <Skeleton className="h-16" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-64" />)}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -406,7 +262,6 @@ const ProcessTemplates = () => {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="active">Activo</SelectItem>
                     <SelectItem value="draft">Rascunho</SelectItem>
-                    <SelectItem value="archived">Arquivado</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -445,7 +300,23 @@ const ProcessTemplates = () => {
         </Card>
 
         {/* Templates Grid/List */}
-        {viewMode === "grid" ? (
+        {filteredTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <GitBranch className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhum template encontrado</h3>
+              <p className="text-muted-foreground mb-4">
+                {searchQuery || categoryFilter !== "all" || statusFilter !== "all"
+                  ? "Tente ajustar os filtros de pesquisa"
+                  : "Crie o primeiro template de processo"}
+              </p>
+              <Button onClick={() => navigate("/workflow-builder")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Template
+              </Button>
+            </CardContent>
+          </Card>
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredTemplates.map((template) => (
               <Card key={template.id} variant="interactive" className="overflow-hidden">
@@ -474,10 +345,11 @@ const ProcessTemplates = () => {
 
                   {/* Favorite button */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleFavorite(template.id); }}
+                    onClick={(e) => { e.stopPropagation(); handleToggleFavorite(template); }}
                     className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-background transition-colors"
+                    disabled={toggleFavorite.isPending}
                   >
-                    {template.isFavorite ? (
+                    {template.is_favorite ? (
                       <Star className="h-4 w-4 text-warning fill-warning" />
                     ) : (
                       <StarOff className="h-4 w-4 text-muted-foreground" />
@@ -486,7 +358,7 @@ const ProcessTemplates = () => {
 
                   {/* Status badge */}
                   <div className="absolute top-2 left-2">
-                    {getStatusBadge(template.status)}
+                    {getStatusBadge(template.is_active)}
                   </div>
                 </div>
 
@@ -500,55 +372,57 @@ const ProcessTemplates = () => {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 bg-popover">
+                        <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openPreview(template)}>
-                            <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
+                            <Eye className="h-4 w-4 mr-2" />
+                            Pré-visualizar
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEditTemplate(template)}>
-                            <Edit className="mr-2 h-4 w-4" /> Editar
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDuplicate(template)}>
-                            <Copy className="mr-2 h-4 w-4" /> Duplicar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="mr-2 h-4 w-4" /> Exportar
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => openDeleteDialog(template)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                      {template.description}
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                      {template.description || "Sem descrição"}
                     </p>
                   </div>
 
                   <div className="flex flex-wrap gap-1">
-                    <Badge variant="outline" className="text-xs">{template.category}</Badge>
-                    <Badge variant="secondary" className="text-xs">v{template.version}</Badge>
+                    <Badge variant="outline">{template.category}</Badge>
+                    {template.tags?.slice(0, 2).map(tag => (
+                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
-                    <div className="flex items-center gap-1">
-                      <GitBranch className="h-3 w-3" />
-                      {template.nodes} nós
-                    </div>
-                    <div className="flex items-center gap-1">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {template.estimated_days} dias
+                    </span>
+                    <span className="flex items-center gap-1">
                       <Play className="h-3 w-3" />
-                      {template.usageCount}x usado
-                    </div>
+                      {template.usage_count} usos
+                    </span>
                   </div>
 
                   <Button
+                    variant="outline"
                     className="w-full"
-                    size="sm"
                     onClick={() => handleUseTemplate(template)}
-                    disabled={template.status !== "active"}
                   >
                     <Play className="h-4 w-4 mr-2" />
                     Usar Template
@@ -558,218 +432,140 @@ const ProcessTemplates = () => {
             ))}
           </div>
         ) : (
-          /* List View */
-          <Card className="overflow-hidden">
+          <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted border-b border-border">
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Template</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Versão</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nós</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Utilizações</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Autor</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acções</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTemplates.map((template) => (
-                      <tr key={template.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => toggleFavorite(template.id)}
-                              className="text-muted-foreground hover:text-warning"
-                            >
-                              {template.isFavorite ? (
-                                <Star className="h-4 w-4 text-warning fill-warning" />
-                              ) : (
-                                <StarOff className="h-4 w-4" />
-                              )}
-                            </button>
-                            <div>
-                              <p className="font-medium text-foreground">{template.name}</p>
-                              <p className="text-xs text-muted-foreground line-clamp-1 max-w-[250px]">
-                                {template.description}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline">{template.category}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          v{template.version}
-                        </td>
-                        <td className="px-4 py-3">
-                          {getStatusBadge(template.status)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {template.nodes}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {template.usageCount}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {template.author}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUseTemplate(template)}
-                              disabled={template.status !== "active"}
-                            >
-                              <Play className="h-3 w-3 mr-1" />
-                              Usar
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon-sm">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 bg-popover">
-                                <DropdownMenuItem onClick={() => openPreview(template)}>
-                                  <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditTemplate(template)}>
-                                  <Edit className="mr-2 h-4 w-4" /> Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDuplicate(template)}>
-                                  <Copy className="mr-2 h-4 w-4" /> Duplicar
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => openDeleteDialog(template)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="divide-y divide-border">
+                {filteredTemplates.map((template) => (
+                  <div key={template.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-4 flex-1">
+                      <button
+                        onClick={() => handleToggleFavorite(template)}
+                        disabled={toggleFavorite.isPending}
+                      >
+                        {template.is_favorite ? (
+                          <Star className="h-5 w-5 text-warning fill-warning" />
+                        ) : (
+                          <StarOff className="h-5 w-5 text-muted-foreground hover:text-warning transition-colors" />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{template.name}</h3>
+                          {getStatusBadge(template.is_active)}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-1">{template.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                      <Badge variant="outline">{template.category}</Badge>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {template.estimated_days} dias
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Play className="h-4 w-4" />
+                        {template.usage_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(template.updated_at).toLocaleDateString("pt-PT")}
+                      </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleUseTemplate(template)}>
+                            <Play className="h-4 w-4 mr-2" />
+                            Usar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openPreview(template)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Pré-visualizar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditTemplate(template)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(template)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => openDeleteDialog(template)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
-          </Card>
-        )}
-
-        {/* Empty State */}
-        {filteredTemplates.length === 0 && (
-          <Card className="py-12">
-            <div className="text-center">
-              <GitBranch className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">Nenhum template encontrado</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Tente ajustar os filtros ou criar um novo template
-              </p>
-              <Button onClick={() => navigate("/workflow-builder")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Template
-              </Button>
-            </div>
           </Card>
         )}
       </div>
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{selectedTemplate?.name}</DialogTitle>
             <DialogDescription>{selectedTemplate?.description}</DialogDescription>
           </DialogHeader>
-          {selectedTemplate && (
-            <div className="space-y-6 py-4">
-              {/* Workflow Preview */}
-              <div className="h-40 bg-muted rounded-lg flex items-center justify-center">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-success/20 border-2 border-success flex items-center justify-center">
-                    <Circle className="h-4 w-4 text-success" />
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  <div className="h-10 w-14 rounded bg-primary/20 border-2 border-primary flex items-center justify-center">
-                    <Square className="h-4 w-4 text-primary" />
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  <div className="h-8 w-8 rotate-45 bg-warning/20 border-2 border-warning flex items-center justify-center">
-                    <Diamond className="h-3 w-3 text-warning -rotate-45" />
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  <div className="h-10 w-14 rounded bg-primary/20 border-2 border-primary flex items-center justify-center">
-                    <Square className="h-4 w-4 text-primary" />
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  <div className="h-10 w-10 rounded-full bg-destructive/20 border-2 border-destructive flex items-center justify-center">
-                    <Circle className="h-4 w-4 text-destructive" />
-                  </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-xs text-muted-foreground">Categoria</p>
+                <p className="font-medium">{selectedTemplate?.category}</p>
+              </div>
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-xs text-muted-foreground">Duração Estimada</p>
+                <p className="font-medium">{selectedTemplate?.estimated_days} dias</p>
+              </div>
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-xs text-muted-foreground">Utilizações</p>
+                <p className="font-medium">{selectedTemplate?.usage_count}</p>
+              </div>
+            </div>
+            <div className="h-64 bg-muted/30 rounded-lg border border-border flex items-center justify-center">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-success/20 border-2 border-success flex items-center justify-center">
+                  <Circle className="h-4 w-4 text-success" />
+                </div>
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                <div className="h-12 w-16 rounded bg-primary/20 border-2 border-primary flex items-center justify-center">
+                  <Square className="h-4 w-4 text-primary" />
+                </div>
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                <div className="h-10 w-10 rotate-45 bg-warning/20 border-2 border-warning flex items-center justify-center">
+                  <Diamond className="h-3 w-3 text-warning -rotate-45" />
+                </div>
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                <div className="h-12 w-12 rounded-full bg-destructive/20 border-2 border-destructive flex items-center justify-center">
+                  <Circle className="h-4 w-4 text-destructive" />
                 </div>
               </div>
-
-              {/* Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Categoria:</span>
-                    <span className="font-medium">{selectedTemplate.category}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <GitBranch className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Versão:</span>
-                    <span className="font-medium">v{selectedTemplate.version}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Autor:</span>
-                    <span className="font-medium">{selectedTemplate.author}</span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Duração Est.:</span>
-                    <span className="font-medium">{selectedTemplate.estimatedDuration}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Play className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Utilizações:</span>
-                    <span className="font-medium">{selectedTemplate.usageCount}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Actualizado:</span>
-                    <span className="font-medium">{selectedTemplate.updatedAt}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tags */}
+            </div>
+            {selectedTemplate?.tags && selectedTemplate.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {selectedTemplate.tags.map((tag) => (
+                {selectedTemplate.tags.map(tag => (
                   <Badge key={tag} variant="secondary">{tag}</Badge>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
               Fechar
             </Button>
-            <Button onClick={() => selectedTemplate && handleEditTemplate(selectedTemplate)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar Template
-            </Button>
-            <Button onClick={() => selectedTemplate && handleUseTemplate(selectedTemplate)}>
+            <Button onClick={() => { setPreviewDialogOpen(false); handleUseTemplate(selectedTemplate!); }}>
               <Play className="h-4 w-4 mr-2" />
               Usar Template
             </Button>
@@ -783,15 +579,24 @@ const ProcessTemplates = () => {
           <DialogHeader>
             <DialogTitle>Eliminar Template</DialogTitle>
             <DialogDescription>
-              Tem a certeza que deseja eliminar o template "{templateToDelete?.name}"? Esta acção não pode ser revertida.
+              Tem a certeza que deseja eliminar o template "{templateToDelete?.name}"?
+              Esta acção não pode ser revertida.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4 mr-2" />
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              disabled={deleteTemplate.isPending}
+            >
+              {deleteTemplate.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
               Eliminar
             </Button>
           </DialogFooter>
