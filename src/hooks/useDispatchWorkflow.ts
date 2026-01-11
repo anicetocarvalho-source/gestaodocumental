@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Database } from "@/integrations/supabase/types";
+import { sendPendingApprovalEmail, sendDispatchUpdateEmail } from "@/hooks/useEmailNotifications";
 
 type ApprovalStatus = Database["public"]["Enums"]["approval_status"];
 
@@ -121,6 +122,48 @@ export function useAddApprover() {
         .update({ requires_approval: true, workflow_status: "em_aprovacao" })
         .eq("id", dispatchId);
 
+      // Get dispatch details for email
+      const { data: dispatch } = await supabase
+        .from("dispatches")
+        .select("dispatch_number, subject, priority, deadline, created_by")
+        .eq("id", dispatchId)
+        .single();
+
+      // Get creator profile
+      const { data: creatorProfile } = await supabase
+        .from("profiles")
+        .select("full_name, user_id")
+        .eq("id", dispatch?.created_by)
+        .single();
+
+      // Get approver auth user_id
+      const { data: approverProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("id", approverId)
+        .single();
+
+      // Send email notification to approver
+      if (approverProfile?.user_id && dispatch) {
+        const priorityLabels: Record<string, string> = {
+          baixa: "Baixa",
+          normal: "Normal",
+          alta: "Alta",
+          urgente: "Urgente"
+        };
+
+        sendPendingApprovalEmail(
+          approverProfile.user_id,
+          'dispatch',
+          dispatch.dispatch_number,
+          dispatch.subject,
+          creatorProfile?.full_name || 'Utilizador',
+          priorityLabels[dispatch.priority] || dispatch.priority,
+          dispatch.deadline ? new Date(dispatch.deadline).toLocaleDateString('pt-PT') : undefined,
+          dispatchId
+        ).catch(err => console.error('Failed to send approval email:', err));
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
@@ -157,12 +200,44 @@ export function useProcessApproval() {
         .single();
 
       if (error) throw error;
+
+      // Get dispatch details to notify the creator
+      const { data: dispatch } = await supabase
+        .from("dispatches")
+        .select("dispatch_number, subject, created_by")
+        .eq("id", data.dispatch_id)
+        .single();
+
+      // Get creator's user_id
+      if (dispatch?.created_by) {
+        const { data: creatorProfile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("id", dispatch.created_by)
+          .single();
+
+        // Send email notification to dispatch creator
+        if (creatorProfile?.user_id) {
+          sendDispatchUpdateEmail(
+            creatorProfile.user_id,
+            dispatch.dispatch_number,
+            dispatch.subject,
+            status,
+            profile?.full_name,
+            comments,
+            data.dispatch_id
+          ).catch(err => console.error('Failed to send dispatch update email:', err));
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["dispatch-approvals", data.dispatch_id] });
       queryClient.invalidateQueries({ queryKey: ["dispatch", data.dispatch_id] });
       queryClient.invalidateQueries({ queryKey: ["dispatches"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-approvals-count"] });
+      queryClient.invalidateQueries({ queryKey: ["my-pending-approvals"] });
     },
   });
 }
