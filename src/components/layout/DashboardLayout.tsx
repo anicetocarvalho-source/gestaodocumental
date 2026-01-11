@@ -2,6 +2,8 @@ import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
+import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
+import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsModal";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -12,6 +14,9 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   // Subscribe to realtime notifications with sound
   useNotificationSound();
+  // Enable global keyboard shortcuts
+  useGlobalKeyboardShortcuts();
+  
   return (
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
@@ -23,6 +28,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
           </div>
         </main>
       </div>
+      <KeyboardShortcutsModal />
     </div>
   );
 }
