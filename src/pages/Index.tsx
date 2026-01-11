@@ -5,6 +5,7 @@ import { RecentDocuments } from "@/components/dashboard/RecentDocuments";
 import { ActiveProcesses } from "@/components/dashboard/ActiveProcesses";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { RetentionSummary } from "@/components/dashboard/RetentionSummary";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { AuditLogReference } from "@/components/common/AuditLogReference";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -469,6 +470,9 @@ const Index = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Retention Summary */}
+      <RetentionSummary />
 
       {/* Quick Actions */}
       <QuickActions />
