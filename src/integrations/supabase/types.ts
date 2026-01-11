@@ -144,6 +144,42 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_roles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          permissions: Json
+          updated_at: string
+          user_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          permissions?: Json
+          updated_at?: string
+          user_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          permissions?: Json
+          updated_at?: string
+          user_count?: number
+        }
+        Relationships: []
+      }
       digitization_batches: {
         Row: {
           batch_number: string
@@ -1685,6 +1721,57 @@ export type Database = {
           },
         ]
       }
+      process_templates: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          estimated_days: number
+          id: string
+          is_active: boolean
+          is_favorite: boolean
+          name: string
+          process_type: string
+          steps: Json | null
+          tags: string[] | null
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_days?: number
+          id?: string
+          is_active?: boolean
+          is_favorite?: boolean
+          name: string
+          process_type?: string
+          steps?: Json | null
+          tags?: string[] | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_days?: number
+          id?: string
+          is_active?: boolean
+          is_favorite?: boolean
+          name?: string
+          process_type?: string
+          steps?: Json | null
+          tags?: string[] | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
       process_types: {
         Row: {
           code: string
@@ -1965,6 +2052,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sla_priorities: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          initial_escalation_role: string | null
+          label: string
+          priority_key: string
+          time_multiplier: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          initial_escalation_role?: string | null
+          label: string
+          priority_key: string
+          time_multiplier?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          initial_escalation_role?: string | null
+          label?: string
+          priority_key?: string
+          time_multiplier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sla_rules: {
+        Row: {
+          alert_config: Json | null
+          created_at: string
+          created_by: string | null
+          critical_threshold: number
+          description: string | null
+          duration_hours: number
+          escalation_rules: Json | null
+          id: string
+          is_active: boolean
+          name: string
+          priority: string
+          process_type: string
+          updated_at: string
+          warning_threshold: number
+        }
+        Insert: {
+          alert_config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          critical_threshold?: number
+          description?: string | null
+          duration_hours?: number
+          escalation_rules?: Json | null
+          id?: string
+          is_active?: boolean
+          name: string
+          priority?: string
+          process_type: string
+          updated_at?: string
+          warning_threshold?: number
+        }
+        Update: {
+          alert_config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          critical_threshold?: number
+          description?: string | null
+          duration_hours?: number
+          escalation_rules?: Json | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority?: string
+          process_type?: string
+          updated_at?: string
+          warning_threshold?: number
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
