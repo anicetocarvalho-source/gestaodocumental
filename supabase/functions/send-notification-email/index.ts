@@ -356,9 +356,38 @@ const handler = async (req: Request): Promise<Response> => {
       html: html,
     });
 
+    // Check if Resend returned an error
+    if ((emailResponse as any).error) {
+      const resendError = (emailResponse as any).error;
+      console.error("Resend API error:", resendError);
+      
+      // Log the failed email
+      await supabase
+        .from("email_logs")
+        .insert({
+          recipient_email: email,
+          recipient_user_id: userAuthId,
+          email_type: type,
+          subject: subject,
+          reference_type: data.referenceType,
+          reference_id: data.referenceId,
+          status: 'error',
+          error_message: resendError.message || 'Unknown Resend error'
+        });
+
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: resendError.message,
+          details: "Email sending failed. Check Resend domain verification."
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     console.log("Email sent successfully:", emailResponse);
 
-    // Log the email
+    // Log the successful email
     await supabase
       .from("email_logs")
       .insert({
