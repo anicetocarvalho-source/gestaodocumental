@@ -1,4 +1,4 @@
-import { Bell, HelpCircle, Settings, Search, LogOut, User, ClipboardCheck } from "lucide-react";
+import { Bell, Settings, Search, LogOut, User, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, roleLabels } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { usePendingApprovalsCount } from "@/hooks/usePendingApprovalsCount";
+import { HelpMenu } from "@/components/help/HelpMenu";
 
 interface HeaderProps {
   title: string;
@@ -82,7 +83,13 @@ export function Header({ title, subtitle }: HeaderProps) {
       <div className="flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="relative text-muted-foreground hover:text-foreground" 
+              asChild
+              data-tour="pending-approvals-btn"
+            >
               <Link to="/pending-approvals">
                 <ClipboardCheck className="h-5 w-5" />
                 {pendingApprovalsCount > 0 && (
@@ -102,10 +109,14 @@ export function Header({ title, subtitle }: HeaderProps) {
             </p>
           </TooltipContent>
         </Tooltip>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-          <HelpCircle className="h-5 w-5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" asChild>
+        <HelpMenu />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative text-muted-foreground hover:text-foreground" 
+          asChild
+          data-tour="notifications-btn"
+        >
           <Link to="/notifications">
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
@@ -125,7 +136,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         {isAuthenticated && profile ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="ml-2 gap-2 px-2">
+              <Button variant="ghost" className="ml-2 gap-2 px-2" data-tour="user-menu">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
                     {getInitials(displayName)}

@@ -516,3 +516,58 @@ input[type="checkbox"]:checked,
 input[type="radio"]:checked {
   @apply bg-primary border-primary;
 }
+
+/* === DRIVER.JS TOUR STYLES === */
+.minagrif-tour-popover {
+  @apply !rounded-xl !shadow-xl;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-title {
+  @apply !text-lg !font-semibold;
+  color: hsl(var(--foreground)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-description {
+  @apply !text-sm !leading-relaxed;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-progress-text {
+  @apply !text-xs;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-prev-btn {
+  @apply !rounded-lg !px-4 !py-2 !text-sm !font-medium !border-0;
+  background: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-prev-btn:hover {
+  background: hsl(var(--secondary) / 0.8) !important;
+}
+
+.minagrif-tour-popover .driver-popover-next-btn {
+  @apply !rounded-lg !px-4 !py-2 !text-sm !font-medium !border-0;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-next-btn:hover {
+  background: hsl(var(--primary-hover)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-close-btn {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.minagrif-tour-popover .driver-popover-close-btn:hover {
+  color: hsl(var(--foreground)) !important;
+}
+
+.driver-overlay {
+  background: hsl(var(--background) / 0.85) !important;
+  backdrop-filter: blur(4px);
+}
