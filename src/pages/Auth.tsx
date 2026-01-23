@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Mail, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowLeft, Mail, ShieldCheck, Users, FileText, Eye, ChevronDown, FlaskConical } from "lucide-react";
 import { z } from "zod";
+import { useDemoAuth, DemoRole, roleLabels, roleDescriptions } from "@/contexts/DemoAuthContext";
 import { Logo } from "@/components/layout/Logo";
 
 const emailSchema = z.string().email("E-mail inválido");
@@ -15,12 +19,21 @@ const passwordSchema = z.string().min(6, "A palavra-passe deve ter pelo menos 6 
 
 type AuthView = "login" | "forgot-password" | "reset-sent";
 
+const testUsers: { role: Exclude<DemoRole, null>; icon: React.ReactNode; color: string }[] = [
+  { role: "admin", icon: <ShieldCheck className="h-4 w-4" />, color: "bg-red-500/10 text-red-600 border-red-500/20" },
+  { role: "gestor", icon: <Users className="h-4 w-4" />, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  { role: "tecnico", icon: <FileText className="h-4 w-4" />, color: "bg-green-500/10 text-green-600 border-green-500/20" },
+  { role: "consulta", icon: <Eye className="h-4 w-4" />, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+];
+
 const Auth = () => {
   const navigate = useNavigate();
+  const { login: demoLogin } = useDemoAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [view, setView] = useState<AuthView>("login");
+  const [testLoginOpen, setTestLoginOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -314,11 +327,63 @@ const Auth = () => {
                 </Button>
               </form>
 
+              {/* Test Users Section */}
               <div className="mt-6 pt-6 border-t border-border">
-                <p className="text-xs text-center text-muted-foreground">
-                  Não tem conta? Contacte o administrador do sistema para obter acesso.
-                </p>
+                <Collapsible open={testLoginOpen} onOpenChange={setTestLoginOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-between text-muted-foreground hover:text-foreground"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FlaskConical className="h-4 w-4" />
+                        <span className="text-sm">Acesso de Teste (Demo)</span>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${testLoginOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-3 space-y-2">
+                    <p className="text-xs text-muted-foreground text-center mb-3">
+                      Selecione um perfil para explorar o sistema
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {testUsers.map(({ role, icon, color }) => (
+                        <Button
+                          key={role}
+                          variant="outline"
+                          size="sm"
+                          className={`h-auto py-2 px-3 flex-col items-start gap-1 ${color} border hover:opacity-80`}
+                          onClick={() => {
+                            demoLogin(role);
+                            toast.success(`Sessão demo iniciada como ${roleLabels[role]}`);
+                            navigate("/");
+                          }}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            {icon}
+                            <span className="font-medium text-xs">{roleLabels[role]}</span>
+                          </div>
+                          <span className="text-[10px] opacity-70 text-left line-clamp-1">
+                            {roleDescriptions[role].split(",")[0]}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-center gap-1 mt-2">
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <FlaskConical className="h-3 w-3" />
+                        Ambiente de Demonstração
+                      </Badge>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
+
+              <Separator className="my-4" />
+              
+              <p className="text-xs text-center text-muted-foreground">
+                Não tem conta? Contacte o administrador do sistema para obter acesso.
+              </p>
             </CardContent>
           </Card>
 
