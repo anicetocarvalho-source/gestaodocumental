@@ -99,6 +99,7 @@ const App = () => (
               <Route path="/procedure-guide" element={<ProtectedRoute><ProcedureGuide /></ProtectedRoute>} />
               <Route path="/assistant" element={<ProtectedRoute><InstitutionalAssistant /></ProtectedRoute>} />
               <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
+              <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
