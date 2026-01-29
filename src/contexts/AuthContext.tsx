@@ -22,6 +22,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  // Demo mode support
+  setDemoProfile: (profile: Profile | null) => void;
+  setDemoAuthenticated: (isAuthenticated: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Demo mode state
+  const [demoProfile, setDemoProfile] = useState<Profile | null>(null);
+  const [demoAuthenticated, setDemoAuthenticated] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -88,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    // Also clear demo state
+    setDemoProfile(null);
+    setDemoAuthenticated(false);
   };
 
   const refreshProfile = async () => {
@@ -96,16 +106,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Determine if user is authenticated (either Supabase or Demo)
+  const isAuthenticated = !!session || demoAuthenticated;
+  
+  // Use real profile if available, otherwise use demo profile
+  const effectiveProfile = profile || demoProfile;
+
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
-        profile,
+        profile: effectiveProfile,
         isLoading,
-        isAuthenticated: !!session,
+        isAuthenticated,
         signOut,
         refreshProfile,
+        setDemoProfile,
+        setDemoAuthenticated,
       }}
     >
       {children}

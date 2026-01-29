@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useDemoAuth, DemoRole } from "@/contexts/DemoAuthContext";
 
 export type AppRole = "admin" | "gestor" | "tecnico" | "consulta";
 
@@ -11,9 +12,21 @@ interface UserRole {
 }
 
 export function useUserRole() {
+  const demoAuth = useDemoAuth();
+  
   const { data: roles, isLoading, error } = useQuery({
-    queryKey: ["user-roles"],
+    queryKey: ["user-roles", demoAuth.role],
     queryFn: async () => {
+      // If in demo mode, return the demo role
+      if (demoAuth.isAuthenticated && demoAuth.role) {
+        return [{
+          id: `demo-${demoAuth.role}`,
+          user_id: `demo-${demoAuth.role}`,
+          role: demoAuth.role as AppRole,
+          created_at: new Date().toISOString(),
+        }] as UserRole[];
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
