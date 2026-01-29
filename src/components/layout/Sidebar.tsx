@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "./Logo";
+import { SidebarNavGroup } from "./SidebarNavGroup";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, AppRole, roleLabels } from "@/hooks/useUserRole";
 import { usePendingApprovalsCount } from "@/hooks/usePendingApprovalsCount";
@@ -41,42 +42,48 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface BadgeInfo {
-  count: number;
-  urgent: number;
-  hasUrgent: boolean;
-}
-
 interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
   roles: AppRole[];
-  badge?: BadgeInfo;
 }
 
-const navigation: NavItem[] = [
+// Grouped navigation structure
+const dashboardItems: NavItem[] = [
   { name: "Painel", href: "/", icon: LayoutDashboard, roles: ["admin", "gestor", "tecnico", "consulta"] },
+];
+
+const documentItems: NavItem[] = [
   { name: "Documentos", href: "/documents", icon: FileText, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Processos", href: "/processes", icon: ClipboardList, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Expedições", href: "/dispatches", icon: Package, roles: ["admin", "gestor", "tecnico"] },
   { name: "Aprovações", href: "/approvals", icon: CheckSquare, roles: ["admin", "gestor"] },
-  { name: "Assistente IA", href: "/assistant", icon: Bot, roles: ["admin", "gestor", "tecnico", "consulta"] },
-  { name: "Digitalização", href: "/digitization", icon: ScanLine, roles: ["admin", "gestor", "tecnico"] },
-  { name: "Processamento OCR", href: "/ocr-processing", icon: FileSearch, roles: ["admin", "gestor", "tecnico"] },
-  { name: "Classificação", href: "/classification", icon: Tags, roles: ["admin", "gestor", "tecnico"] },
-  { name: "Revisão Qualidade", href: "/quality-review", icon: FileCheck, roles: ["admin", "gestor"] },
-  { name: "Relatórios", href: "/reports", icon: BarChart3, roles: ["admin", "gestor"] },
   { name: "Movimentações", href: "/movement-history", icon: History, roles: ["admin", "gestor", "tecnico", "consulta"] },
+];
+
+const digitizationItems: NavItem[] = [
+  { name: "Digitalização", href: "/digitization", icon: ScanLine, roles: ["admin", "gestor", "tecnico"] },
+  { name: "OCR", href: "/ocr-processing", icon: FileSearch, roles: ["admin", "gestor", "tecnico"] },
+  { name: "Classificação", href: "/classification", icon: Tags, roles: ["admin", "gestor", "tecnico"] },
+  { name: "Revisão", href: "/quality-review", icon: FileCheck, roles: ["admin", "gestor"] },
+];
+
+const archiveItems: NavItem[] = [
   { name: "Pastas", href: "/folders", icon: FolderOpen, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Arquivo", href: "/archive", icon: Archive, roles: ["admin", "gestor", "tecnico", "consulta"] },
 ];
 
-const management: NavItem[] = [
+const toolsItems: NavItem[] = [
+  { name: "Assistente IA", href: "/assistant", icon: Bot, roles: ["admin", "gestor", "tecnico", "consulta"] },
+  { name: "Relatórios", href: "/reports", icon: BarChart3, roles: ["admin", "gestor"] },
+];
+
+const managementItems: NavItem[] = [
   { name: "Utilizadores", href: "/users", icon: Users, roles: ["admin"] },
   { name: "Permissões", href: "/permissions", icon: Shield, roles: ["admin"] },
   { name: "Notificações", href: "/notifications", icon: Bell, roles: ["admin", "gestor", "tecnico", "consulta"] },
-  { name: "Editor Fluxos", href: "/workflow-builder", icon: GitBranch, roles: ["admin"] },
+  { name: "Fluxos", href: "/workflow-builder", icon: GitBranch, roles: ["admin"] },
   { name: "Modelos", href: "/process-templates", icon: Layers, roles: ["admin", "gestor"] },
   { name: "Definições", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
@@ -102,9 +109,11 @@ export function Sidebar() {
   };
 
   // Filter menu items based on user role and add badge for approvals
-  const filteredNavigation = navigation
-    .filter(item => primaryRole && item.roles.includes(primaryRole))
-    .map(item => ({
+  const filterByRole = (items: NavItem[]) => 
+    items.filter(item => primaryRole && item.roles.includes(primaryRole));
+
+  const addBadgeToApprovals = (items: NavItem[]) => 
+    items.map(item => ({
       ...item,
       badge: item.href === '/approvals' && pendingApprovalsCount.total > 0
         ? { 
@@ -114,88 +123,14 @@ export function Sidebar() {
           }
         : undefined,
     }));
-  
-  const filteredManagement = management.filter(item => 
-    primaryRole && item.roles.includes(primaryRole)
-  );
 
-  const NavItemComponent = ({ item }: { item: NavItem }) => {
-    const isActive = location.pathname === item.href || 
-      (item.href !== '/' && location.pathname.startsWith(item.href));
-    
-    const linkContent = (
-      <NavLink
-        to={item.href}
-        className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
-          isActive
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-        )}
-        aria-current={isActive ? 'page' : undefined}
-      >
-        <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {!collapsed && <span className="truncate flex-1">{item.name}</span>}
-        {item.badge && (
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Badge 
-                variant={item.badge.hasUrgent ? "destructive" : "secondary"}
-                className={cn(
-                  "h-5 min-w-5 px-1.5 text-[10px] font-semibold cursor-help",
-                  collapsed && "absolute -top-1 -right-1",
-                  item.badge.hasUrgent && "animate-pulse"
-                )}
-              >
-                {item.badge.count > 99 ? '99+' : item.badge.count}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {item.badge.hasUrgent 
-                ? `${item.badge.urgent} urgente${item.badge.urgent > 1 ? 's' : ''} de ${item.badge.count} pendente${item.badge.count > 1 ? 's' : ''}`
-                : `${item.badge.count} aprovação${item.badge.count > 1 ? 'ões' : ''} pendente${item.badge.count > 1 ? 's' : ''}`
-              }
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </NavLink>
-    );
+  const filteredDashboard = filterByRole(dashboardItems);
+  const filteredDocuments = addBadgeToApprovals(filterByRole(documentItems));
+  const filteredDigitization = filterByRole(digitizationItems);
+  const filteredArchive = filterByRole(archiveItems);
+  const filteredTools = filterByRole(toolsItems);
+  const filteredManagement = filterByRole(managementItems);
 
-    if (collapsed) {
-      return (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <div className="relative">
-              {linkContent}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="font-medium flex items-center gap-2">
-            {item.name}
-            {item.badge && (
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Badge 
-                    variant={item.badge.hasUrgent ? "destructive" : "secondary"} 
-                    className={cn("h-4 min-w-4 px-1 text-[9px] cursor-help", item.badge.hasUrgent && "animate-pulse")}
-                  >
-                    {item.badge.count > 99 ? '99+' : item.badge.count}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  {item.badge.hasUrgent 
-                    ? `${item.badge.urgent} urgente${item.badge.urgent > 1 ? 's' : ''} de ${item.badge.count}`
-                    : `${item.badge.count} pendente${item.badge.count > 1 ? 's' : ''}`
-                  }
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return linkContent;
-  };
 
   const displayName = profile?.full_name || "Utilizador";
   const displayRole = primaryRole || "consulta";
@@ -243,35 +178,38 @@ export function Sidebar() {
 
       {/* Navegação */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2" aria-label="Navegação primária">
-        {filteredNavigation.length > 0 && (
-          <div className="space-y-0.5">
-            {!collapsed && (
-              <span className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted/70">
-                Principal
-              </span>
-            )}
-            <div className="space-y-0.5 pt-1">
-              {filteredNavigation.map((item) => (
-                <NavItemComponent key={item.name} item={item} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {filteredManagement.length > 0 && (
-          <div className="space-y-0.5 pt-6">
-            {!collapsed && (
-              <span className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted/70">
-                Gestão
-              </span>
-            )}
-            <div className="space-y-0.5 pt-1">
-              {filteredManagement.map((item) => (
-                <NavItemComponent key={item.name} item={item} />
-              ))}
-            </div>
-          </div>
-        )}
+        <SidebarNavGroup 
+          label="Início" 
+          items={filteredDashboard} 
+          collapsed={collapsed} 
+          defaultOpen 
+        />
+        <SidebarNavGroup 
+          label="Gestão Documental" 
+          items={filteredDocuments} 
+          collapsed={collapsed} 
+          defaultOpen 
+        />
+        <SidebarNavGroup 
+          label="Digitalização" 
+          items={filteredDigitization} 
+          collapsed={collapsed} 
+        />
+        <SidebarNavGroup 
+          label="Arquivo" 
+          items={filteredArchive} 
+          collapsed={collapsed} 
+        />
+        <SidebarNavGroup 
+          label="Ferramentas" 
+          items={filteredTools} 
+          collapsed={collapsed} 
+        />
+        <SidebarNavGroup 
+          label="Administração" 
+          items={filteredManagement} 
+          collapsed={collapsed} 
+        />
       </nav>
 
       {/* Utilizador */}
