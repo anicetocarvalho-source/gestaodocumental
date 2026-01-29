@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useAuth } from "./AuthContext";
 
 export type DemoRole = "admin" | "gestor" | "tecnico" | "consulta" | null;
 
@@ -51,21 +52,52 @@ const DemoAuthContext = createContext<DemoAuthContextType | undefined>(undefined
 export function DemoAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DemoUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const auth = useAuth();
 
   useEffect(() => {
     // Check for existing demo session
     const savedRole = localStorage.getItem("demo_role") as DemoRole;
     if (savedRole && demoUsers[savedRole]) {
-      setUser(demoUsers[savedRole]);
+      const demoUser = demoUsers[savedRole];
+      setUser(demoUser);
       setIsAuthenticated(true);
+      
+      // Sync with AuthContext
+      auth.setDemoAuthenticated(true);
+      auth.setDemoProfile({
+        id: `demo-${savedRole}`,
+        user_id: `demo-${savedRole}`,
+        full_name: demoUser.name,
+        email: demoUser.email,
+        phone: null,
+        position: demoUser.department,
+        unit_id: null,
+        avatar_url: demoUser.avatar || null,
+        is_active: true,
+      });
     }
   }, []);
 
   const login = (role: DemoRole) => {
     if (role && demoUsers[role]) {
-      setUser(demoUsers[role]);
+      const demoUser = demoUsers[role];
+      setUser(demoUser);
       setIsAuthenticated(true);
       localStorage.setItem("demo_role", role);
+      
+      // Sync with AuthContext
+      auth.setDemoAuthenticated(true);
+      auth.setDemoProfile({
+        id: `demo-${role}`,
+        user_id: `demo-${role}`,
+        full_name: demoUser.name,
+        email: demoUser.email,
+        phone: null,
+        position: demoUser.department,
+        unit_id: null,
+        avatar_url: demoUser.avatar || null,
+        is_active: true,
+      });
     }
   };
 
@@ -73,6 +105,10 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem("demo_role");
+    
+    // Sync with AuthContext
+    auth.setDemoAuthenticated(false);
+    auth.setDemoProfile(null);
   };
 
   const hasPermission = (requiredRoles: DemoRole[]) => {
