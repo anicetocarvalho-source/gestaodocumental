@@ -2238,6 +2238,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_can_access_dispatch: {
+        Args: { _dispatch_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "gestor" | "tecnico" | "consulta"
