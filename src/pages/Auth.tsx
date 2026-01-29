@@ -352,7 +352,7 @@ const Auth = () => {
                           key={role}
                           variant="outline"
                           size="sm"
-                          className={`h-auto py-2 px-3 flex-col items-start gap-1 ${color} border hover:opacity-80`}
+                          className={`h-auto py-2 px-3 flex-col items-start gap-1 ${color} border hover:opacity-80 overflow-hidden`}
                           onClick={() => {
                             demoLogin(role);
                             toast.success(`Sessão demo iniciada como ${roleLabels[role]}`);
@@ -363,7 +363,7 @@ const Auth = () => {
                             {icon}
                             <span className="font-medium text-xs">{roleLabels[role]}</span>
                           </div>
-                          <span className="text-[10px] opacity-70 text-left line-clamp-1">
+                          <span className="text-[10px] opacity-70 text-left truncate w-full">
                             {roleDescriptions[role].split(",")[0]}
                           </span>
                         </Button>
