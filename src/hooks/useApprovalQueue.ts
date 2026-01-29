@@ -50,14 +50,14 @@ const formatTimeAgo = (dateString: string) => {
 };
 
 export function useApprovalQueue() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch all pending approvals for the current user
+  // Fetch all pending approvals for the current user using profile.id
   const { data: approvalItems = [], isLoading, error } = useQuery({
-    queryKey: ['approval-queue', user?.id],
+    queryKey: ['approval-queue', profile?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!profile?.id) return [];
 
       // Fetch pending dispatch approvals for the current user
       const { data: dispatchApprovals, error: dispatchError } = await supabase
@@ -81,7 +81,7 @@ export function useApprovalQueue() {
             organizational_units:origin_unit_id (name)
           )
         `)
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'pendente')
         .order('created_at', { ascending: false });
 
@@ -134,27 +134,27 @@ export function useApprovalQueue() {
 
       return items;
     },
-    enabled: !!user?.id,
+    enabled: !!profile?.id,
   });
 
   // Fetch stats
   const { data: stats } = useQuery({
-    queryKey: ['approval-queue-stats', user?.id],
+    queryKey: ['approval-queue-stats', profile?.id],
     queryFn: async (): Promise<ApprovalStats> => {
-      if (!user?.id) return { pending: 0, urgent: 0, approvedToday: 0, rejected: 0 };
+      if (!profile?.id) return { pending: 0, urgent: 0, approvedToday: 0, rejected: 0 };
 
       // Get pending count
       const { count: pendingCount } = await supabase
         .from('dispatch_approvals')
         .select('*', { count: 'exact', head: true })
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'pendente');
 
       // Get urgent count (pending with urgent/alta priority dispatches)
       const { data: urgentItems } = await supabase
         .from('dispatch_approvals')
         .select('dispatch_id, dispatches!inner(priority)')
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'pendente')
         .in('dispatches.priority', ['urgente', 'alta']);
 
@@ -164,7 +164,7 @@ export function useApprovalQueue() {
       const { count: approvedTodayCount } = await supabase
         .from('dispatch_approvals')
         .select('*', { count: 'exact', head: true })
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'aprovado')
         .gte('approved_at', today.toISOString());
 
@@ -172,7 +172,7 @@ export function useApprovalQueue() {
       const { count: rejectedCount } = await supabase
         .from('dispatch_approvals')
         .select('*', { count: 'exact', head: true })
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'rejeitado');
 
       return {
@@ -182,7 +182,7 @@ export function useApprovalQueue() {
         rejected: rejectedCount || 0,
       };
     },
-    enabled: !!user?.id,
+    enabled: !!profile?.id,
   });
 
   // Process approval mutation

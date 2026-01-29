@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export function usePendingApprovalsRealtime() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const queryClient = useQueryClient();
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!user?.id) {
+    // Use profile.id (FK to dispatch_approvals.approver_id), not user.id (auth.users.id)
+    if (!profile?.id) {
       return;
     }
 
@@ -21,14 +22,14 @@ export function usePendingApprovalsRealtime() {
     }
 
     const channel = supabase
-      .channel(`pending-approvals-${user.id}`)
+      .channel(`pending-approvals-${profile.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'dispatch_approvals',
-          filter: `approver_id=eq.${user.id}`,
+          filter: `approver_id=eq.${profile.id}`,
         },
         async (payload) => {
           // Fetch dispatch details to check priority
@@ -54,7 +55,7 @@ export function usePendingApprovalsRealtime() {
           );
 
           // Invalidate queries to refresh counts
-          queryClient.invalidateQueries({ queryKey: ['pending-approvals-count', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['pending-approvals-count', profile.id] });
           queryClient.invalidateQueries({ queryKey: ['approval-items'] });
         }
       )
@@ -64,11 +65,11 @@ export function usePendingApprovalsRealtime() {
           event: 'UPDATE',
           schema: 'public',
           table: 'dispatch_approvals',
-          filter: `approver_id=eq.${user.id}`,
+          filter: `approver_id=eq.${profile.id}`,
         },
         () => {
           // Refresh counts when approval status changes
-          queryClient.invalidateQueries({ queryKey: ['pending-approvals-count', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['pending-approvals-count', profile.id] });
           queryClient.invalidateQueries({ queryKey: ['approval-items'] });
         }
       )
@@ -82,5 +83,5 @@ export function usePendingApprovalsRealtime() {
         channelRef.current = null;
       }
     };
-  }, [user?.id, queryClient]);
+  }, [profile?.id, queryClient]);
 }

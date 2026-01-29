@@ -10,25 +10,25 @@ interface PendingApprovalsResult {
 }
 
 export function usePendingApprovalsCount(): PendingApprovalsResult {
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   const { data = { total: 0, urgent: 0, hasUrgent: false } } = useQuery({
-    queryKey: ['pending-approvals-count', user?.id],
+    queryKey: ['pending-approvals-count', profile?.id],
     queryFn: async (): Promise<PendingApprovalsResult> => {
-      if (!user?.id) return { total: 0, urgent: 0, hasUrgent: false };
+      if (!profile?.id) return { total: 0, urgent: 0, hasUrgent: false };
 
-      // Fetch total pending approvals
+      // Fetch total pending approvals using profile.id (not user.id)
       const { count: totalCount } = await supabase
         .from('dispatch_approvals')
         .select('*', { count: 'exact', head: true })
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'pendente');
 
       // Fetch urgent pending approvals (join with dispatches to check priority)
       const { data: urgentData } = await supabase
         .from('dispatch_approvals')
         .select('id, dispatches!inner(priority)')
-        .eq('approver_id', user.id)
+        .eq('approver_id', profile.id)
         .eq('status', 'pendente')
         .eq('dispatches.priority', 'urgente');
 
@@ -37,7 +37,7 @@ export function usePendingApprovalsCount(): PendingApprovalsResult {
 
       return { total, urgent, hasUrgent: urgent > 0 };
     },
-    enabled: !!user?.id,
+    enabled: !!profile?.id,
     refetchInterval: 30000,
   });
 
