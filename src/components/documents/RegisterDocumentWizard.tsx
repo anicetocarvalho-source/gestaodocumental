@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { useDocumentTypes, useOrganizationalUnits, useClassificationCodes } from "@/hooks/useReferenceData";
 import { useCreateDocument } from "@/hooks/useDocuments";
 import { useUploadDocumentFile } from "@/hooks/useFileUpload";
+import { FieldHelp, fieldHelpTexts } from "@/components/common/FieldHelp";
+import { QuickPick } from "@/components/common/QuickPick";
 import { 
   DocumentPriority, 
   DocumentConfidentiality,
@@ -125,6 +127,42 @@ export function RegisterDocumentWizard() {
 
   const isLoading = loadingTypes || loadingUnits || loadingClassifications;
   const progress = (currentStep / steps.length) * 100;
+
+  // Quick pick options - most commonly used items
+  const quickPickDocTypes = useMemo(() => {
+    if (!documentTypes) return [];
+    // Show first 3 as "frequently used" 
+    return documentTypes.slice(0, 3).map(t => ({
+      id: t.id,
+      label: t.name,
+    }));
+  }, [documentTypes]);
+
+  const quickPickUnits = useMemo(() => {
+    if (!organizationalUnits) return [];
+    // Show top-level units (level 1) as frequently used
+    return organizationalUnits
+      .filter(u => u.level === 1)
+      .slice(0, 3)
+      .map(u => ({
+        id: u.id,
+        label: u.name,
+        subLabel: u.code,
+      }));
+  }, [organizationalUnits]);
+
+  const quickPickClassifications = useMemo(() => {
+    if (!classificationCodes) return [];
+    // Show top-level classifications
+    return classificationCodes
+      .filter(c => c.level === 1)
+      .slice(0, 3)
+      .map(c => ({
+        id: c.id,
+        label: c.name,
+        subLabel: c.code,
+      }));
+  }, [classificationCodes]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -362,81 +400,117 @@ export function RegisterDocumentWizard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="type">Tipo de Documento *</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="type">Tipo de Documento *</Label>
+                      <FieldHelp helpText={fieldHelpTexts.documentType} size="sm" />
+                    </div>
                     {loadingTypes ? (
                       <Skeleton className="h-10 w-full" />
                     ) : (
-                      <Select 
-                        value={formData.documentTypeId} 
-                        onValueChange={(value) => updateFormData("documentTypeId", value)}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="type">
-                          <SelectValue placeholder="Seleccione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {documentTypes?.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <>
+                        <QuickPick 
+                          options={quickPickDocTypes}
+                          selectedValue={formData.documentTypeId}
+                          onSelect={(id) => updateFormData("documentTypeId", id)}
+                          disabled={isSubmitting}
+                        />
+                        <Select 
+                          value={formData.documentTypeId} 
+                          onValueChange={(value) => updateFormData("documentTypeId", value)}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger id="type">
+                            <SelectValue placeholder="Seleccione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {documentTypes?.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="currentUnit">Unidade de Destino *</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="currentUnit">Unidade de Destino *</Label>
+                      <FieldHelp helpText={fieldHelpTexts.organizationalUnit} size="sm" />
+                    </div>
                     {loadingUnits ? (
                       <Skeleton className="h-10 w-full" />
                     ) : (
-                      <Select 
-                        value={formData.currentUnitId} 
-                        onValueChange={(value) => updateFormData("currentUnitId", value)}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger id="currentUnit">
-                          <SelectValue placeholder="Seleccione a unidade" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {organizationalUnits?.map((unit) => (
-                            <SelectItem key={unit.id} value={unit.id}>
-                              {unit.code} - {unit.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <>
+                        <QuickPick 
+                          options={quickPickUnits}
+                          selectedValue={formData.currentUnitId}
+                          onSelect={(id) => updateFormData("currentUnitId", id)}
+                          disabled={isSubmitting}
+                        />
+                        <Select 
+                          value={formData.currentUnitId} 
+                          onValueChange={(value) => updateFormData("currentUnitId", value)}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger id="currentUnit">
+                            <SelectValue placeholder="Seleccione a unidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organizationalUnits?.map((unit) => (
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.code} - {unit.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="classification">Classificação</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="classification">Classificação</Label>
+                    <FieldHelp helpText={fieldHelpTexts.classification} size="sm" />
+                  </div>
                   {loadingClassifications ? (
                     <Skeleton className="h-10 w-full" />
                   ) : (
-                    <Select 
-                      value={formData.classificationId} 
-                      onValueChange={(value) => updateFormData("classificationId", value)}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger id="classification">
-                        <SelectValue placeholder="Seleccione a classificação" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classificationCodes?.map((code) => (
-                          <SelectItem key={code.id} value={code.id}>
-                            {code.code} - {code.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <>
+                      <QuickPick 
+                        options={quickPickClassifications}
+                        selectedValue={formData.classificationId}
+                        onSelect={(id) => updateFormData("classificationId", id)}
+                        disabled={isSubmitting}
+                      />
+                      <Select 
+                        value={formData.classificationId} 
+                        onValueChange={(value) => updateFormData("classificationId", value)}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger id="classification">
+                          <SelectValue placeholder="Seleccione a classificação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classificationCodes?.map((code) => (
+                            <SelectItem key={code.id} value={code.id}>
+                              {code.code} - {code.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="priority">Prioridade</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="priority">Prioridade</Label>
+                      <FieldHelp helpText={fieldHelpTexts.priority} size="sm" />
+                    </div>
                     <Select 
                       value={formData.priority} 
                       onValueChange={(value) => updateFormData("priority", value as DocumentPriority)}
@@ -454,7 +528,10 @@ export function RegisterDocumentWizard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confidentiality">Confidencialidade</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="confidentiality">Confidencialidade</Label>
+                      <FieldHelp helpText={fieldHelpTexts.confidentiality} size="sm" />
+                    </div>
                     <Select 
                       value={formData.confidentiality} 
                       onValueChange={(value) => updateFormData("confidentiality", value as DocumentConfidentiality)}
