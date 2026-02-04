@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { isValidUUID } from '@/lib/validation';
 import { 
   Document, 
   CreateDocumentInput, 
@@ -105,7 +106,7 @@ export function useDocument(id: string | undefined) {
   return useQuery({
     queryKey: ['document', id],
     queryFn: async (): Promise<Document | null> => {
-      if (!id) return null;
+      if (!id || !isValidUUID(id)) return null;
 
       const { data, error } = await supabase
         .from('documents')
@@ -140,7 +141,7 @@ export function useDocument(id: string | undefined) {
 
       return data as unknown as Document;
     },
-    enabled: !!id,
+    enabled: !!id && isValidUUID(id),
   });
 }
 

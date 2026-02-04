@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Database } from "@/integrations/supabase/types";
+import { isValidUUID } from "@/lib/validation";
 
 type DispatchType = Database["public"]["Enums"]["dispatch_type"];
 type DispatchStatus = Database["public"]["Enums"]["dispatch_status"];
@@ -139,7 +140,7 @@ export function useDispatch(id: string | undefined) {
   return useQuery({
     queryKey: ["dispatch", id],
     queryFn: async () => {
-      if (!id) return null;
+      if (!id || !isValidUUID(id)) return null;
       
       const { data, error } = await supabase
         .from("dispatches")
@@ -149,9 +150,10 @@ export function useDispatch(id: string | undefined) {
           signer:profiles!signer_id(id, full_name)
         `)
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) return null;
 
       // Fetch recipients separately
       const { data: recipients, error: recipientsError } = await supabase
@@ -167,7 +169,7 @@ export function useDispatch(id: string | undefined) {
 
       return { ...data, recipients } as Dispatch;
     },
-    enabled: !!id,
+    enabled: !!id && isValidUUID(id),
   });
 }
 

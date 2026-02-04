@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
+import { isValidUUID } from '@/lib/validation';
 
 // Types
 export interface ProcessType {
@@ -212,7 +213,7 @@ export function useProcess(processId: string | undefined) {
   return useQuery({
     queryKey: ['process', processId],
     queryFn: async () => {
-      if (!processId) return null;
+      if (!processId || !isValidUUID(processId)) return null;
 
       const { data, error } = await supabase
         .from('processes')
@@ -224,12 +225,12 @@ export function useProcess(processId: string | undefined) {
           responsible_user:profiles!processes_responsible_user_id_fkey(id, full_name)
         `)
         .eq('id', processId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data as Process;
     },
-    enabled: !!processId,
+    enabled: !!processId && isValidUUID(processId),
   });
 }
 
