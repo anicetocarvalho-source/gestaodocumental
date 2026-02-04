@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePendingApprovalsRealtime } from "./usePendingApprovalsRealtime";
+import { isValidUUID } from "@/lib/validation";
 
 interface PendingApprovalsResult {
   total: number;
@@ -15,7 +16,10 @@ export function usePendingApprovalsCount(): PendingApprovalsResult {
   const { data = { total: 0, urgent: 0, hasUrgent: false } } = useQuery({
     queryKey: ['pending-approvals-count', profile?.id],
     queryFn: async (): Promise<PendingApprovalsResult> => {
-      if (!profile?.id) return { total: 0, urgent: 0, hasUrgent: false };
+      // Skip API call if no profile or invalid UUID (demo mode uses non-UUID ids)
+      if (!profile?.id || !isValidUUID(profile.id)) {
+        return { total: 0, urgent: 0, hasUrgent: false };
+      }
 
       // Fetch total pending approvals using profile.id (not user.id)
       const { count: totalCount } = await supabase
@@ -37,7 +41,7 @@ export function usePendingApprovalsCount(): PendingApprovalsResult {
 
       return { total, urgent, hasUrgent: urgent > 0 };
     },
-    enabled: !!profile?.id,
+    enabled: !!profile?.id && isValidUUID(profile.id),
     refetchInterval: 30000,
   });
 
