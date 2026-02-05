@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { isValidUUID } from '@/lib/validation';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Types
 export interface ProcessType {
@@ -393,11 +394,16 @@ export function useProcessStats() {
 export function useCreateProcess() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user: authUser, profile } = useAuth();
 
   return useMutation({
     mutationFn: async (input: CreateProcessInput) => {
+      // Guard: block creation in demo mode (no real Supabase session)
+      if (!authUser && profile?.id && !isValidUUID(profile.id)) {
+        throw new Error('A criação de processos não está disponível no modo demo. Inicie sessão com uma conta real.');
+      }
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Não autenticado');
+      if (!user) throw new Error('Não autenticado. Por favor, inicie sessão.');
 
       const insertData = {
         process_type_id: input.process_type_id || null,

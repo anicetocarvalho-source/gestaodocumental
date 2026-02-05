@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { isValidUUID } from "@/lib/validation";
 
 export type ApprovalItemType = 'document' | 'process' | 'dispatch';
 
@@ -57,7 +58,7 @@ export function useApprovalQueue() {
   const { data: approvalItems = [], isLoading, error } = useQuery({
     queryKey: ['approval-queue', profile?.id],
     queryFn: async () => {
-      if (!profile?.id) return [];
+      if (!profile?.id || !isValidUUID(profile.id)) return [];
 
       // Fetch pending dispatch approvals for the current user
       const { data: dispatchApprovals, error: dispatchError } = await supabase
@@ -134,14 +135,14 @@ export function useApprovalQueue() {
 
       return items;
     },
-    enabled: !!profile?.id,
+    enabled: !!profile?.id && isValidUUID(profile.id),
   });
 
   // Fetch stats
   const { data: stats } = useQuery({
     queryKey: ['approval-queue-stats', profile?.id],
     queryFn: async (): Promise<ApprovalStats> => {
-      if (!profile?.id) return { pending: 0, urgent: 0, approvedToday: 0, rejected: 0 };
+      if (!profile?.id || !isValidUUID(profile.id)) return { pending: 0, urgent: 0, approvedToday: 0, rejected: 0 };
 
       // Get pending count
       const { count: pendingCount } = await supabase
@@ -182,7 +183,7 @@ export function useApprovalQueue() {
         rejected: rejectedCount || 0,
       };
     },
-    enabled: !!profile?.id,
+    enabled: !!profile?.id && isValidUUID(profile.id),
   });
 
   // Process approval mutation

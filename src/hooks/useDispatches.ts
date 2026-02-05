@@ -175,10 +175,18 @@ export function useDispatch(id: string | undefined) {
 
 export function useCreateDispatch() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async (input: CreateDispatchInput) => {
+      // Guard: block creation in demo mode (no real Supabase session)
+      if (!user && profile?.id && !isValidUUID(profile.id)) {
+        throw new Error('A criação de despachos não está disponível no modo demo. Inicie sessão com uma conta real.');
+      }
+      if (!user) {
+        throw new Error('Não autenticado. Por favor, inicie sessão.');
+      }
+
       // Create the dispatch
       const { data: dispatch, error: dispatchError } = await supabase
         .from("dispatches")
