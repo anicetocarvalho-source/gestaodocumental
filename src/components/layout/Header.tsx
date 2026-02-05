@@ -1,4 +1,4 @@
-import { Bell, Settings, Search, LogOut, User, ClipboardCheck, Keyboard } from "lucide-react";
+import { Bell, Settings, Search, LogOut, User, ClipboardCheck, Keyboard, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ import { HelpMenu } from "@/components/help/HelpMenu";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { RecentItemsDropdown } from "@/components/common/RecentItemsDropdown";
 import { FavoritesDropdown } from "@/components/common/FavoritesDropdown";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 interface HeaderProps {
   title: string;
@@ -44,6 +45,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { primaryRole } = useUserRole();
   const { data: unreadCount = 0 } = useUnreadCount();
   const { total: pendingApprovalsCount, urgent, hasUrgent } = usePendingApprovalsCount();
+  const { toggle, isMobile } = useSidebar();
 
   const handleLogout = async () => {
     await signOut();
@@ -64,16 +66,30 @@ export function Header({ title, subtitle }: HeaderProps) {
   const displayRole = primaryRole || "consulta";
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-6 lg:px-8 backdrop-blur-lg supports-[backdrop-filter]:bg-background/80">
-      <div className="flex-1 min-w-0">
-        <h1 className="text-lg font-semibold text-foreground tracking-tight truncate">{title}</h1>
-        {subtitle && (
-          <p className="text-sm text-muted-foreground truncate">{subtitle}</p>
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-4 md:px-6 lg:px-8 backdrop-blur-lg supports-[backdrop-filter]:bg-background/80">
+      <div className="flex items-center gap-3">
+        {/* Mobile menu button */}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggle}
+            className="md:hidden"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         )}
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-foreground tracking-tight truncate">{title}</h1>
+          {subtitle && (
+            <p className="text-sm text-muted-foreground truncate hidden sm:block">{subtitle}</p>
+          )}
+        </div>
       </div>
       
       {/* Pesquisa Global */}
-      <div className="hidden md:flex flex-1 max-w-md mx-8" data-tour="global-search">
+      <div className="hidden lg:flex flex-1 max-w-md mx-8" data-tour="global-search">
         <div className="relative w-full group">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input 
@@ -86,16 +102,18 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
       </div>
       
-      <div className="flex items-center gap-1">
-        <RecentItemsDropdown />
-        <FavoritesDropdown />
+      <div className="flex items-center gap-0.5 md:gap-1">
+        <div className="hidden sm:flex items-center gap-0.5">
+          <RecentItemsDropdown />
+          <FavoritesDropdown />
+        </div>
         <ThemeToggle />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="relative text-muted-foreground hover:text-foreground" 
+              className="relative text-muted-foreground hover:text-foreground hidden sm:inline-flex" 
               asChild
               data-tour="pending-approvals-btn"
             >
@@ -118,7 +136,9 @@ export function Header({ title, subtitle }: HeaderProps) {
             </p>
           </TooltipContent>
         </Tooltip>
-        <HelpMenu />
+        <span className="hidden md:inline-flex">
+          <HelpMenu />
+        </span>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -135,7 +155,7 @@ export function Header({ title, subtitle }: HeaderProps) {
             )}
           </Link>
         </Button>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" asChild>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex" asChild>
           <Link to="/settings">
             <Settings className="h-5 w-5" />
           </Link>

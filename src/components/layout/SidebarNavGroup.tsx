@@ -28,14 +28,15 @@ interface NavItem {
   badge?: BadgeInfo;
 }
 
-interface SidebarNavGroupProps {
+export interface SidebarNavGroupProps {
   label: string;
   items: NavItem[];
   collapsed: boolean;
   defaultOpen?: boolean;
+  onNavigate?: () => void;
 }
 
-export function SidebarNavGroup({ label, items, collapsed, defaultOpen = false }: SidebarNavGroupProps) {
+export function SidebarNavGroup({ label, items, collapsed, defaultOpen = false, onNavigate }: SidebarNavGroupProps) {
   const location = useLocation();
   const hasActiveItem = items.some(item => 
     location.pathname === item.href || 
@@ -53,6 +54,7 @@ export function SidebarNavGroup({ label, items, collapsed, defaultOpen = false }
     const linkContent = (
       <NavLink
         to={item.href}
+        onClick={onNavigate}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
           isActive
