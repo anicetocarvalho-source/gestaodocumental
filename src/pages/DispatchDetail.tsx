@@ -52,7 +52,7 @@ import { useProfiles } from "@/hooks/useReferenceData";
 import { useAuth } from "@/contexts/AuthContext";
 import { DispatchSignatureModal } from "@/components/dispatches/DispatchSignatureModal";
 import { DispatchApprovalModal } from "@/components/dispatches/DispatchApprovalModal";
-
+import { DispatchLinkedDocuments } from "@/components/dispatches/DispatchLinkedDocuments";
 const DispatchDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -505,6 +505,9 @@ const DispatchDetail = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Linked Documents */}
+          {id && <DispatchLinkedDocuments dispatchId={id} />}
         </div>
       </div>
 

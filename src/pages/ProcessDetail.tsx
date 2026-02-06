@@ -810,7 +810,40 @@ const ProcessDetail = () => {
             </Card>
           )}
 
-          {/* Related - TODO: fetch linked documents */}
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Resumo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Documentos</span>
+                <Badge variant="secondary">{processDocuments.length}</Badge>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Movimentações</span>
+                <Badge variant="secondary">{movements.length}</Badge>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Comentários</span>
+                <Badge variant="secondary">{comments.length}</Badge>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Pareceres</span>
+                <Badge variant="secondary">{opinions.length}</Badge>
+              </div>
+              <Separator className="my-2" />
+              <Link to={`/movement-history?process=${id}`}>
+                <Button variant="link" size="sm" className="w-full justify-start text-xs p-0 h-auto">
+                  <History className="h-3.5 w-3.5 mr-2" />
+                  Ver Histórico Completo
+                  <ChevronRight className="h-3 w-3 ml-auto" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Recent Movements */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Movimentações Recentes</CardTitle>
@@ -827,7 +860,7 @@ const ProcessDetail = () => {
                     <div className="flex items-center gap-2">
                       <Forward className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <span className="text-sm">{movement.action_type}</span>
+                        <span className="text-sm capitalize">{movement.action_type}</span>
                         {movement.to_unit && (
                           <p className="text-xs text-muted-foreground">Para: {movement.to_unit.name}</p>
                         )}

@@ -60,6 +60,7 @@ import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHi
 import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
+import { LinkedEntitiesPanel } from "@/components/documents/LinkedEntitiesPanel";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -830,8 +831,11 @@ const DocumentDetail = () => {
             </CardContent>
           </Card>
 
+          {/* Linked Entities (Processes & Dispatches) */}
+          <LinkedEntitiesPanel documentId={document.id} />
+
           {/* Document Classification Panel */}
-          <ClassificationPanel 
+          <ClassificationPanel
             documentId={document.id}
             currentClassification={document.classification?.code}
             compact={true}
@@ -934,6 +938,7 @@ const DocumentDetail = () => {
         open={createProcessModalOpen}
         onOpenChange={setCreateProcessModalOpen}
         documents={[{
+          id: document.id,
           number: document.entry_number,
           title: document.title,
           type: document.document_type?.name || "",
@@ -942,7 +947,7 @@ const DocumentDetail = () => {
           author: document.sender_name || "",
         }]}
         onProcessCreated={(processNumber) => {
-          console.log("Process created:", processNumber);
+          refetch();
           toast.success(`Processo ${processNumber} criado`);
         }}
       />
