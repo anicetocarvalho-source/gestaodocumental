@@ -117,7 +117,6 @@ export function useDocumentsByClassification(classificationId: string | null) {
           updated_at,
           classification_code:classification_codes(id, code, name),
           document_type:document_types(id, code, name),
-          created_by_profile:profiles!documents_created_by_fkey(full_name),
           files:document_files(id)
         `)
         .eq("classification_id", classificationId)
@@ -139,9 +138,7 @@ export function useDocumentsByClassification(classificationId: string | null) {
         document_type: Array.isArray(doc.document_type)
           ? doc.document_type[0] || null
           : doc.document_type,
-        created_by_profile: Array.isArray(doc.created_by_profile)
-          ? doc.created_by_profile[0] || null
-          : doc.created_by_profile,
+        created_by_profile: null,
         files_count: doc.files?.length || 0,
       })) as RepositoryDocument[];
     },
@@ -170,7 +167,6 @@ export function useRepositoryDocuments(filters?: {
           updated_at,
           classification_code:classification_codes(id, code, name),
           document_type:document_types(id, code, name),
-          created_by_profile:profiles!documents_created_by_fkey(full_name),
           files:document_files(id)
         `)
         .order("created_at", { ascending: false });
@@ -201,9 +197,7 @@ export function useRepositoryDocuments(filters?: {
         document_type: Array.isArray(doc.document_type)
           ? doc.document_type[0] || null
           : doc.document_type,
-        created_by_profile: Array.isArray(doc.created_by_profile)
-          ? doc.created_by_profile[0] || null
-          : doc.created_by_profile,
+        created_by_profile: null,
         files_count: doc.files?.length || 0,
       })) as RepositoryDocument[];
 

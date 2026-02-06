@@ -57,8 +57,7 @@ export function useArchivedDocuments(filters?: ArchiveFilters, pagination?: Pagi
           document_type:document_types(*),
           classification:classification_codes(*),
           current_unit:organizational_units!documents_current_unit_id_fkey(*),
-          responsible_user:profiles!documents_responsible_user_id_fkey(*),
-          created_by_user:profiles!documents_created_by_fkey(*)
+          responsible_user:profiles!documents_responsible_user_id_fkey(*)
         `, { count: 'exact' })
         .eq('is_archived', true);
 
