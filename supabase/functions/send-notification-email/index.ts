@@ -5,7 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface EmailRequest {
@@ -16,52 +16,20 @@ interface EmailRequest {
 }
 
 const getEmailTemplate = (type: string, data: Record<string, any>): { subject: string; html: string } => {
-  const baseStyles = `
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    line-height: 1.6;
-    color: #333;
-  `;
-
-  const headerStyle = `
-    background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 100%);
-    padding: 24px;
-    border-radius: 8px 8px 0 0;
-  `;
-
-  const contentStyle = `
-    background-color: #f9fafb;
-    padding: 24px;
-    border: 1px solid #e5e7eb;
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-  `;
-
-  const buttonStyle = `
-    display: inline-block;
-    background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 100%);
-    color: white;
-    padding: 12px 24px;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 600;
-  `;
+  const baseStyles = `font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333;`;
+  const headerStyle = `background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 100%); padding: 24px; border-radius: 8px 8px 0 0;`;
+  const contentStyle = `background-color: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;`;
 
   switch (type) {
     case 'pending_approval':
       return {
         subject: `🔔 Aprovação Pendente: ${data.itemType === 'dispatch' ? 'Despacho' : 'Processo'} ${data.itemNumber}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>Aprovação Pendente</title></head>
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
           <body style="${baseStyles} max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="${headerStyle}">
-              <h1 style="color: white; margin: 0; font-size: 24px;">🔔 Aprovação Pendente</h1>
-            </div>
+            <div style="${headerStyle}"><h1 style="color: white; margin: 0; font-size: 24px;">🔔 Aprovação Pendente</h1></div>
             <div style="${contentStyle}">
-              <p style="margin-top: 0;">Olá <strong>${data.recipientName}</strong>,</p>
+              <p>Olá <strong>${data.recipientName}</strong>,</p>
               <p>Tem um ${data.itemType === 'dispatch' ? 'despacho' : 'processo'} a aguardar a sua aprovação:</p>
-              
               <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 20px 0; border-radius: 4px;">
                 <p style="margin: 0 0 8px 0;"><strong>Número:</strong> ${data.itemNumber}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Assunto:</strong> ${data.subject}</p>
@@ -69,90 +37,48 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 <p style="margin: 0 0 8px 0;"><strong>Prioridade:</strong> ${data.priority}</p>
                 ${data.deadline ? `<p style="margin: 0;"><strong>Prazo:</strong> ${data.deadline}</p>` : ''}
               </div>
-              
-              <p style="color: #6B7280; font-size: 14px;">
-                Este é um email automático do sistema MINAGRIF.
-              </p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;">
-              <p style="margin: 0;">© ${new Date().getFullYear()} MINAGRIF - Sistema de Gestão Documental</p>
-            </div>
-          </body>
-          </html>
-        `
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+          </body></html>`
       };
 
-    case 'sla_alert':
+    case 'sla_alert': {
       const isOverdue = data.hoursRemaining <= 0;
       const urgencyColor = isOverdue ? '#DC2626' : data.hoursRemaining <= 24 ? '#D97706' : '#3B82F6';
       const urgencyBg = isOverdue ? '#FEE2E2' : data.hoursRemaining <= 24 ? '#FEF3C7' : '#EFF6FF';
-      
       return {
-        subject: isOverdue 
-          ? `⚠️ SLA VENCIDO: ${data.itemType} ${data.itemNumber}` 
-          : `⏰ Alerta SLA: ${data.itemType} ${data.itemNumber}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>Alerta SLA</title></head>
+        subject: isOverdue ? `⚠️ SLA VENCIDO: ${data.itemType} ${data.itemNumber}` : `⏰ Alerta SLA: ${data.itemType} ${data.itemNumber}`,
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
           <body style="${baseStyles} max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background-color: ${urgencyColor}; padding: 24px; border-radius: 8px 8px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">
-                ${isOverdue ? '⚠️ SLA VENCIDO' : '⏰ Alerta de SLA'}
-              </h1>
+              <h1 style="color: white; margin: 0; font-size: 24px;">${isOverdue ? '⚠️ SLA VENCIDO' : '⏰ Alerta de SLA'}</h1>
             </div>
             <div style="${contentStyle}">
-              <p style="margin-top: 0;">Olá <strong>${data.recipientName}</strong>,</p>
-              
+              <p>Olá <strong>${data.recipientName}</strong>,</p>
               <div style="background-color: ${urgencyBg}; border-left: 4px solid ${urgencyColor}; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0 0 8px 0; color: ${urgencyColor}; font-weight: bold;">
-                  ${isOverdue 
-                    ? `O prazo foi ultrapassado há ${Math.abs(data.hoursRemaining)} horas!` 
-                    : `Restam apenas ${data.hoursRemaining} horas para o prazo!`}
-                </p>
+                <p style="margin: 0 0 8px 0; color: ${urgencyColor}; font-weight: bold;">${isOverdue ? `Prazo ultrapassado há ${Math.abs(data.hoursRemaining)} horas!` : `Restam ${data.hoursRemaining} horas!`}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Tipo:</strong> ${data.itemType}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Número:</strong> ${data.itemNumber}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Assunto:</strong> ${data.subject}</p>
                 <p style="margin: 0;"><strong>Prazo:</strong> ${data.deadline}</p>
               </div>
-              
-              <p>Por favor, tome as ações necessárias para resolver esta situação.</p>
-              
-              <p style="color: #6B7280; font-size: 14px;">
-                Este é um email automático do sistema MINAGRIF.
-              </p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;">
-              <p style="margin: 0;">© ${new Date().getFullYear()} MINAGRIF - Sistema de Gestão Documental</p>
-            </div>
-          </body>
-          </html>
-        `
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+          </body></html>`
       };
+    }
 
-    case 'movement':
-      const actionLabels: Record<string, string> = {
-        'despacho': 'Despacho',
-        'encaminhamento': 'Encaminhamento',
-        'recebimento': 'Recebimento',
-        'devolucao': 'Devolução',
-        'arquivamento': 'Arquivamento'
-      };
-      
+    case 'movement': {
+      const actionLabels: Record<string, string> = { 'despacho': 'Despacho', 'encaminhamento': 'Encaminhamento', 'recebimento': 'Recebimento', 'devolucao': 'Devolução', 'arquivamento': 'Arquivamento' };
       return {
         subject: `📄 ${actionLabels[data.actionType] || data.actionType}: ${data.documentNumber}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>Movimentação de Documento</title></head>
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
           <body style="${baseStyles} max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="${headerStyle}">
-              <h1 style="color: white; margin: 0; font-size: 24px;">📄 Movimentação de Documento</h1>
-            </div>
+            <div style="${headerStyle}"><h1 style="color: white; margin: 0; font-size: 24px;">📄 Movimentação de Documento</h1></div>
             <div style="${contentStyle}">
-              <p style="margin-top: 0;">Olá <strong>${data.recipientName}</strong>,</p>
-              <p>Um documento foi ${actionLabels[data.actionType]?.toLowerCase() || 'movimentado'} para si:</p>
-              
+              <p>Olá <strong>${data.recipientName}</strong>,</p>
               <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 20px 0; border-radius: 4px;">
                 <p style="margin: 0 0 8px 0;"><strong>Acção:</strong> ${actionLabels[data.actionType] || data.actionType}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Documento:</strong> ${data.documentNumber}</p>
@@ -161,133 +87,114 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 <p style="margin: 0 0 8px 0;"><strong>Para:</strong> ${data.toUnit}</p>
                 ${data.observations ? `<p style="margin: 0;"><strong>Observações:</strong> ${data.observations}</p>` : ''}
               </div>
-              
-              <p style="color: #6B7280; font-size: 14px;">
-                Este é um email automático do sistema MINAGRIF.
-              </p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;">
-              <p style="margin: 0;">© ${new Date().getFullYear()} MINAGRIF - Sistema de Gestão Documental</p>
-            </div>
-          </body>
-          </html>
-        `
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+          </body></html>`
       };
+    }
 
-    case 'dispatch_update':
-      const statusLabels: Record<string, string> = {
-        'aprovado': 'Aprovado ✅',
-        'rejeitado': 'Rejeitado ❌',
-        'devolvido': 'Devolvido para Revisão 🔄',
-        'assinado': 'Assinado ✍️',
-        'enviado': 'Enviado 📤'
-      };
-      const statusColors: Record<string, string> = {
-        'aprovado': '#059669',
-        'rejeitado': '#DC2626',
-        'devolvido': '#D97706',
-        'assinado': '#7C3AED',
-        'enviado': '#3B82F6'
-      };
-      
+    case 'dispatch_update': {
+      const statusLabels: Record<string, string> = { 'aprovado': 'Aprovado ✅', 'rejeitado': 'Rejeitado ❌', 'devolvido': 'Devolvido 🔄', 'assinado': 'Assinado ✍️', 'enviado': 'Enviado 📤' };
+      const statusColors: Record<string, string> = { 'aprovado': '#059669', 'rejeitado': '#DC2626', 'devolvido': '#D97706', 'assinado': '#7C3AED', 'enviado': '#3B82F6' };
       return {
         subject: `📋 Despacho ${statusLabels[data.status] || data.status}: ${data.dispatchNumber}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>Actualização de Despacho</title></head>
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
           <body style="${baseStyles} max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background-color: ${statusColors[data.status] || '#1E3A5F'}; padding: 24px; border-radius: 8px 8px 0 0;">
               <h1 style="color: white; margin: 0; font-size: 24px;">📋 Actualização de Despacho</h1>
             </div>
             <div style="${contentStyle}">
-              <p style="margin-top: 0;">Olá <strong>${data.recipientName}</strong>,</p>
-              <p>O seu despacho foi actualizado:</p>
-              
+              <p>Olá <strong>${data.recipientName}</strong>,</p>
               <div style="background-color: #F3F4F6; border-left: 4px solid ${statusColors[data.status] || '#1E3A5F'}; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0 0 8px 0; font-weight: bold; color: ${statusColors[data.status] || '#1E3A5F'};">
-                  Estado: ${statusLabels[data.status] || data.status}
-                </p>
+                <p style="margin: 0 0 8px 0; font-weight: bold; color: ${statusColors[data.status] || '#1E3A5F'};">Estado: ${statusLabels[data.status] || data.status}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Número:</strong> ${data.dispatchNumber}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Assunto:</strong> ${data.subject}</p>
                 ${data.approverName ? `<p style="margin: 0 0 8px 0;"><strong>Por:</strong> ${data.approverName}</p>` : ''}
                 ${data.comments ? `<p style="margin: 0;"><strong>Comentários:</strong> ${data.comments}</p>` : ''}
               </div>
-              
-              <p style="color: #6B7280; font-size: 14px;">
-                Este é um email automático do sistema MINAGRIF.
-              </p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;">
-              <p style="margin: 0;">© ${new Date().getFullYear()} MINAGRIF - Sistema de Gestão Documental</p>
-            </div>
-          </body>
-          </html>
-        `
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+          </body></html>`
       };
+    }
 
     case 'process_update':
       return {
         subject: `📂 Processo Actualizado: ${data.processNumber}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>Actualização de Processo</title></head>
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
           <body style="${baseStyles} max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="${headerStyle}">
-              <h1 style="color: white; margin: 0; font-size: 24px;">📂 Actualização de Processo</h1>
-            </div>
+            <div style="${headerStyle}"><h1 style="color: white; margin: 0; font-size: 24px;">📂 Actualização de Processo</h1></div>
             <div style="${contentStyle}">
-              <p style="margin-top: 0;">Olá <strong>${data.recipientName}</strong>,</p>
-              <p>Um processo que acompanha foi actualizado:</p>
-              
+              <p>Olá <strong>${data.recipientName}</strong>,</p>
               <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 20px 0; border-radius: 4px;">
                 <p style="margin: 0 0 8px 0;"><strong>Número:</strong> ${data.processNumber}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Assunto:</strong> ${data.subject}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Estado:</strong> ${data.status}</p>
                 ${data.updateDescription ? `<p style="margin: 0;"><strong>Alteração:</strong> ${data.updateDescription}</p>` : ''}
               </div>
-              
-              <p style="color: #6B7280; font-size: 14px;">
-                Este é um email automático do sistema MINAGRIF.
-              </p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;">
-              <p style="margin: 0;">© ${new Date().getFullYear()} MINAGRIF - Sistema de Gestão Documental</p>
-            </div>
-          </body>
-          </html>
-        `
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+          </body></html>`
       };
 
     default:
-      return {
-        subject: 'Notificação MINAGRIF',
-        html: `<p>Tem uma nova notificação no sistema MINAGRIF.</p>`
-      };
+      return { subject: 'Notificação MINAGRIF', html: `<p>Nova notificação no sistema MINAGRIF.</p>` };
   }
 };
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Auth validation — accept service role or authenticated user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Verify the token is valid (either service role or user JWT)
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === supabaseServiceKey;
+
+    if (!isServiceRole) {
+      const supabaseAuth = createClient(
+        supabaseUrl,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        console.error("Auth error:", claimsError);
+        return new Response(
+          JSON.stringify({ error: "Token inválido ou expirado" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log("Authenticated user:", claimsData.claims.sub);
+    } else {
+      console.log("Service role call");
+    }
+
     console.log("Processing notification email request...");
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { type, recipientUserId, recipientEmail, data }: EmailRequest = await req.json();
 
     console.log(`Email type: ${type}, recipientUserId: ${recipientUserId}, recipientEmail: ${recipientEmail}`);
 
-    // Get recipient info
     let email = recipientEmail;
     let recipientName = data.recipientName || 'Utilizador';
     let userAuthId = recipientUserId;
@@ -333,106 +240,63 @@ const handler = async (req: Request): Promise<Response> => {
       if (prefsRecord && prefsRecord[preferenceKey] === false) {
         console.log(`User ${userAuthId} has disabled ${type} emails`);
         return new Response(
-          JSON.stringify({ 
-            success: true, 
-            skipped: true,
-            reason: "User has disabled this notification type"
-          }),
+          JSON.stringify({ success: true, skipped: true, reason: "User has disabled this notification type" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     }
 
-    // Generate email content
     const { subject, html } = getEmailTemplate(type, { ...data, recipientName });
 
     console.log(`Sending email to ${email}: ${subject}`);
 
-    // Send email
     const emailResponse = await resend.emails.send({
       from: "MINAGRIF <onboarding@resend.dev>",
       to: [email],
-      subject: subject,
-      html: html,
+      subject,
+      html,
     });
 
-    // Check if Resend returned an error
     if ((emailResponse as any).error) {
       const resendError = (emailResponse as any).error;
       console.error("Resend API error:", resendError);
       
-      // Log the failed email
-      await supabase
-        .from("email_logs")
-        .insert({
-          recipient_email: email,
-          recipient_user_id: userAuthId,
-          email_type: type,
-          subject: subject,
-          reference_type: data.referenceType,
-          reference_id: data.referenceId,
-          status: 'error',
-          error_message: resendError.message || 'Unknown Resend error'
-        });
+      await supabase.from("email_logs").insert({
+        recipient_email: email,
+        recipient_user_id: userAuthId,
+        email_type: type,
+        subject,
+        reference_type: data.referenceType,
+        reference_id: data.referenceId,
+        status: 'error',
+        error_message: resendError.message || 'Unknown Resend error'
+      });
 
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: resendError.message,
-          details: "Email sending failed. Check Resend domain verification."
-        }),
+        JSON.stringify({ success: false, error: resendError.message }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
     console.log("Email sent successfully:", emailResponse);
 
-    // Log the successful email
-    await supabase
-      .from("email_logs")
-      .insert({
-        recipient_email: email,
-        recipient_user_id: userAuthId,
-        email_type: type,
-        subject: subject,
-        reference_type: data.referenceType,
-        reference_id: data.referenceId,
-        status: 'sent'
-      });
+    await supabase.from("email_logs").insert({
+      recipient_email: email,
+      recipient_user_id: userAuthId,
+      email_type: type,
+      subject,
+      reference_type: data.referenceType,
+      reference_id: data.referenceId,
+      status: 'sent'
+    });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Email sent successfully",
-        emailId: (emailResponse as any).id || 'sent'
-      }),
+      JSON.stringify({ success: true, message: "Email sent successfully", emailId: (emailResponse as any).id || 'sent' }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
 
   } catch (error: any) {
     console.error("Error in send-notification-email function:", error);
-
-    // Try to log the error
-    try {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      const body = await error.request?.json?.() || {};
-      
-      await supabase
-        .from("email_logs")
-        .insert({
-          recipient_email: body.recipientEmail || 'unknown',
-          email_type: body.type || 'unknown',
-          subject: 'Error sending email',
-          status: 'error',
-          error_message: error.message
-        });
-    } catch (logError) {
-      console.error("Error logging email failure:", logError);
-    }
-
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

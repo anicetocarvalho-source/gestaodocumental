@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const systemPrompt = `You are the Intelligent Search Engine of the MINAGRIF Archive - a government document management system.
@@ -63,10 +64,38 @@ Rules:
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // Auth validation
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth error:', claimsError);
+      return new Response(
+        JSON.stringify({ error: 'Token inválido ou expirado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log('Authenticated user:', userId);
+
     const { query } = await req.json();
 
     if (!query || query.trim().length === 0) {
@@ -128,7 +157,6 @@ serve(async (req) => {
 
     console.log('AI response received');
 
-    // Parse the JSON response
     let searchParams;
     try {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, content];
@@ -139,16 +167,20 @@ serve(async (req) => {
       throw new Error('Failed to parse search parameters');
     }
 
-    // Generate mock results based on filters (in production, this would query the database)
-    const mockResults = generateMockResults(searchParams);
+    // Query real database for results using user's auth context
+    const { data: documents, error: docsError } = await supabaseAuth
+      .from('documents')
+      .select('id, title, entry_number, entry_date, status, priority, origin, subject, sender_name, sender_institution')
+      .limit(20);
+
+    const results = documents || [];
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         search: searchParams,
-        results: mockResults.results,
-        total_count: mockResults.total,
-        grouped_results: mockResults.grouped
+        results: results,
+        total_count: results.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -161,112 +193,3 @@ serve(async (req) => {
     );
   }
 });
-
-function generateMockResults(searchParams: any) {
-  const mockDocuments = [
-    {
-      id: "DOC-2023-001",
-      title: "Relatório de Licenciamento Florestal - Província de Malanje",
-      document_type: "relatorio",
-      date: "2023-03-15",
-      sender: "DGADR",
-      recipient: "INCA",
-      unit: "DGADR",
-      relevance_score: 0.95,
-      excerpt: "...aprovação do plano de gestão florestal sustentável para a região norte...",
-      status: "arquivado",
-      tags: ["licenciamento", "florestal", "malanje", "sustentabilidade"]
-    },
-    {
-      id: "DOC-2023-002",
-      title: "Ofício nº 234/INCA/2023 - Solicitação de Parecer",
-      document_type: "oficio",
-      date: "2023-05-20",
-      sender: "INCA",
-      recipient: "DGPE",
-      unit: "INCA",
-      relevance_score: 0.88,
-      excerpt: "...solicitamos parecer técnico sobre a implementação do programa de café...",
-      status: "em_andamento",
-      tags: ["café", "parecer", "inca", "programa"]
-    },
-    {
-      id: "DOC-2023-003",
-      title: "Memorando Interno - Cronograma de Actividades 2023",
-      document_type: "memorando",
-      date: "2023-01-10",
-      sender: "GAB",
-      recipient: "Todas as Direcções",
-      unit: "GAB",
-      relevance_score: 0.75,
-      excerpt: "...definição das metas e objectivos para o ano corrente...",
-      status: "concluido",
-      tags: ["cronograma", "actividades", "planeamento"]
-    },
-    {
-      id: "PROC-2023-045",
-      title: "Processo de Concessão de Terras Agrícolas",
-      document_type: "processo",
-      date: "2023-07-01",
-      sender: "IDA",
-      recipient: "DGADR",
-      unit: "IDA",
-      relevance_score: 0.82,
-      excerpt: "...análise do pedido de concessão para exploração agrícola na província...",
-      status: "em_andamento",
-      tags: ["concessão", "terras", "agrícola", "ida"]
-    },
-    {
-      id: "DOC-2023-004",
-      title: "Parecer Jurídico - Contrato de Fornecimento",
-      document_type: "parecer",
-      date: "2023-06-15",
-      sender: "Assessoria Jurídica",
-      recipient: "DGPE",
-      unit: "GAB",
-      relevance_score: 0.70,
-      excerpt: "...opinião favorável à celebração do contrato, com as ressalvas indicadas...",
-      status: "concluido",
-      tags: ["parecer", "jurídico", "contrato", "fornecimento"]
-    }
-  ];
-
-  // Filter based on search params
-  let filtered = mockDocuments;
-  
-  if (searchParams.filters_applied?.document_types?.length > 0) {
-    filtered = filtered.filter(doc => 
-      searchParams.filters_applied.document_types.includes(doc.document_type)
-    );
-  }
-
-  if (searchParams.filters_applied?.unit) {
-    filtered = filtered.filter(doc => 
-      doc.unit.toLowerCase().includes(searchParams.filters_applied.unit.toLowerCase()) ||
-      doc.sender.toLowerCase().includes(searchParams.filters_applied.unit.toLowerCase()) ||
-      doc.recipient.toLowerCase().includes(searchParams.filters_applied.unit.toLowerCase())
-    );
-  }
-
-  // Group results
-  const grouped = {
-    by_type: {} as Record<string, number>,
-    by_unit: {} as Record<string, number>,
-    by_year: {} as Record<string, number>,
-    by_status: {} as Record<string, number>
-  };
-
-  filtered.forEach(doc => {
-    grouped.by_type[doc.document_type] = (grouped.by_type[doc.document_type] || 0) + 1;
-    grouped.by_unit[doc.unit] = (grouped.by_unit[doc.unit] || 0) + 1;
-    const year = doc.date.split('-')[0];
-    grouped.by_year[year] = (grouped.by_year[year] || 0) + 1;
-    grouped.by_status[doc.status] = (grouped.by_status[doc.status] || 0) + 1;
-  });
-
-  return {
-    results: filtered.sort((a, b) => b.relevance_score - a.relevance_score),
-    total: filtered.length,
-    grouped
-  };
-}
