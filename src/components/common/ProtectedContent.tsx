@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { DemoRole } from "@/contexts/DemoAuthContext";
+import { AppRole } from "@/hooks/useUserRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Tooltip,
@@ -11,7 +11,7 @@ import {
 interface ProtectedContentProps {
   children: ReactNode;
   /** Roles que podem ver este conteúdo */
-  roles?: DemoRole[];
+  roles?: AppRole[];
   /** Módulo e acção para verificar permissão */
   permission?: {
     module: "documents" | "processes" | "users" | "settings";
@@ -41,22 +41,18 @@ export function ProtectedContent({
 
   let hasAccess = true;
 
-  // Verifica roles se especificado
   if (roles && roles.length > 0) {
     hasAccess = hasRole(roles);
   }
 
-  // Verifica permissão específica se especificada
   if (permission && hasAccess) {
     hasAccess = canDo(permission.module, permission.action);
   }
 
-  // Se tem acesso, mostra o conteúdo
   if (hasAccess) {
     return <>{children}</>;
   }
 
-  // Se deve mostrar desabilitado com tooltip
   if (showDisabled) {
     return (
       <TooltipProvider>
@@ -76,21 +72,16 @@ export function ProtectedContent({
     );
   }
 
-  // Mostra fallback ou nada
   return <>{fallback}</>;
 }
 
-/**
- * Componente wrapper para botões protegidos
- */
 interface ProtectedButtonProps {
   children: ReactNode;
-  roles?: DemoRole[];
+  roles?: AppRole[];
   permission?: {
     module: "documents" | "processes" | "users" | "settings";
     action: string;
   };
-  /** Tooltip a mostrar quando desabilitado */
   disabledTooltip?: string;
 }
 

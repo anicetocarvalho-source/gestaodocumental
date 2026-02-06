@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { DemoAuthProvider } from "@/contexts/DemoAuthContext";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import Index from "./pages/Index";
 import Documents from "./pages/Documents";
@@ -22,7 +21,6 @@ import Permissions from "./pages/Permissions";
 import AuditLogs from "./pages/AuditLogs";
 import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
-import Wireframes from "./pages/Wireframes";
 import Repository from "./pages/Repository";
 import DigitizationCenter from "./pages/DigitizationCenter";
 import QualityReview from "./pages/QualityReview";
@@ -54,60 +52,57 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <DemoAuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Rotas públicas */}
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/access-denied" element={<AccessDenied />} />
-                
-                {/* Rotas protegidas */}
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-                <Route path="/documents/new" element={<ProtectedRoute><RegisterDocument /></ProtectedRoute>} />
-                <Route path="/documents/:id" element={<ProtectedRoute><DocumentDetail /></ProtectedRoute>} />
-                <Route path="/documents/:id/view" element={<ProtectedRoute><DocumentViewer /></ProtectedRoute>} />
-                <Route path="/processes" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
-                <Route path="/processes/new" element={<ProtectedRoute><CreateProcess /></ProtectedRoute>} />
-                <Route path="/processes/:id" element={<ProtectedRoute><ProcessDetail /></ProtectedRoute>} />
-                <Route path="/dispatches" element={<ProtectedRoute><DispatchManagement /></ProtectedRoute>} />
-                <Route path="/dispatches/new" element={<ProtectedRoute><CreateDispatch /></ProtectedRoute>} />
-                <Route path="/dispatches/:id" element={<ProtectedRoute><DispatchDetail /></ProtectedRoute>} />
-                <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
-                <Route path="/pending-approvals" element={<ProtectedRoute><PendingApprovals /></ProtectedRoute>} />
-                <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-                <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
-                <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
-                <Route path="/wireframes" element={<ProtectedRoute><Wireframes /></ProtectedRoute>} />
-                <Route path="/folders" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
-                <Route path="/digitization" element={<ProtectedRoute><DigitizationCenter /></ProtectedRoute>} />
-                <Route path="/quality-review" element={<ProtectedRoute><QualityReview /></ProtectedRoute>} />
-                <Route path="/ocr-processing" element={<ProtectedRoute><OCRProcessing /></ProtectedRoute>} />
-                <Route path="/classification" element={<ProtectedRoute><DocumentClassification /></ProtectedRoute>} />
-                <Route path="/workflow-builder" element={<ProtectedRoute><WorkflowBuilder /></ProtectedRoute>} />
-                <Route path="/process-templates" element={<ProtectedRoute><ProcessTemplates /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                <Route path="/archive" element={<ProtectedRoute><Archive /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                <Route path="/sla-configuration" element={<ProtectedRoute><SLAConfiguration /></ProtectedRoute>} />
-                <Route path="/workflow-visualization" element={<ProtectedRoute><WorkflowVisualization /></ProtectedRoute>} />
-                <Route path="/document-intelligence" element={<ProtectedRoute><DocumentIntelligence /></ProtectedRoute>} />
-                <Route path="/intelligent-search" element={<ProtectedRoute><IntelligentSearch /></ProtectedRoute>} />
-                <Route path="/procedure-guide" element={<ProtectedRoute><ProcedureGuide /></ProtectedRoute>} />
-                <Route path="/assistant" element={<ProtectedRoute><InstitutionalAssistant /></ProtectedRoute>} />
-                <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
-                <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </DemoAuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Rotas públicas */}
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
+              
+              {/* Rotas protegidas */}
+              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+              <Route path="/documents/new" element={<ProtectedRoute><RegisterDocument /></ProtectedRoute>} />
+              <Route path="/documents/:id" element={<ProtectedRoute><DocumentDetail /></ProtectedRoute>} />
+              <Route path="/documents/:id/view" element={<ProtectedRoute><DocumentViewer /></ProtectedRoute>} />
+              <Route path="/processes" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
+              <Route path="/processes/new" element={<ProtectedRoute><CreateProcess /></ProtectedRoute>} />
+              <Route path="/processes/:id" element={<ProtectedRoute><ProcessDetail /></ProtectedRoute>} />
+              <Route path="/dispatches" element={<ProtectedRoute><DispatchManagement /></ProtectedRoute>} />
+              <Route path="/dispatches/new" element={<ProtectedRoute><CreateDispatch /></ProtectedRoute>} />
+              <Route path="/dispatches/:id" element={<ProtectedRoute><DispatchDetail /></ProtectedRoute>} />
+              <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
+              <Route path="/pending-approvals" element={<ProtectedRoute><PendingApprovals /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+              <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
+              <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
+              <Route path="/folders" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
+              <Route path="/digitization" element={<ProtectedRoute><DigitizationCenter /></ProtectedRoute>} />
+              <Route path="/quality-review" element={<ProtectedRoute><QualityReview /></ProtectedRoute>} />
+              <Route path="/ocr-processing" element={<ProtectedRoute><OCRProcessing /></ProtectedRoute>} />
+              <Route path="/classification" element={<ProtectedRoute><DocumentClassification /></ProtectedRoute>} />
+              <Route path="/workflow-builder" element={<ProtectedRoute><WorkflowBuilder /></ProtectedRoute>} />
+              <Route path="/process-templates" element={<ProtectedRoute><ProcessTemplates /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/archive" element={<ProtectedRoute><Archive /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/sla-configuration" element={<ProtectedRoute><SLAConfiguration /></ProtectedRoute>} />
+              <Route path="/workflow-visualization" element={<ProtectedRoute><WorkflowVisualization /></ProtectedRoute>} />
+              <Route path="/document-intelligence" element={<ProtectedRoute><DocumentIntelligence /></ProtectedRoute>} />
+              <Route path="/intelligent-search" element={<ProtectedRoute><IntelligentSearch /></ProtectedRoute>} />
+              <Route path="/procedure-guide" element={<ProtectedRoute><ProcedureGuide /></ProtectedRoute>} />
+              <Route path="/assistant" element={<ProtectedRoute><InstitutionalAssistant /></ProtectedRoute>} />
+              <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
+              <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
