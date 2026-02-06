@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { driver, DriveStep, Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { useAuth } from "@/contexts/AuthContext";
@@ -151,12 +151,13 @@ export const processesTourSteps: TourStep[] = [
 
 export function useGuidedTour() {
   const { isAuthenticated } = useAuth();
-  const [driverInstance, setDriverInstance] = useState<Driver | null>(null);
+  const driverRef = useRef<Driver | null>(null);
+  const tourStartedRef = useRef(false);
   const [isTourCompleted, setIsTourCompleted] = useState(() => {
     return localStorage.getItem(TOUR_COMPLETED_KEY) === "true";
   });
 
-  // Initialize driver instance
+  // Initialize driver instance once
   useEffect(() => {
     const driverObj = driver({
       showProgress: true,
@@ -176,19 +177,20 @@ export function useGuidedTour() {
       },
     });
 
-    setDriverInstance(driverObj);
+    driverRef.current = driverObj;
 
     return () => {
       driverObj.destroy();
+      driverRef.current = null;
     };
   }, []);
 
   const startTour = useCallback((steps: TourStep[] = dashboardTourSteps) => {
-    if (driverInstance) {
-      driverInstance.setSteps(steps);
-      driverInstance.drive();
+    if (driverRef.current) {
+      driverRef.current.setSteps(steps);
+      driverRef.current.drive();
     }
-  }, [driverInstance]);
+  }, []);
 
   const startDashboardTour = useCallback(() => {
     startTour(dashboardTourSteps);
@@ -205,19 +207,23 @@ export function useGuidedTour() {
   const resetTour = useCallback(() => {
     localStorage.removeItem(TOUR_COMPLETED_KEY);
     setIsTourCompleted(false);
+    tourStartedRef.current = false;
   }, []);
 
-  // Auto-start tour for new users
+  // Auto-start tour for new users — only once per session
   useEffect(() => {
-    if (isAuthenticated && !isTourCompleted && driverInstance) {
-      // Small delay to ensure DOM is ready
+    if (isAuthenticated && !isTourCompleted && driverRef.current && !tourStartedRef.current) {
+      tourStartedRef.current = true;
       const timer = setTimeout(() => {
-        startDashboardTour();
+        if (driverRef.current) {
+          driverRef.current.setSteps(dashboardTourSteps);
+          driverRef.current.drive();
+        }
       }, 1500);
 
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isTourCompleted, driverInstance, startDashboardTour]);
+  }, [isAuthenticated, isTourCompleted]);
 
   return {
     startTour,

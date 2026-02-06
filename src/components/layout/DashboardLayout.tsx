@@ -6,6 +6,7 @@ import { useNotificationSound } from "@/hooks/useNotificationSound";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
 import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsModal";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -18,6 +19,8 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
   useNotificationSound();
   // Enable global keyboard shortcuts
   useGlobalKeyboardShortcuts();
+  // Set dynamic page title for SEO
+  usePageTitle(title);
   
   return (
     <SidebarProvider>

@@ -299,15 +299,27 @@ const DispatchManagement = () => {
               {selectedDispatches.size > 0 && (
                 <div className="flex items-center gap-3 pt-3 border-t border-border">
                   <span className="text-sm text-muted-foreground">{selectedDispatches.size} seleccionados</span>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    selectedDispatches.forEach(id => handleEmit(id));
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    const ids = Array.from(selectedDispatches);
+                    try {
+                      await Promise.all(ids.map(id => emitDispatch.mutateAsync(id)));
+                      toast.success(`${ids.length} despacho(s) emitido(s) com sucesso`);
+                    } catch (err) {
+                      toast.error("Erro ao emitir despachos em lote");
+                    }
                     setSelectedDispatches(new Set());
                   }}>
                     <Send className="h-4 w-4 mr-2" />
                     Emitir
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => {
-                    selectedDispatches.forEach(id => handleCancel(id));
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => {
+                    const ids = Array.from(selectedDispatches);
+                    try {
+                      await Promise.all(ids.map(id => cancelDispatch.mutateAsync({ id })));
+                      toast.success(`${ids.length} despacho(s) cancelado(s)`);
+                    } catch (err) {
+                      toast.error("Erro ao cancelar despachos em lote");
+                    }
                     setSelectedDispatches(new Set());
                   }}>
                     <XCircle className="h-4 w-4 mr-2" />
