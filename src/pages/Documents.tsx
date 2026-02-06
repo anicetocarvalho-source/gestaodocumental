@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -116,27 +117,13 @@ const Documents = () => {
   const deleteDocument = useDeleteDocument();
   const archiveDocument = useArchiveDocument();
 
-  // Extrair dados do resultado paginado
+  // View mode state
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  // Extrair dados do resultado paginado — server handles filtering, no client-side duplicate
   const documents = documentsResult?.data || [];
   const totalPages = documentsResult?.totalPages || 1;
   const totalCount = documentsResult?.total || 0;
-
-  // Filtrar documentos localmente para pesquisa mais responsiva
-  const filteredDocuments = useMemo(() => {
-    let result = documents;
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(doc => 
-        doc.title.toLowerCase().includes(query) ||
-        doc.entry_number.toLowerCase().includes(query) ||
-        doc.description?.toLowerCase().includes(query) ||
-        doc.subject?.toLowerCase().includes(query)
-      );
-    }
-    
-    return result;
-  }, [documents, searchQuery]);
 
   const handleSelectDocument = (docId: string, checked: boolean) => {
     if (checked) {
@@ -148,7 +135,7 @@ const Documents = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedDocuments(filteredDocuments.map(doc => doc.id));
+      setSelectedDocuments(documents.map(doc => doc.id));
     } else {
       setSelectedDocuments([]);
     }
@@ -186,14 +173,44 @@ const Documents = () => {
 
   const handleBulkDownload = async () => {
     setIsProcessing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const count = selectedDocuments.length;
-    toast.success(`${count} documento${count > 1 ? 's' : ''} preparado${count > 1 ? 's' : ''} para download`, {
-      description: "O download iniciará automaticamente.",
-    });
-    setIsProcessing(false);
-    clearSelection();
+    try {
+      // Query document_files for the selected documents
+      const { data: files, error: filesError } = await supabase
+        .from('document_files')
+        .select('file_path, file_name')
+        .in('document_id', selectedDocuments)
+        .eq('is_main_file', true);
+
+      if (filesError) throw filesError;
+
+      if (!files || files.length === 0) {
+        toast.info("Nenhum ficheiro encontrado para os documentos seleccionados.");
+        return;
+      }
+
+      // Download each file
+      for (const file of files) {
+        const { data: blob, error: dlError } = await supabase.storage
+          .from('documents')
+          .download(file.file_path);
+
+        if (dlError || !blob) continue;
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.file_name;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      toast.success(`${files.length} ficheiro(s) descarregado(s)`);
+    } catch {
+      toast.error("Erro ao descarregar ficheiros");
+    } finally {
+      setIsProcessing(false);
+      clearSelection();
+    }
   };
 
   const handleBulkArchive = async () => {
@@ -253,7 +270,7 @@ const Documents = () => {
   };
 
   const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all" || priorityFilter !== "all" || searchQuery !== "";
-  const isAllSelected = filteredDocuments.length > 0 && selectedDocuments.length === filteredDocuments.length;
+  const isAllSelected = documents.length > 0 && selectedDocuments.length === documents.length;
   const hasSelection = selectedDocuments.length > 0;
 
   const getDocumentTypeName = (typeId: string | null) => {
@@ -449,10 +466,20 @@ const Documents = () => {
             </div>
             <div className="toolbar-buttons">
               <div className="flex rounded-lg border border-border/60 p-0.5 bg-muted/30">
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+                <Button 
+                  variant="ghost" 
+                  size="icon-sm" 
+                  className={`h-7 w-7 ${viewMode === "grid" ? "bg-background shadow-sm" : ""}`}
+                  onClick={() => setViewMode("grid")}
+                >
                   <Grid3X3 className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 bg-background shadow-sm">
+                <Button 
+                  variant="ghost" 
+                  size="icon-sm" 
+                  className={`h-7 w-7 ${viewMode === "list" ? "bg-background shadow-sm" : ""}`}
+                  onClick={() => setViewMode("list")}
+                >
                   <List className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -489,7 +516,59 @@ const Documents = () => {
         </CardContent>
       </Card>
 
-      {/* Tabela de Documentos */}
+      {/* Grid View */}
+      {viewMode === "grid" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {isLoading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <Card key={i} className="p-4">
+                <Skeleton className="h-10 w-10 rounded-lg mb-3" />
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </Card>
+            ))
+          ) : documents.length === 0 ? (
+            <div className="col-span-full py-12 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {hasActiveFilters ? "Nenhum documento encontrado com os filtros aplicados." : "Ainda não existem documentos registados."}
+              </p>
+            </div>
+          ) : (
+            documents.map((doc) => (
+              <Link key={doc.id} to={`/documents/${doc.id}`} className="block">
+                <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer group h-full">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors flex-shrink-0">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                        {doc.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">{doc.entry_number}</p>
+                    </div>
+                  </div>
+                  {doc.subject && (
+                    <p className="text-xs text-muted-foreground truncate mb-2">{doc.subject}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-auto">
+                    <Badge variant={documentStatusVariants[doc.status] || "secondary"} className="text-[10px]">
+                      {documentStatusLabels[doc.status] || doc.status}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(new Date(doc.entry_date), "d MMM", { locale: pt })}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* List/Table View */}
+      {viewMode === "list" && (
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -500,7 +579,7 @@ const Documents = () => {
                     <Checkbox 
                       checked={isAllSelected}
                       onCheckedChange={handleSelectAll}
-                      disabled={isLoading || filteredDocuments.length === 0}
+                      disabled={isLoading || documents.length === 0}
                     />
                   </th>
                   <th>Nº Entrada</th>
@@ -526,7 +605,7 @@ const Documents = () => {
                       <td><Skeleton className="h-8 w-8 ml-auto" /></td>
                     </tr>
                   ))
-                ) : filteredDocuments.length === 0 ? (
+                ) : documents.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12">
                       <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -544,7 +623,7 @@ const Documents = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredDocuments.map((doc) => (
+                  documents.map((doc) => (
                     <tr key={doc.id} className={selectedDocuments.includes(doc.id) ? "bg-primary/5" : ""}>
                       <td>
                         <Checkbox 
@@ -640,6 +719,7 @@ const Documents = () => {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Paginação */}
       <div className="mt-6 flex items-center justify-between">

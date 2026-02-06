@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRealtimeNotificationsSubscription } from "@/hooks/useNotifications";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { RecentDocuments } from "@/components/dashboard/RecentDocuments";
@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { exportDashboardPDF, exportDashboardCSV } from "@/lib/exportDashboard";
 import {
   Select,
   SelectContent,
@@ -34,6 +36,7 @@ import {
   BarChart3,
   PieChart,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -54,14 +57,61 @@ import {
   useDocumentsByType,
   useDocumentsByClassification,
 } from "@/hooks/useDashboardStats";
+import { format, startOfDay, startOfWeek, startOfMonth, startOfQuarter, startOfYear } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+
+/** Compute date range from period preset */
+function getDateRange(period: string, customFrom: string, customTo: string) {
+  const now = new Date();
+  const todayStr = format(now, "yyyy-MM-dd");
+
+  switch (period) {
+    case "hoje":
+      return { from: todayStr, to: todayStr };
+    case "semana": {
+      const ws = startOfWeek(now, { weekStartsOn: 1 });
+      return { from: format(ws, "yyyy-MM-dd"), to: todayStr };
+    }
+    case "mes": {
+      const ms = startOfMonth(now);
+      return { from: format(ms, "yyyy-MM-dd"), to: todayStr };
+    }
+    case "trimestre": {
+      const qs = startOfQuarter(now);
+      return { from: format(qs, "yyyy-MM-dd"), to: todayStr };
+    }
+    case "ano": {
+      const ys = startOfYear(now);
+      return { from: format(ys, "yyyy-MM-dd"), to: todayStr };
+    }
+    case "custom":
+      return { from: customFrom, to: customTo };
+    default:
+      return { from: format(startOfMonth(now), "yyyy-MM-dd"), to: todayStr };
+  }
+}
 
 const Index = () => {
-  const [dateFrom, setDateFrom] = useState("2024-01-01");
-  const [dateTo, setDateTo] = useState("2024-01-15");
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const monthStartStr = format(startOfMonth(new Date()), "yyyy-MM-dd");
+
+  const [customFrom, setCustomFrom] = useState(monthStartStr);
+  const [customTo, setCustomTo] = useState(todayStr);
   const [selectedPeriod, setSelectedPeriod] = useState("mes");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  usePageTitle("Dashboard");
 
   // Enable realtime notifications
   useRealtimeNotificationsSubscription();
+
+  const queryClient = useQueryClient();
+
+  // Compute date range
+  const dateRange = useMemo(
+    () => getDateRange(selectedPeriod, customFrom, customTo),
+    [selectedPeriod, customFrom, customTo]
+  );
 
   // Fetch real data from database
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
@@ -69,9 +119,30 @@ const Index = () => {
   const { data: documentsByType, isLoading: typeLoading } = useDocumentsByType();
   const { data: documentsByClassification, isLoading: classLoading } = useDocumentsByClassification();
 
-  const handleExport = (format: string) => {
-    console.log(`Exporting dashboard data as ${format}`);
-  };
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    await queryClient.invalidateQueries({ queryKey: ['documents-by-unit'] });
+    await queryClient.invalidateQueries({ queryKey: ['documents-by-type'] });
+    await queryClient.invalidateQueries({ queryKey: ['documents-by-classification'] });
+    setIsRefreshing(false);
+  }, [queryClient]);
+
+  const handleExport = useCallback((fmt: string) => {
+    const exportData = {
+      stats,
+      documentsByUnit,
+      documentsByType,
+      documentsByClassification,
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    };
+    if (fmt === "pdf") {
+      exportDashboardPDF(exportData);
+    } else {
+      exportDashboardCSV(exportData);
+    }
+  }, [stats, documentsByUnit, documentsByType, documentsByClassification, dateRange]);
 
   // Calculate derived KPIs
   const completedDocs = (stats?.documentsByStatus?.completed || 0) + (stats?.documentsByStatus?.archived || 0);
@@ -113,22 +184,26 @@ const Index = () => {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <Input
                       type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
+                      value={customFrom}
+                      onChange={(e) => setCustomFrom(e.target.value)}
                       className="w-36 h-9"
                     />
                   </div>
                   <span className="text-sm text-muted-foreground">até</span>
                   <Input
                     type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
                     className="w-36 h-9"
                   />
                 </>
               )}
-              <Button variant="ghost" size="icon-sm">
-                <RefreshCw className="h-4 w-4" />
+              <Button variant="ghost" size="icon-sm" onClick={handleRefresh} disabled={isRefreshing}>
+                {isRefreshing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <div className="toolbar-buttons">
@@ -311,9 +386,6 @@ const Index = () => {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 Documentos por Unidade
               </CardTitle>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
-                <Download className="h-3.5 w-3.5" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
@@ -364,9 +436,6 @@ const Index = () => {
                 <PieChart className="h-4 w-4 text-muted-foreground" />
                 Documentos por Tipo
               </CardTitle>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
-                <Download className="h-3.5 w-3.5" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
@@ -425,9 +494,6 @@ const Index = () => {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 Documentos por Classificação
               </CardTitle>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
-                <Download className="h-3.5 w-3.5" />
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
