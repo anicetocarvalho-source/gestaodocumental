@@ -282,7 +282,6 @@ const DocumentClassification = () => {
           document_type:document_types(id, code, name),
           origin_unit:organizational_units!documents_origin_unit_id_fkey(id, name, code),
           current_unit:organizational_units!documents_current_unit_id_fkey(id, name, code),
-          created_by_profile:profiles!documents_created_by_fkey(id, full_name),
           responsible_user:profiles!documents_responsible_user_id_fkey(id, full_name)
         `)
         .eq('id', previewDocId)
