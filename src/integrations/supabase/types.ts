@@ -2362,7 +2362,6 @@ export type Database = {
           dispatch_id: string | null
           id: string | null
           is_valid: boolean | null
-          signature_data: string | null
           signature_type: string | null
           signed_at: string | null
           signer_id: string | null
@@ -2371,7 +2370,6 @@ export type Database = {
           dispatch_id?: string | null
           id?: string | null
           is_valid?: boolean | null
-          signature_data?: string | null
           signature_type?: string | null
           signed_at?: string | null
           signer_id?: string | null
@@ -2380,7 +2378,6 @@ export type Database = {
           dispatch_id?: string | null
           id?: string | null
           is_valid?: boolean | null
-          signature_data?: string | null
           signature_type?: string | null
           signed_at?: string | null
           signer_id?: string | null
@@ -2414,7 +2411,6 @@ export type Database = {
           document_id: string | null
           id: string | null
           is_valid: boolean | null
-          signature_data: string | null
           signature_type: string | null
           signed_at: string | null
           signer_id: string | null
@@ -2423,7 +2419,6 @@ export type Database = {
           document_id?: string | null
           id?: string | null
           is_valid?: boolean | null
-          signature_data?: string | null
           signature_type?: string | null
           signed_at?: string | null
           signer_id?: string | null
@@ -2432,7 +2427,6 @@ export type Database = {
           document_id?: string | null
           id?: string | null
           is_valid?: boolean | null
-          signature_data?: string | null
           signature_type?: string | null
           signed_at?: string | null
           signer_id?: string | null
@@ -2464,36 +2458,27 @@ export type Database = {
       profiles_public: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
           full_name: string | null
           id: string | null
           is_active: boolean | null
           position: string | null
           unit_id: string | null
-          updated_at: string | null
-          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
           full_name?: string | null
           id?: string | null
           is_active?: boolean | null
           position?: string | null
           unit_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
           full_name?: string | null
           id?: string | null
           is_active?: boolean | null
           position?: string | null
           unit_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
         }
         Relationships: [
           {
