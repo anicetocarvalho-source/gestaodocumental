@@ -1,3 +1,4 @@
+import { useState, useCallback, FormEvent } from "react";
 import { Bell, Settings, Search, LogOut, User, ClipboardCheck, Keyboard, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,11 +47,21 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { data: unreadCount = 0 } = useUnreadCount();
   const { total: pendingApprovalsCount, urgent, hasUrgent } = usePendingApprovalsCount();
   const { toggle, isMobile } = useSidebar();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = async () => {
     await signOut();
     navigate("/auth");
   };
+
+  const handleSearch = useCallback((e: FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q) {
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+      setSearchQuery("");
+    }
+  }, [searchQuery, navigate]);
 
   const getInitials = (name: string) => {
     return name
@@ -88,19 +99,21 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
       </div>
       
-      {/* Pesquisa Global */}
-      <div className="hidden lg:flex flex-1 max-w-md mx-8" data-tour="global-search">
+      {/* Pesquisa Global - Funcional */}
+      <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-md mx-8" data-tour="global-search">
         <div className="relative w-full group">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input 
             placeholder="Pesquisar documentos, processos..." 
             className="pl-10 pr-16 bg-muted/50 border-transparent hover:border-border focus:border-primary focus:bg-background global-search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden group-hover:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-background border rounded text-[10px] font-mono text-muted-foreground">
             <span className="text-[9px]">⌘</span>K
           </kbd>
         </div>
-      </div>
+      </form>
       
       <div className="flex items-center gap-0.5 md:gap-1">
         <div className="hidden sm:flex items-center gap-0.5">
