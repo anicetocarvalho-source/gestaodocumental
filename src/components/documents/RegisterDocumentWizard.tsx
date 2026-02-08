@@ -115,6 +115,38 @@ export function RegisterDocumentWizard() {
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
   }, []);
 
+  const handleAnalysisComplete = useCallback((analysis: {
+    extracted_fields?: { title?: string; subject?: string; sender?: string };
+    classification_suggestion?: { code?: string; category?: string };
+    sensitivity_level?: string;
+  }) => {
+    setFormData((prev) => {
+      const updates: Partial<FormData> = {};
+      if (analysis.extracted_fields?.title && !prev.title) {
+        updates.title = analysis.extracted_fields.title;
+      }
+      if (analysis.extracted_fields?.subject && !prev.subject) {
+        updates.subject = analysis.extracted_fields.subject;
+      }
+      if (analysis.extracted_fields?.sender && !prev.senderName) {
+        updates.senderName = analysis.extracted_fields.sender;
+      }
+      if (analysis.sensitivity_level && prev.confidentiality === "public") {
+        const sensitivityMap: Record<string, string> = {
+          "público": "public",
+          "interno": "internal",
+          "restrito": "restricted",
+          "confidencial": "confidential",
+        };
+        const mapped = sensitivityMap[analysis.sensitivity_level.toLowerCase()];
+        if (mapped && mapped !== "public") {
+          updates.confidentiality = mapped as DocumentConfidentiality;
+        }
+      }
+      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+    });
+  }, []);
+
   const validateStep = (step: number): boolean => {
     const errors: FieldErrors = {};
 
@@ -294,6 +326,7 @@ export function RegisterDocumentWizard() {
             uploadedFiles={uploadedFiles}
             selectedTags={selectedTags}
             onTagToggle={handleTagToggle}
+            onAnalysisComplete={handleAnalysisComplete}
             disabled={isSubmitting}
           />
 
