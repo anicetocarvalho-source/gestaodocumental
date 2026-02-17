@@ -23,7 +23,7 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
 
       {/* Text */}
       {!collapsed && (
-        <div className="flex flex-col -space-y-0.5 justify-center">
+        <div className="flex flex-col gap-0 justify-center">
           <span className={cn(
             "text-sm font-bold tracking-tight leading-none",
             isLight ? "text-white" : "text-sidebar-foreground"
