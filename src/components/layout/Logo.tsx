@@ -16,7 +16,7 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
       <div className="flex h-9 w-9 items-center justify-center shrink-0">
         <img 
           src={minagrif_logo} 
-          alt="NODIXDOC Logo" 
+          alt="NODOC Logo" 
           className={cn("h-9 w-9 object-contain", isLight && "brightness-0 invert")}
         />
       </div>
@@ -28,7 +28,7 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
             "text-sm font-bold tracking-tight leading-none",
             isLight ? "text-white" : "text-sidebar-foreground"
           )}>
-            NODIXDOC
+            NODOC
           </span>
           <span className={cn(
             "text-[9px] font-medium tracking-wider uppercase mt-0.5",

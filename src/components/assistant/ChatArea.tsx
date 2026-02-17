@@ -61,7 +61,7 @@ export function ChatArea({
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Bem-vindo ao Assistente NODIXDOC
+              Bem-vindo ao Assistente NODOC
             </h3>
             <p className="text-sm text-muted-foreground max-w-md mb-6">
               Sou o seu assistente de conhecimento interno. Posso ajudá-lo a encontrar documentos, 
@@ -151,7 +151,7 @@ export function ChatArea({
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          As respostas são baseadas exclusivamente nos dados do sistema NODIXDOC.
+          As respostas são baseadas exclusivamente nos dados do sistema NODOC.
         </p>
       </div>
     </div>

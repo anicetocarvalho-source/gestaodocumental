@@ -195,7 +195,7 @@ const Auth = () => {
                   <Input
                     id="reset-email"
                     type="email"
-                    placeholder="nome@nodixdoc.gov.ao"
+                    placeholder="nome@nodoc.gov.ao"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-11"
@@ -276,7 +276,7 @@ const Auth = () => {
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="nome@nodixdoc.gov.ao"
+                    placeholder="nome@nodoc.gov.ao"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-11"

@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const systemPrompt = `You are the Internal Document Intelligence Engine of the NODIXDOC Process & Document Management Platform.
+const systemPrompt = `You are the Internal Document Intelligence Engine of the NODOC Process & Document Management Platform.
 
 Your role:
 - Read OCR text from uploaded documents.

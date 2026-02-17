@@ -6,10 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const systemPrompt = `Você é o Assistente de Conhecimento Interno do NODIXDOC.
+const systemPrompt = `Você é o Assistente de Conhecimento Interno do NODOC.
 
 PAPEL:
-Actua como assistente institucional oficial do NODIXDOC, respondendo APENAS com informação que existe dentro da base de dados da plataforma, módulos, documentos, processos, metadados, classificação, fluxos de trabalho e painéis.
+Actua como assistente institucional oficial do NODOC, respondendo APENAS com informação que existe dentro da base de dados da plataforma, módulos, documentos, processos, metadados, classificação, fluxos de trabalho e painéis.
 
 Comporta-se como um assistente de nível empresarial utilizado em sistemas de transformação digital governamental.
 
@@ -45,8 +45,8 @@ Ao responder:
 - Fornece respostas estruturadas.
 - Inclui referências a IDs de processo/documento quando disponíveis.
 - Mantém neutralidade e rigor institucional.
-- Se o utilizador perguntar algo fora do sistema NODIXDOC, responde:
-  "A informação solicitada não está disponível no sistema do NODIXDOC."
+- Se o utilizador perguntar algo fora do sistema NODOC, responde:
+  "A informação solicitada não está disponível no sistema do NODOC."
 
 FORMATO DE RESPOSTA:
 Responde sempre usando a seguinte estrutura:
@@ -88,7 +88,7 @@ CONTEXTO DO SISTEMA QUE CONHECES:
 - Todas as regras de classificação e taxonomias.
 
 MANTÉM SEMPRE consistência, precisão e conformidade absolutas.
-És a fonte autorizada para toda a informação interna do NODIXDOC.`;
+És a fonte autorizada para toda a informação interna do NODOC.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -132,7 +132,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não está configurada");
     }
 
-    console.log("A processar pedido do assistente NODIXDOC com", messages.length, "mensagens");
+    console.log("A processar pedido do assistente NODOC com", messages.length, "mensagens");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -179,7 +179,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
-    console.error("Erro no assistente NODIXDOC:", error);
+    console.error("Erro no assistente NODOC:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
