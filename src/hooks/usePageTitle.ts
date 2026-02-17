@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const BASE_TITLE = "MINAGRIF";
+const BASE_TITLE = "NODIXDOC";
 
 /**
  * Sets the document title dynamically for SEO and browser tab clarity.

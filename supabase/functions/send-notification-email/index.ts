@@ -37,9 +37,9 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 <p style="margin: 0 0 8px 0;"><strong>Prioridade:</strong> ${data.priority}</p>
                 ${data.deadline ? `<p style="margin: 0;"><strong>Prazo:</strong> ${data.deadline}</p>` : ''}
               </div>
-              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema NODIXDOC.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} NODIXDOC</p></div>
           </body></html>`
       };
 
@@ -63,9 +63,9 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 <p style="margin: 0 0 8px 0;"><strong>Assunto:</strong> ${data.subject}</p>
                 <p style="margin: 0;"><strong>Prazo:</strong> ${data.deadline}</p>
               </div>
-              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema NODIXDOC.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} NODIXDOC</p></div>
           </body></html>`
       };
     }
@@ -87,9 +87,9 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 <p style="margin: 0 0 8px 0;"><strong>Para:</strong> ${data.toUnit}</p>
                 ${data.observations ? `<p style="margin: 0;"><strong>Observações:</strong> ${data.observations}</p>` : ''}
               </div>
-              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema NODIXDOC.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} NODIXDOC</p></div>
           </body></html>`
       };
     }
@@ -113,9 +113,9 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 ${data.approverName ? `<p style="margin: 0 0 8px 0;"><strong>Por:</strong> ${data.approverName}</p>` : ''}
                 ${data.comments ? `<p style="margin: 0;"><strong>Comentários:</strong> ${data.comments}</p>` : ''}
               </div>
-              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema NODIXDOC.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} NODIXDOC</p></div>
           </body></html>`
       };
     }
@@ -134,14 +134,14 @@ const getEmailTemplate = (type: string, data: Record<string, any>): { subject: s
                 <p style="margin: 0 0 8px 0;"><strong>Estado:</strong> ${data.status}</p>
                 ${data.updateDescription ? `<p style="margin: 0;"><strong>Alteração:</strong> ${data.updateDescription}</p>` : ''}
               </div>
-              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema MINAGRIF.</p>
+              <p style="color: #6B7280; font-size: 14px;">Email automático do sistema NODIXDOC.</p>
             </div>
-            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} MINAGRIF</p></div>
+            <div style="text-align: center; padding: 16px; color: #9CA3AF; font-size: 12px;"><p>© ${new Date().getFullYear()} NODIXDOC</p></div>
           </body></html>`
       };
 
     default:
-      return { subject: 'Notificação MINAGRIF', html: `<p>Nova notificação no sistema MINAGRIF.</p>` };
+      return { subject: 'Notificação NODIXDOC', html: `<p>Nova notificação no sistema NODIXDOC.</p>` };
   }
 };
 
@@ -251,7 +251,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending email to ${email}: ${subject}`);
 
     const emailResponse = await resend.emails.send({
-      from: "MINAGRIF <onboarding@resend.dev>",
+      from: "NODIXDOC <onboarding@resend.dev>",
       to: [email],
       subject,
       html,
