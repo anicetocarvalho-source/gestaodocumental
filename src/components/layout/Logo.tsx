@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import minagrif_logo from "@/assets/minagrif-logo.png";
+import nodocLogo from "@/assets/nodoc-logo.png";
 
 export interface LogoProps {
   collapsed?: boolean;
@@ -15,9 +15,9 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
       {/* Logo Image */}
       <div className="flex h-9 w-9 items-center justify-center shrink-0">
         <img 
-          src={minagrif_logo} 
+          src={nodocLogo} 
           alt="NODOC Logo" 
-          className={cn("h-9 w-9 object-contain", isLight && "brightness-0 invert")}
+          className={cn("h-9 w-9 object-contain rounded-lg", isLight && "brightness-0 invert")}
         />
       </div>
 
