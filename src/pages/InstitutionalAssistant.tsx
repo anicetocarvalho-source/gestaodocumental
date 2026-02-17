@@ -217,7 +217,7 @@ const InstitutionalAssistant = () => {
   return (
     <DashboardLayout
       title="Assistente Institucional"
-      subtitle="Base de conhecimento interna do NODIXDOC"
+      subtitle="Base de conhecimento interna do NODOC"
     >
       <PageBreadcrumb items={[{ label: "Assistente Institucional" }]} />
 
@@ -249,7 +249,7 @@ const InstitutionalAssistant = () => {
                   <Bot className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Assistente NODIXDOC</CardTitle>
+                  <CardTitle className="text-base">Assistente NODOC</CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {currentConversation?.title || "Base de conhecimento institucional"}
                   </p>
@@ -311,7 +311,7 @@ const InstitutionalAssistant = () => {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
                 O Assistente Institucional é uma ferramenta de inteligência artificial 
-                treinada exclusivamente com dados do sistema NODIXDOC.
+                treinada exclusivamente com dados do sistema NODOC.
               </p>
             </CardContent>
           </Card>
