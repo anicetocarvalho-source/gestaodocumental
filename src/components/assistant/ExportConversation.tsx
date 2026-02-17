@@ -30,7 +30,7 @@ export function ExportConversation({ messages, conversationTitle }: Props) {
   };
 
   const exportAsText = () => {
-    const title = conversationTitle || "Conversa com Assistente MINAGRIF";
+    const title = conversationTitle || "Conversa com Assistente NODIXDOC";
     const date = new Date().toLocaleDateString("pt-PT");
     
     let content = `${title}\n`;
@@ -48,7 +48,7 @@ export function ExportConversation({ messages, conversationTitle }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `conversa-minagrif-${Date.now()}.txt`;
+    a.download = `conversa-nodixdoc-${Date.now()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -133,7 +133,7 @@ export function ExportConversation({ messages, conversationTitle }: Props) {
         );
       }
 
-      doc.save(`conversa-minagrif-${Date.now()}.pdf`);
+      doc.save(`conversa-nodixdoc-${Date.now()}.pdf`);
       toast.success("Conversa exportada como PDF");
     } catch (error) {
       console.error("Erro ao exportar PDF:", error);

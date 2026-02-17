@@ -3,7 +3,7 @@ import { driver, DriveStep, Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TOUR_COMPLETED_KEY = "minagrif_tour_completed";
+const TOUR_COMPLETED_KEY = "nodixdoc_tour_completed";
 
 export interface TourStep extends DriveStep {
   element?: string;
@@ -19,7 +19,7 @@ export interface TourStep extends DriveStep {
 export const dashboardTourSteps: TourStep[] = [
   {
     popover: {
-      title: "🎉 Bem-vindo ao MINAGRIF!",
+      title: "🎉 Bem-vindo ao NODIXDOC!",
       description: "Vamos fazer um tour rápido pelas principais funcionalidades do sistema de gestão documental. Este tour vai ajudá-lo a familiarizar-se com a interface.",
       side: "bottom",
       align: "center",
@@ -166,7 +166,7 @@ export function useGuidedTour() {
       overlayOpacity: 0.2,
       stagePadding: 10,
       stageRadius: 10,
-      popoverClass: "minagrif-tour-popover",
+      popoverClass: "nodixdoc-tour-popover",
       progressText: "{{current}} de {{total}}",
       nextBtnText: "Próximo →",
       prevBtnText: "← Anterior",

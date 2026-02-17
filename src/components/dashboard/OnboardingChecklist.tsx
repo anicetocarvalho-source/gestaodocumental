@@ -50,7 +50,7 @@ const checklistItems: ChecklistItem[] = [
   },
 ];
 
-const CHECKLIST_KEY = "minagrif_onboarding_checklist";
+const CHECKLIST_KEY = "nodixdoc_onboarding_checklist";
 
 export function OnboardingChecklist() {
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ export function OnboardingChecklist() {
 
   // Check if tour is completed
   useEffect(() => {
-    if (localStorage.getItem("minagrif_tour_completed") === "true" && !completedItems.includes("tour")) {
+    if (localStorage.getItem("nodixdoc_tour_completed") === "true" && !completedItems.includes("tour")) {
       const updated = [...completedItems, "tour"];
       setCompletedItems(updated);
       localStorage.setItem(CHECKLIST_KEY, JSON.stringify(updated));

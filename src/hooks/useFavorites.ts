@@ -8,7 +8,7 @@ export interface FavoriteItem {
   addedAt: number;
 }
 
-const FAVORITES_KEY = "minagrif_favorites";
+const FAVORITES_KEY = "nodixdoc_favorites";
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>(() => {
