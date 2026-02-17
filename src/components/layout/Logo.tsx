@@ -23,7 +23,7 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
 
       {/* Text */}
       {!collapsed && (
-        <div className="flex flex-col -space-y-0.5">
+        <div className="flex flex-col -space-y-1 justify-center">
           <span className={cn(
             "text-sm font-bold tracking-tight leading-none",
             isLight ? "text-white" : "text-sidebar-foreground"
@@ -31,7 +31,7 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
             NODOC
           </span>
           <span className={cn(
-            "text-[9px] font-medium tracking-wider uppercase",
+            "text-[9px] font-medium tracking-wider uppercase leading-none",
             isLight ? "text-white/70" : "text-sidebar-muted"
           )}>
             Gestão Documental
