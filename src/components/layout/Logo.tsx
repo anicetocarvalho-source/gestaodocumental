@@ -17,7 +17,7 @@ export function Logo({ collapsed = false, className, variant = "default" }: Logo
         <img 
           src={nodocLogo} 
           alt="NODIDOC Logo" 
-          className={cn("h-9 w-9 object-contain rounded-lg", isLight && "brightness-0 invert")}
+          className="h-9 w-9 object-contain rounded-lg"
         />
       </div>
 
