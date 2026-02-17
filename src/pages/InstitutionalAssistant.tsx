@@ -249,7 +249,7 @@ const InstitutionalAssistant = () => {
                   <Bot className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Assistente NODOC</CardTitle>
+                  <CardTitle className="text-base">Assistente NODIDOC</CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {currentConversation?.title || "Base de conhecimento institucional"}
                   </p>
@@ -311,7 +311,7 @@ const InstitutionalAssistant = () => {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
                 O Assistente Institucional é uma ferramenta de inteligência artificial 
-                treinada exclusivamente com dados do sistema NODOC.
+                treinada exclusivamente com dados do sistema NODIDOC.
               </p>
             </CardContent>
           </Card>
