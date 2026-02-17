@@ -7,6 +7,7 @@ import { useGlobalKeyboardShortcuts } from "@/hooks/useGlobalKeyboardShortcuts";
 import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsModal";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { FloatingChatbot } from "@/components/chatbot/FloatingChatbot";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -36,6 +37,7 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
           </main>
         </div>
         <KeyboardShortcutsModal />
+        <FloatingChatbot />
       </div>
     </SidebarProvider>
   );
