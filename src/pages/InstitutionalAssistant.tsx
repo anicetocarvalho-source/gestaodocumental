@@ -217,7 +217,7 @@ const InstitutionalAssistant = () => {
   return (
     <DashboardLayout
       title="Assistente Institucional"
-      subtitle="Base de conhecimento interna do NODOC"
+      subtitle="Base de conhecimento interna do NODIDOC"
     >
       <PageBreadcrumb items={[{ label: "Assistente Institucional" }]} />
 

@@ -24,7 +24,7 @@ interface RecentItem {
   href: string;
 }
 
-const RECENT_ITEMS_KEY = "nodoc_recent_items";
+const RECENT_ITEMS_KEY = "nodidoc_recent_items";
 const MAX_ITEMS = 10;
 
 // Helper functions to manage recent items
