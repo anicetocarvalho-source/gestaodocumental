@@ -64,8 +64,8 @@ const helpCategories: HelpCategory[] = [
     articles: [
       {
         id: "intro",
-        title: "Introdução ao NODOC",
-        content: `O NODOC é um sistema integrado de gestão documental desenvolvido para a gestão eficiente de documentos, processos e fluxos de trabalho institucionais. O sistema permite:
+        title: "Introdução ao NODIDOC",
+        content: `O NODIDOC é um sistema integrado de gestão documental desenvolvido para a gestão eficiente de documentos, processos e fluxos de trabalho institucionais. O sistema permite:
 
 • **Registo de Documentos**: Registar e classificar documentos de entrada e saída
 • **Gestão de Processos**: Criar e acompanhar processos administrativos
@@ -97,7 +97,7 @@ O menu lateral contém todas as secções do sistema. Pode expandir ou recolher 
       {
         id: "tour",
         title: "Tour Guiado",
-        content: `O NODOC oferece um tour interactivo para novos utilizadores. O tour apresenta as principais funcionalidades e ajuda a familiarizar-se com a interface.
+        content: `O NODIDOC oferece um tour interactivo para novos utilizadores. O tour apresenta as principais funcionalidades e ajuda a familiarizar-se com a interface.
 
 **Como iniciar o tour:**
 1. Clique no botão de Ajuda (?) na barra superior
@@ -377,7 +377,7 @@ Configure envio automático de relatórios:
 O Assistente Institucional é um chatbot inteligente que responde perguntas sobre:
 • Procedimentos do Ministério
 • Legislação aplicável
-• Uso do sistema NODOC
+• Uso do sistema NODIDOC
 • Dúvidas operacionais
 
 **Como usar:**
@@ -578,7 +578,7 @@ export function HelpMenu() {
             Central de Ajuda
           </SheetTitle>
           <SheetDescription>
-            Documentação, tutoriais e suporte do NODOC
+            Documentação, tutoriais e suporte do NODIDOC
           </SheetDescription>
         </SheetHeader>
 
@@ -753,7 +753,7 @@ export function HelpMenu() {
             <p className="text-sm text-muted-foreground mb-3">Precisa de mais ajuda?</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" asChild>
-                <a href="mailto:suporte@nodoc.gov.ao">
+                <a href="mailto:suporte@nodidoc.gov.ao">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Contactar Suporte
                 </a>

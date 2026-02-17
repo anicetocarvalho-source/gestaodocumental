@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const BASE_TITLE = "NODOC";
+const BASE_TITLE = "NODIDOC";
 
 /**
  * Sets the document title dynamically for SEO and browser tab clarity.
