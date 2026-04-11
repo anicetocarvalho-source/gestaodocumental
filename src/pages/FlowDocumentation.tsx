@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { flows, FlowData, FlowStep } from "@/lib/flowData";
 import { AppRole, roleLabels } from "@/hooks/useUserRole";

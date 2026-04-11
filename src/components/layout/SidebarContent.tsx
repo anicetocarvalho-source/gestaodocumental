@@ -74,6 +74,7 @@ const archiveItems: NavItem[] = [
 const toolsItems: NavItem[] = [
   { name: "Assistente IA", href: "/assistant", icon: Bot, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Relatórios", href: "/reports", icon: BarChart3, roles: ["admin", "gestor"] },
+  { name: "Fluxos", href: "/flow-documentation", icon: GitBranch, roles: ["admin", "gestor", "tecnico", "consulta"] },
 ];
 
 const managementItems: NavItem[] = [
