@@ -2355,6 +2355,42 @@ export type Database = {
         }
         Relationships: []
       }
+      workflows: {
+        Row: {
+          connections: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          nodes: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          connections?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          nodes?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          connections?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          nodes?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       dispatch_signatures_public: {
