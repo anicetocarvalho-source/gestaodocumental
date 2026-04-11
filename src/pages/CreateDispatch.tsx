@@ -289,20 +289,31 @@ const CreateDispatch = () => {
                   id="subject"
                   placeholder="Ex: Autorização de despesa - Aquisição de equipamentos"
                   value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
+                  onChange={(e) => { setSubject(e.target.value); setFieldErrors(prev => ({ ...prev, subject: undefined })); }}
+                  maxLength={MAX_SUBJECT_LENGTH}
+                  className={cn(fieldErrors.subject && "border-destructive")}
                 />
+                <div className="flex justify-between">
+                  {fieldErrors.subject ? (
+                    <p className="text-xs text-destructive">{fieldErrors.subject}</p>
+                  ) : <span />}
+                  <p className="text-xs text-muted-foreground">
+                    {charCountText(subject.length, MAX_SUBJECT_LENGTH)}
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Conteúdo do Despacho *</Label>
                 <Textarea
                   placeholder="Digite o texto do despacho aqui..."
-                  className="min-h-[200px]"
+                  className={cn("min-h-[200px]", fieldErrors.dispatchText && "border-destructive")}
                   value={dispatchText}
-                  onChange={(e) => setDispatchText(e.target.value)}
+                  onChange={(e) => { setDispatchText(e.target.value); setFieldErrors(prev => ({ ...prev, dispatchText: undefined })); }}
+                  maxLength={MAX_DISPATCH_CONTENT_LENGTH}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {dispatchText.length} caracteres
+                  {charCountText(dispatchText.length, MAX_DISPATCH_CONTENT_LENGTH)}
                 </p>
               </div>
             </CardContent>
