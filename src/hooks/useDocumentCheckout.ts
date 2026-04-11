@@ -43,7 +43,7 @@ export function useCheckoutStatus(documentId: string | undefined) {
 
       const { data, error } = await supabase
         .from('document_checkouts')
-        .select('*, profile:profiles!document_checkouts_checked_out_by_fkey(full_name, email)')
+        .select('*')
         .eq('document_id', documentId)
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
