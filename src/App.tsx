@@ -43,6 +43,7 @@ import MovementHistory from "./pages/MovementHistory";
 import PendingApprovals from "./pages/PendingApprovals";
 import FlowDocumentation from "./pages/FlowDocumentation";
 import Profile from "./pages/Profile";
+import ProtocolBook from "./pages/ProtocolBook";
 import ResetPassword from "./pages/ResetPassword";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -103,6 +104,7 @@ const App = () => (
               <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
               <Route path="/flow-documentation" element={<ProtectedRoute><FlowDocumentation /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/protocol-book" element={<ProtectedRoute><ProtocolBook /></ProtectedRoute>} />
               <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />

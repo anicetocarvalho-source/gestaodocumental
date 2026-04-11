@@ -29,6 +29,7 @@ import {
   Tags,
   Bot,
   History,
+  BookOpen,
   LucideIcon,
   LogOut,
   UserCircle,
@@ -55,6 +56,7 @@ const documentItems: NavItem[] = [
   { name: "Documentos", href: "/documents", icon: FileText, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Processos", href: "/processes", icon: ClipboardList, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Expedições", href: "/dispatches", icon: Package, roles: ["admin", "gestor", "tecnico"] },
+  { name: "Protocolo", href: "/protocol-book", icon: BookOpen, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Aprovações", href: "/approvals", icon: CheckSquare, roles: ["admin", "gestor"] },
   { name: "Movimentações", href: "/movement-history", icon: History, roles: ["admin", "gestor", "tecnico", "consulta"] },
 ];
