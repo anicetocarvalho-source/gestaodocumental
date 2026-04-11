@@ -107,7 +107,7 @@ export default function ProtocolBook() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Livro de Protocolo">
       <div className="space-y-6">
         <PageBreadcrumb items={[{ label: "Livro de Protocolo" }]} />
 
