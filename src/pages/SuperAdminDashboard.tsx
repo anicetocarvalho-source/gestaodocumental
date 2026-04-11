@@ -24,14 +24,7 @@ const SuperAdminDashboard = () => {
 
   return (
     <DashboardLayout title="Super-Admin" subtitle="Gestão global da plataforma multi-institucional">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Shield className="h-7 w-7 text-primary" />
-            Painel Super-Admin
-          </h1>
-          <p className="text-muted-foreground mt-1">Gestão global da plataforma multi-institucional</p>
-        </div>
+      <div className="space-y-4">
 
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
