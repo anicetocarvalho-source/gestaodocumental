@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,8 @@ type AuthView = "login" | "forgot-password" | "reset-sent";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = (location.state as any)?.from?.pathname || "/";
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,14 +29,14 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session) {
-          navigate("/");
+          navigate(redirectTo, { replace: true });
         }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/");
+        navigate(redirectTo, { replace: true });
       }
     });
 
