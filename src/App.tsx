@@ -43,6 +43,7 @@ import MovementHistory from "./pages/MovementHistory";
 import PendingApprovals from "./pages/PendingApprovals";
 import FlowDocumentation from "./pages/FlowDocumentation";
 import Profile from "./pages/Profile";
+import ResetPassword from "./pages/ResetPassword";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
@@ -61,6 +62,7 @@ const App = () => (
             <Routes>
               {/* Rotas públicas */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/access-denied" element={<AccessDenied />} />
               
               {/* Rotas protegidas */}
