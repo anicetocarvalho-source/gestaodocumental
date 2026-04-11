@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MAX_NAME_LENGTH, MAX_REFERENCE_LENGTH, charCountText } from "@/lib/validation-constants";
 
 interface FormData {
   title: string;
@@ -86,7 +87,11 @@ export function WizardStepSender({
             value={formData.senderName}
             onChange={(e) => updateFormData("senderName", e.target.value)}
             disabled={isSubmitting}
+            maxLength={MAX_NAME_LENGTH}
           />
+          <p className="text-xs text-muted-foreground text-right">
+            {charCountText(formData.senderName.length, MAX_NAME_LENGTH)}
+          </p>
         </div>
 
         <div className="space-y-1.5">
@@ -97,7 +102,11 @@ export function WizardStepSender({
             value={formData.senderInstitution}
             onChange={(e) => updateFormData("senderInstitution", e.target.value)}
             disabled={isSubmitting}
+            maxLength={MAX_NAME_LENGTH}
           />
+          <p className="text-xs text-muted-foreground text-right">
+            {charCountText(formData.senderInstitution.length, MAX_NAME_LENGTH)}
+          </p>
         </div>
 
         <div className="space-y-1.5">
@@ -108,7 +117,11 @@ export function WizardStepSender({
             value={formData.externalReference}
             onChange={(e) => updateFormData("externalReference", e.target.value)}
             disabled={isSubmitting}
+            maxLength={MAX_REFERENCE_LENGTH}
           />
+          <p className="text-xs text-muted-foreground text-right">
+            {charCountText(formData.externalReference.length, MAX_REFERENCE_LENGTH)}
+          </p>
         </div>
       </CardContent>
     </Card>

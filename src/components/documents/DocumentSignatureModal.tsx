@@ -16,6 +16,9 @@ import { CheckCircle2, FileSignature, User, Briefcase, Calendar, Clock } from "l
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { MAX_ROLE_LENGTH, charCountText } from "@/lib/validation-constants";
+
+const MAX_SIGNER_NAME_LENGTH = 100;
 
 interface DocumentSignatureModalProps {
   open: boolean;
@@ -57,8 +60,6 @@ export function DocumentSignatureModal({
     }
 
     setIsSigning(true);
-
-    // Simulate signing process
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     const signatureData: SignatureData = {
@@ -118,7 +119,6 @@ export function DocumentSignatureModal({
           </div>
         ) : (
           <div className="space-y-4 py-4">
-            {/* Signer Information */}
             <div className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="signer-name" className="flex items-center gap-2">
@@ -130,7 +130,11 @@ export function DocumentSignatureModal({
                   placeholder="Digite o seu nome completo"
                   value={signerName}
                   onChange={(e) => setSignerName(e.target.value)}
+                  maxLength={MAX_SIGNER_NAME_LENGTH}
                 />
+                <p className="text-xs text-muted-foreground text-right">
+                  {charCountText(signerName.length, MAX_SIGNER_NAME_LENGTH)}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -143,11 +147,14 @@ export function DocumentSignatureModal({
                   placeholder="Ex: Diretor, Técnico Superior"
                   value={signerRole}
                   onChange={(e) => setSignerRole(e.target.value)}
+                  maxLength={MAX_ROLE_LENGTH}
                 />
+                <p className="text-xs text-muted-foreground text-right">
+                  {charCountText(signerRole.length, MAX_ROLE_LENGTH)}
+                </p>
               </div>
             </div>
 
-            {/* Timestamp Info */}
             <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg text-sm">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -159,7 +166,6 @@ export function DocumentSignatureModal({
               </div>
             </div>
 
-            {/* Signature Pad */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <FileSignature className="h-4 w-4" />

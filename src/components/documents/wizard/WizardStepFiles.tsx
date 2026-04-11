@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Upload, File, Trash2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { validateFiles, MAX_FILE_SIZE_MB } from "@/lib/validation-constants";
 
 interface WizardStepFilesProps {
   uploadedFiles: File[];
@@ -41,9 +41,9 @@ export function WizardStepFiles({
     e.preventDefault();
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      setUploadedFiles((prev) => [...prev, ...files]);
-      toast.success(`${files.length} ficheiro${files.length > 1 ? "s" : ""} adicionado${files.length > 1 ? "s" : ""}`);
+    const validFiles = validateFiles(files, MAX_FILE_SIZE_MB);
+    if (validFiles.length > 0) {
+      setUploadedFiles((prev) => [...prev, ...validFiles]);
     }
   }, [setIsDragging, setUploadedFiles]);
 
@@ -51,8 +51,10 @@ export function WizardStepFiles({
     const files = e.target.files;
     if (files && files.length > 0) {
       const fileArray = Array.from(files);
-      setUploadedFiles((prev) => [...prev, ...fileArray]);
-      toast.success(`${fileArray.length} ficheiro${fileArray.length > 1 ? "s" : ""} adicionado${fileArray.length > 1 ? "s" : ""}`);
+      const validFiles = validateFiles(fileArray, MAX_FILE_SIZE_MB);
+      if (validFiles.length > 0) {
+        setUploadedFiles((prev) => [...prev, ...validFiles]);
+      }
     }
     e.target.value = "";
   }, [setUploadedFiles]);
@@ -100,7 +102,7 @@ export function WizardStepFiles({
               <p className="text-xs text-muted-foreground mt-1">ou clique para seleccionar</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (máx. 20MB por ficheiro)
+              PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (máx. {MAX_FILE_SIZE_MB}MB por ficheiro)
             </p>
           </div>
         </div>

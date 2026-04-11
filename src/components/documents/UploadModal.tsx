@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, FileText, X, Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { validateFiles, MAX_UPLOAD_FILE_SIZE_MB } from "@/lib/validation-constants";
 
 interface UploadModalProps {
   open: boolean;
@@ -33,9 +34,10 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
     e.preventDefault();
     setIsDragging(false);
     
-    // Simulate file upload
     const droppedFiles = Array.from(e.dataTransfer.files);
-    const newFiles: UploadedFile[] = droppedFiles.map(f => ({
+    const validFiles = validateFiles(droppedFiles, MAX_UPLOAD_FILE_SIZE_MB);
+    
+    const newFiles: UploadedFile[] = validFiles.map(f => ({
       name: f.name,
       size: `${(f.size / 1024 / 1024).toFixed(2)} MB`,
       progress: 0,
@@ -44,7 +46,6 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
     
     setFiles(prev => [...prev, ...newFiles]);
     
-    // Simulate upload progress
     newFiles.forEach((_, index) => {
       const interval = setInterval(() => {
         setFiles(prev => prev.map((f, i) => {
@@ -67,7 +68,9 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      const newFiles: UploadedFile[] = selectedFiles.map(f => ({
+      const validFiles = validateFiles(selectedFiles, MAX_UPLOAD_FILE_SIZE_MB);
+      
+      const newFiles: UploadedFile[] = validFiles.map(f => ({
         name: f.name,
         size: `${(f.size / 1024 / 1024).toFixed(2)} MB`,
         progress: 100,
@@ -92,7 +95,7 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
         <DialogHeader>
           <DialogTitle>Upload Documents</DialogTitle>
           <DialogDescription>
-            Drag and drop files or click to browse. Supported formats: PDF, DOCX, XLSX.
+            Drag and drop files or click to browse. Supported formats: PDF, DOCX, XLSX (máx. {MAX_UPLOAD_FILE_SIZE_MB}MB).
           </DialogDescription>
         </DialogHeader>
 
@@ -116,7 +119,7 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
                 Drop files here or click to upload
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Maximum file size: 25MB
+                Maximum file size: {MAX_UPLOAD_FILE_SIZE_MB}MB
               </p>
             </div>
             <Label htmlFor="file-upload" className="cursor-pointer">
@@ -126,7 +129,7 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
                 multiple
                 className="hidden"
                 onChange={handleFileSelect}
-                accept=".pdf,.docx,.xlsx,.doc,.xls"
+                accept=".pdf,.docx,.xlsx,.doc,.xls,.jpg,.jpeg,.png"
               />
               <Button type="button" variant="outline" size="sm" asChild>
                 <span>Browse Files</span>
