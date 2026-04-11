@@ -46,6 +46,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MAX_SUBJECT_LENGTH, MAX_DISPATCH_CONTENT_LENGTH, charCountText } from "@/lib/validation-constants";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -100,6 +101,7 @@ const CreateDispatch = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [recipientSearch, setRecipientSearch] = useState("");
   const [documentSearch, setDocumentSearch] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
 
   // Data fetching
   const { data: units, isLoading: unitsLoading } = useOrganizationalUnits();
@@ -145,20 +147,23 @@ const CreateDispatch = () => {
   };
 
   const validateForm = () => {
+    const errors: Record<string, string | undefined> = {};
     if (!dispatchType) {
-      toast.error("Seleccione o tipo de despacho");
-      return false;
+      errors.dispatchType = "Seleccione o tipo de despacho";
     }
     if (!subject.trim()) {
-      toast.error("Digite o assunto do despacho");
-      return false;
+      errors.subject = "O assunto é obrigatório";
     }
     if (!dispatchText.trim()) {
-      toast.error("Digite o conteúdo do despacho");
-      return false;
+      errors.dispatchText = "O conteúdo é obrigatório";
     }
     if (selectedRecipients.length === 0) {
-      toast.error("Adicione pelo menos um destinatário");
+      errors.recipients = "Adicione pelo menos um destinatário";
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) toast.error(firstError);
       return false;
     }
     return true;
