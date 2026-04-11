@@ -371,7 +371,11 @@ const CreateProcess = () => {
                         placeholder={formData.origin === "interno" ? "Nome do servidor" : "Nome do requerente"}
                         value={formData.requesterName}
                         onChange={(e) => handleInputChange("requesterName", e.target.value)}
+                        maxLength={MAX_NAME_LENGTH}
                       />
+                      <p className="text-xs text-muted-foreground text-right">
+                        {charCountText(formData.requesterName.length, MAX_NAME_LENGTH)}
+                      </p>
                     </div>
                     {formData.origin === "interno" && (
                       <div className="space-y-2">
@@ -431,7 +435,13 @@ const CreateProcess = () => {
                         multiple
                         className="hidden"
                         id="file-upload"
-                        onChange={(e) => e.target.files && handleFileUpload(Array.from(e.target.files))}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            const valid = validateFiles(Array.from(e.target.files), MAX_FILE_SIZE_MB);
+                            handleFileUpload(valid);
+                          }
+                        }}
                       />
                       <Button variant="outline" asChild>
                         <label htmlFor="file-upload" className="cursor-pointer">
