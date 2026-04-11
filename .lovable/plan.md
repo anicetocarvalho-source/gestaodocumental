@@ -1,32 +1,45 @@
 
 
-## Plano de Correcção: Funções de Auditoria Bloqueadas por RLS
+## Página de Documentação Interactiva dos Fluxos
 
-### Problema Encontrado
+### Objectivo
+Criar uma nova página `/flow-documentation` que apresenta visualmente todos os fluxos da plataforma, com navegação por perfil de utilizador e diagramas interactivos.
 
-Ao testar o registo de documento, o POST falha com erro **42501**: `new row violates row-level security policy for table "document_audit_log"`.
+### Estrutura da Página
 
-**Causa raiz**: As 3 funções de auditoria (`audit_document_changes`, `audit_process_changes`, `audit_dispatch_changes`) executam com as permissões do utilizador actual, mas as tabelas de audit log têm políticas RLS de INSERT com `WITH CHECK (false)` — ou seja, nenhum utilizador pode inserir directamente. Estas funções precisam de `SECURITY DEFINER` para contornar o RLS e inserir registos de auditoria via triggers.
+A página terá:
+1. **Filtro por Role** — Tabs (Admin / Gestor / Técnico / Consulta) que filtram os fluxos visíveis
+2. **Lista de Fluxos** — Cards colapsáveis (Accordion) com cada fluxo
+3. **Detalhe do Fluxo** — Dentro de cada accordion: diagrama visual (Mermaid renderizado como SVG), tabela de passos, ecrãs envolvidos (links clicáveis para as páginas reais), dados necessários, e condições de erro
 
-### Correcção (1 migração SQL)
+### Ficheiros a criar/editar
 
-Criar uma migração que altera as 3 funções para `SECURITY DEFINER` com `SET search_path = public`:
+| Ficheiro | Acção |
+|----------|-------|
+| `src/pages/FlowDocumentation.tsx` | **Criar** — Página principal com tabs por role, accordion por fluxo, diagramas inline |
+| `src/lib/flowData.ts` | **Criar** — Dados estáticos dos 11 fluxos documentados (passos, ecrãs, erros, roles aplicáveis) |
+| `src/App.tsx` | **Editar** — Adicionar rota `/flow-documentation` |
+| `src/components/layout/SidebarContent.tsx` | **Editar** — Adicionar link na secção "Ferramentas" |
+| `src/lib/permissions.ts` | **Editar** — Adicionar permissão para a rota (todos os roles) |
 
-1. **`audit_document_changes`** → `SECURITY DEFINER`
-2. **`audit_process_changes`** → `SECURITY DEFINER`
-3. **`audit_dispatch_changes`** → `SECURITY DEFINER`
+### Componentes utilizados
+- `DashboardLayout` (layout existente)
+- `Tabs` / `TabsList` / `TabsTrigger` / `TabsContent` (UI existente)
+- `Accordion` / `AccordionItem` / `AccordionTrigger` / `AccordionContent` (UI existente)
+- `Card`, `Badge`, `ScrollArea` (UI existente)
+- Diagramas de fluxo renderizados com CSS/HTML (setas e caixas estilizadas com Tailwind) — sem dependência externa
 
-Isto é seguro porque estas funções são invocadas apenas por triggers (não por chamadas directas), e o `search_path` é fixado para prevenir ataques de injecção.
+### Dados dos fluxos (em `flowData.ts`)
+Os 11 fluxos documentados anteriormente, cada um com:
+- `id`, `name`, `description`
+- `roles: AppRole[]` — perfis que executam este fluxo
+- `steps: { number, action, screen, route }[]`
+- `requiredData: string[]`
+- `errors: { condition, consequence }[]`
 
-### Verificação pós-correcção
-
-Após aplicar a migração, repetir o teste:
-- Registar documento → deve gravar na BD e redirecionar
-- Criar processo → deve funcionar sem erro 403
-- Criar despacho → deve funcionar sem erro 403
-
-### Nota sobre outros problemas observados
-
-- Pedido `notification_preferences` retorna **406** (provavelmente `.single()` sem dados) — não bloqueia funcionalidade
-- Pedidos HEAD a `dispatch_approvals` falham — são provavelmente verificações de realtime, não críticos
+### Design visual
+- Cada fluxo mostra uma sequência horizontal/vertical de caixas conectadas por setas (estilizadas com Tailwind, sem biblioteca externa)
+- Caixas clicáveis que navegam para o ecrã correspondente
+- Badges coloridos por role
+- Secção de erros com ícones de alerta
 
