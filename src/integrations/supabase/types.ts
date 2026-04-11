@@ -2136,6 +2136,84 @@ export type Database = {
           },
         ]
       }
+      protocol_entries: {
+        Row: {
+          created_at: string
+          delivery_method: string | null
+          direction: string
+          document_date: string | null
+          document_id: string | null
+          id: string
+          observations: string | null
+          protocol_number: string
+          received_at: string | null
+          recipient_institution: string | null
+          recipient_name: string | null
+          registered_by: string | null
+          sender_institution: string | null
+          sender_name: string | null
+          sent_at: string | null
+          subject: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_method?: string | null
+          direction: string
+          document_date?: string | null
+          document_id?: string | null
+          id?: string
+          observations?: string | null
+          protocol_number: string
+          received_at?: string | null
+          recipient_institution?: string | null
+          recipient_name?: string | null
+          registered_by?: string | null
+          sender_institution?: string | null
+          sender_name?: string | null
+          sent_at?: string | null
+          subject: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_method?: string | null
+          direction?: string
+          document_date?: string | null
+          document_id?: string | null
+          id?: string
+          observations?: string | null
+          protocol_number?: string
+          received_at?: string | null
+          recipient_institution?: string | null
+          recipient_name?: string | null
+          registered_by?: string | null
+          sender_institution?: string | null
+          sender_name?: string | null
+          sent_at?: string | null
+          subject?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_entries_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_entries_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scanned_documents: {
         Row: {
           batch_id: string
