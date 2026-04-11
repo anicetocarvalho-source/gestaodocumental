@@ -76,6 +76,7 @@ const DocumentDetail = () => {
   const [newComment, setNewComment] = useState("");
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isLockedByOther, setIsLockedByOther] = useState(false);
   
   const { canDo } = usePermissions();
   
