@@ -42,6 +42,7 @@ import InstitutionalAssistant from "./pages/InstitutionalAssistant";
 import MovementHistory from "./pages/MovementHistory";
 import PendingApprovals from "./pages/PendingApprovals";
 import FlowDocumentation from "./pages/FlowDocumentation";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AccessDenied from "./pages/AccessDenied";
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/assistant" element={<ProtectedRoute><InstitutionalAssistant /></ProtectedRoute>} />
               <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
               <Route path="/flow-documentation" element={<ProtectedRoute><FlowDocumentation /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />

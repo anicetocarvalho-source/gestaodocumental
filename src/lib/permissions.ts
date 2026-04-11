@@ -36,6 +36,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/process-templates": ["admin", "gestor"],
   "/settings": ["admin"],
   "/flow-documentation": ["admin", "gestor", "tecnico", "consulta"],
+  "/profile": ["admin", "gestor", "tecnico", "consulta"],
   
   // Páginas de detalhe seguem as permissões das páginas pai
   "/documents/new": ["admin", "gestor", "tecnico"],
