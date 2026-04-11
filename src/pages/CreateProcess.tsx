@@ -10,6 +10,15 @@ import { Label } from "@/components/ui/label";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import {
+  MAX_SUBJECT_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_NAME_LENGTH,
+  charCountText,
+  getTodayISO,
+  validateFiles,
+  MAX_FILE_SIZE_MB,
+} from "@/lib/validation-constants";
 import { 
   FileText,
   Upload,
@@ -99,7 +108,8 @@ const CreateProcess = () => {
     e.preventDefault();
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files);
-    handleFileUpload(files);
+    const validFiles = validateFiles(files, MAX_FILE_SIZE_MB);
+    handleFileUpload(validFiles);
   };
 
   const handleFileUpload = (files: File[]) => {
@@ -146,6 +156,18 @@ const CreateProcess = () => {
   };
 
   const handleSubmit = async () => {
+    if (!formData.subject.trim()) {
+      toast.error("O assunto é obrigatório");
+      return;
+    }
+    if (!formData.processTypeId) {
+      toast.error("Seleccione o tipo de processo");
+      return;
+    }
+    if (!formData.requesterName.trim()) {
+      toast.error("O nome do requerente é obrigatório");
+      return;
+    }
     setIsSubmitting(true);
     
     try {
@@ -279,7 +301,11 @@ const CreateProcess = () => {
                         placeholder="Digite o assunto do processo"
                         value={formData.subject}
                         onChange={(e) => handleInputChange("subject", e.target.value)}
+                        maxLength={MAX_SUBJECT_LENGTH}
                       />
+                      <p className="text-xs text-muted-foreground text-right">
+                        {charCountText(formData.subject.length, MAX_SUBJECT_LENGTH)}
+                      </p>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -290,7 +316,11 @@ const CreateProcess = () => {
                       className="min-h-[120px]"
                       value={formData.description}
                       onChange={(e) => handleInputChange("description", e.target.value)}
+                      maxLength={MAX_DESCRIPTION_LENGTH}
                     />
+                    <p className="text-xs text-muted-foreground text-right">
+                      {charCountText(formData.description.length, MAX_DESCRIPTION_LENGTH)}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
