@@ -131,7 +131,7 @@ export function DocumentCheckoutBanner({ documentId, onCheckoutChange }: Documen
   }
 
   // Locked by another user
-  const lockedBy = (checkout as any).profile?.full_name || "outro utilizador";
+  const lockedBy = lockerProfile?.full_name || "outro utilizador";
   const lockedSince = formatDistanceToNow(new Date(checkout.checked_out_at), { locale: pt, addSuffix: true });
 
   return (
