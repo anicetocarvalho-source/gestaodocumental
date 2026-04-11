@@ -1,79 +1,80 @@
 
 
-## Check-in/Check-out de Documentos
+## Dashboard de Super-Admin
 
 ### Objectivo
-Implementar bloqueio de edição concorrente em documentos com indicação visual de quem tem o documento em check-out e desbloqueio automático por timeout.
+Criar uma página dedicada `/super-admin` com dashboard de gestão global da plataforma: organizações, quotas de armazenamento, estatísticas de uso por instituição e configurações globais. Acessível apenas ao role `admin`.
 
 ### 1. Migração de base de dados
 
-Criar tabela `document_checkouts`:
+Criar tabelas para suportar multi-tenancy básico e métricas:
 
 ```sql
-CREATE TABLE public.document_checkouts (
+-- Tabela de organizações (tenants)
+CREATE TABLE public.organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  document_id UUID NOT NULL UNIQUE,
-  checked_out_by UUID NOT NULL,
-  checked_out_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '2 hours'),
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  domain TEXT,
+  logo_url TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  storage_quota_mb INTEGER NOT NULL DEFAULT 5120, -- 5GB default
+  storage_used_mb INTEGER NOT NULL DEFAULT 0,
+  max_users INTEGER NOT NULL DEFAULT 50,
+  plan TEXT NOT NULL DEFAULT 'standard',
+  contact_email TEXT,
+  contact_phone TEXT,
+  address TEXT,
   notes TEXT,
-  CONSTRAINT fk_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-ALTER TABLE public.document_checkouts ENABLE ROW LEVEL SECURITY;
+-- Tabela de configurações globais da plataforma
+CREATE TABLE public.platform_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  setting_key TEXT NOT NULL UNIQUE,
+  setting_value TEXT,
+  setting_type TEXT NOT NULL DEFAULT 'text',
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 ```
 
-RLS policies:
-- **SELECT**: todos os authenticated podem ver (para mostrar quem bloqueou)
-- **INSERT**: authenticated users podem fazer check-out
-- **DELETE**: o próprio utilizador que fez check-out, admins, ou quando expirado
-- **UPDATE**: o próprio utilizador ou admins
+RLS: apenas admin pode ver/gerir estas tabelas.
 
-Função `security definer` para verificar se um documento está em check-out válido (não expirado):
+Seed de configurações globais iniciais (max upload size, manutenção, versão, etc.).
 
-```sql
-CREATE FUNCTION public.is_document_checked_out(doc_id UUID)
-RETURNS TABLE(checked_out boolean, user_id uuid, full_name text, expires_at timestamptz)
-```
+### 2. Nova página `SuperAdminDashboard.tsx`
 
-### 2. Hook `useDocumentCheckout`
+Página com 4 tabs:
 
-Novo ficheiro `src/hooks/useDocumentCheckout.ts`:
-- `useCheckoutStatus(documentId)` — query que retorna o estado actual do check-out (polling a cada 30s)
-- `useCheckOut()` — mutation para fazer check-out (insere na tabela, falha se já existe registo não expirado)
-- `useCheckIn()` — mutation para devolver o documento (apaga o registo)
-- `useForceCheckIn()` — mutation para admin forçar desbloqueio
-- `useExtendCheckout()` — mutation para renovar o timeout
+- **Visão Geral**: cards com total de organizações, utilizadores, documentos, armazenamento; gráficos de uso
+- **Organizações**: tabela CRUD de organizações com quota, plano, estado activo, nº utilizadores
+- **Armazenamento**: barra de progresso por organização, alertas de quota perto do limite
+- **Configurações Globais**: edição de parâmetros da plataforma (tamanho máximo upload, modo manutenção, etc.)
 
-### 3. Componente `DocumentCheckoutBanner`
+### 3. Hook `useSuperAdmin.ts`
 
-Novo ficheiro `src/components/documents/DocumentCheckoutBanner.tsx`:
-- Banner amarelo/vermelho no topo do `DocumentDetail` mostrando:
-  - **Se eu tenho check-out**: "Documento em edição por si. Expira em X min." + botão "Devolver"
-  - **Se outro utilizador tem**: "Documento bloqueado por [Nome] desde [hora]. Expira em [hora]." + botão "Forçar Desbloqueio" (só admin)
-  - **Se expirado**: apaga automaticamente o registo na próxima query
-- Ícone de cadeado no header do documento
+- `useOrganizations()` — CRUD de organizações
+- `usePlatformStats()` — estatísticas globais (conta documentos, processos, utilizadores, armazenamento)
+- `usePlatformSettings()` — gestão de configurações globais
 
-### 4. Integração no `DocumentDetail.tsx`
+### 4. Integração na navegação
 
-- Importar `DocumentCheckoutBanner` e renderizar antes do conteúdo principal
-- Desabilitar botões de edição/workflow quando documento está em check-out por outro utilizador
-- Adicionar botão "Check-out para Edição" nas acções do documento
-- O check-in automático acontece via limpeza: a query ignora registos com `expires_at < now()`
-
-### 5. Indicação visual na lista de documentos
-
-- No `Documents.tsx` / tabela de documentos, mostrar ícone de cadeado ao lado de documentos em check-out
-- Query join com `document_checkouts` na listagem
+- Adicionar item "Super-Admin" na sidebar (grupo Administração, apenas `admin`)
+- Registar rota `/super-admin` em `App.tsx` com `ProtectedRoute`
+- Adicionar permissão em `permissions.ts`
 
 ### Ficheiros a criar/editar
 
 | Ficheiro | Acção |
 |----------|-------|
-| `supabase/migrations/...` | Nova tabela + RLS + função |
-| `src/hooks/useDocumentCheckout.ts` | **Novo** — hook completo |
-| `src/components/documents/DocumentCheckoutBanner.tsx` | **Novo** — banner visual |
-| `src/pages/DocumentDetail.tsx` | Editar — integrar banner + desabilitar acções |
-| `src/hooks/useDocuments.ts` | Editar — join com checkouts na listagem |
-| `src/pages/Documents.tsx` | Editar — ícone de cadeado na tabela |
+| `supabase/migrations/...` | Nova tabela `organizations`, `platform_settings` + RLS |
+| `src/hooks/useSuperAdmin.ts` | **Novo** — hooks para organizações, stats e settings |
+| `src/pages/SuperAdminDashboard.tsx` | **Novo** — dashboard completo com 4 tabs |
+| `src/App.tsx` | Editar — registar rota `/super-admin` |
+| `src/lib/permissions.ts` | Editar — adicionar `/super-admin: ["admin"]` |
+| `src/components/layout/SidebarContent.tsx` | Editar — adicionar item na sidebar |
 
