@@ -1,4 +1,4 @@
-import { useEffect, useState as useLocalState } from "react";
+import { useEffect } from "react";
 import { Lock, Unlock, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCheckoutStatus, useCheckOut, useCheckIn, useForceCheckIn, useExtendCheckout } from "@/hooks/useDocumentCheckout";
