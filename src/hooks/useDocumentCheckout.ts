@@ -1,6 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Fetch all active checkouts (for document list lock icons)
+export function useActiveCheckouts() {
+  return useQuery({
+    queryKey: ['active-checkouts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('document_checkouts')
+        .select('document_id, checked_out_by, expires_at, profile:profiles!document_checkouts_checked_out_by_fkey(full_name)')
+        .gt('expires_at', new Date().toISOString());
+
+      if (error) throw error;
+      return (data || []) as Array<{
+        document_id: string;
+        checked_out_by: string;
+        expires_at: string;
+        profile?: { full_name: string };
+      }>;
+    },
+    refetchInterval: 30000,
+  });
+}
+
 interface CheckoutStatus {
   id: string;
   document_id: string;
