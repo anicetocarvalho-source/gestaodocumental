@@ -85,6 +85,7 @@ const managementItems: NavItem[] = [
   { name: "Notificações", href: "/notifications", icon: Bell, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Fluxos", href: "/workflow-builder", icon: GitBranch, roles: ["admin"] },
   { name: "Modelos", href: "/process-templates", icon: Layers, roles: ["admin", "gestor"] },
+  { name: "Super-Admin", href: "/super-admin", icon: Shield, roles: ["admin"] },
   { name: "Definições", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
 
