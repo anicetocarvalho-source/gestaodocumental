@@ -1,60 +1,89 @@
 
 
-## Tour Guiado por Perfil de Utilizador
+## Teste de Limites e Casos Extremos — Plano de Execução
 
 ### Objectivo
-Transformar o tour generico actual (igual para todos) num tour personalizado que mostra a cada perfil (Admin, Gestor, Tecnico, Consulta) apenas os fluxos e funcionalidades relevantes para o seu role, na primeira vez que acedem ao sistema.
+Testar sistematicamente todos os módulos de criação/edição da plataforma com inputs extremos e documentar como reage a cada caso. O teste será executado via browser automation nos formulários reais.
 
-### O que existe
-- `useGuidedTour.ts` — hook com driver.js, auto-start na primeira visita, tour unico para todos
-- `OnboardingChecklist.tsx` — checklist localStorage no dashboard
-- `useUserRole.ts` — hook que retorna o role do utilizador autenticado
-- Tour key: `nodidoc_tour_completed` (localStorage)
+### Módulos a Testar
 
-### Alteracoes
+#### 1. Registo de Documento (`/register-document`)
+**Validação existente**: Apenas `title`, `documentTypeId`, `currentUnitId` (campos obrigatórios no passo 1). Sem limite de tamanho nos campos de texto. Sem validação de tamanho de ficheiro no código (apenas label "máx. 20MB" mas sem enforcement).
 
-**1. `src/hooks/useGuidedTour.ts`** — Refactoring principal:
-- Criar sets de steps por role: `adminTourSteps`, `gestorTourSteps`, `tecnicoTourSteps`, `consultaTourSteps`
-- Cada set inclui os steps base (sidebar, pesquisa, perfil) + steps especificos:
-  - **Admin**: gestao de utilizadores, permissoes, workflow builder, SLA, relatorios, auditoria
-  - **Gestor**: aprovacoes, despachos, relatorios, processos, repositorio
-  - **Tecnico**: registo de documentos, processos, digitalizacao, OCR
-  - **Consulta**: pesquisa, repositorio, arquivo (apenas leitura)
-- Alterar auto-start para detectar o role via `useUserRole()` e seleccionar os steps adequados
-- Mudar a key de localStorage para incluir o role: `nodidoc_tour_completed_<role>` — assim se o role mudar, o tour re-executa
-- Adicionar funcao `startRoleTour(role: AppRole)` para iniciar manualmente
+Testes:
+- Campos obrigatórios em branco → avançar passo
+- Título com 500+ caracteres, caracteres especiais (`<script>`, emojis, acentos)
+- Campo `subject` e `description` com strings enormes
+- Upload de ficheiro `.exe`, `.zip` (formatos não listados no `accept`)
+- Upload de ficheiro >20MB
 
-**2. `src/components/dashboard/OnboardingChecklist.tsx`**:
-- Filtrar itens da checklist por role (ex: "Criar processo" nao aparece para Consulta)
-- Adaptar acoes sugeridas ao perfil do utilizador
+#### 2. Criar Despacho (`/create-dispatch`)
+**Validação existente**: `dispatchType`, `subject.trim()`, `dispatchText.trim()`, `recipients.length > 0`. Tudo via toasts, sem inline. Sem limites de tamanho.
 
-**3. `src/pages/Index.tsx`**:
-- Passar o role ao tour no auto-start (ja usa `useGuidedTour` que sera actualizado internamente)
+Testes:
+- Emitir sem tipo, sem assunto, sem conteúdo, sem destinatários
+- Assunto e conteúdo com 500+ caracteres e caracteres especiais
+- Prazo no passado
 
-**4. Novos `data-tour` attributes** em componentes que ainda nao os tem:
-- `src/components/layout/SidebarContent.tsx` — adicionar `data-tour` nos grupos de menu (admin, documentos, etc.)
+#### 3. Criar Processo (`/create-process`)
+**Validação existente**: Validação por steps (`isStep3Valid`), mas sem verificação de campos obrigatórios explícita no `handleSubmit`. Sem limites de tamanho.
 
-### Steps por Role (resumo)
+Testes:
+- Submeter sem assunto
+- Campos com strings enormes
+- Prazo no passado, SLA negativo
 
-| Step | Admin | Gestor | Tecnico | Consulta |
-|------|-------|--------|---------|----------|
-| Boas-vindas personalizada | x | x | x | x |
-| Menu principal | x | x | x | x |
-| Pesquisa rapida | x | x | x | x |
-| Accoes rapidas | x | x | x | - |
-| KPIs | x | x | - | - |
-| Aprovacoes | x | x | - | - |
-| Gestao utilizadores | x | - | - | - |
-| Registo documentos | x | x | x | - |
-| Relatorios | x | x | - | - |
-| Repositorio/Arquivo | x | x | x | x |
-| Notificacoes | x | x | x | x |
-| Perfil | x | x | x | x |
+#### 4. Criar Utilizador (modal em `/user-management`)
+**Validação existente**: Zod schema com `email`, `password` (8+ chars, maiúscula, minúscula, número), `full_name` (2-100 chars). Bem validado.
 
-### Detalhe tecnico
-- Sem novas dependencias — usa driver.js existente
-- Role detectado via `useUserRole()` dentro do hook
-- Mensagem de boas-vindas inclui o nome do role (ex: "Bem-vindo como Gestor!")
-- Tour completa-se por role, nao globalmente
-- Ficheiros editados: 3 (`useGuidedTour.ts`, `OnboardingChecklist.tsx`, `SidebarContent.tsx`)
+Testes:
+- Email inválido, password fraca
+- Nome com 1 char, nome com 101+ chars
+- Caracteres especiais no nome e cargo
+
+#### 5. Upload de Ficheiros (vários modais)
+**Validação existente**: `accept` no input limita no selector, mas não bloqueia drag-and-drop. Sem validação de tamanho no código.
+
+Testes:
+- Drag-and-drop de `.exe`
+- Ficheiro de 0 bytes
+- Ficheiro >25MB
+
+#### 6. Assinatura de Documento (modal)
+**Validação existente**: `signerName.trim()` obrigatório + assinatura desenhada.
+
+Testes:
+- Nome em branco, só espaços
+- Nome com 500+ caracteres
+
+### Execução
+
+Para cada teste, registar:
+- **Input**: O que foi inserido
+- **Resultado**: O que aconteceu (erro inline, toast, crash, aceite silencioso)
+- **Veredicto**: OK / Vulnerável / Melhoria necessária
+
+### Entregável
+
+Um documento PDF (`/mnt/documents/edge-case-test-report.pdf`) com tabela de resultados por módulo, categorizando cada caso como:
+- ✅ **Tratado** — erro claro e adequado
+- ⚠️ **Parcial** — aceita mas não deveria, ou mensagem confusa
+- ❌ **Vulnerável** — sem validação, crash, ou comportamento inesperado
+
+### Implementação
+
+1. Navegar a cada formulário no browser e testar cada caso
+2. Documentar resultados
+3. Gerar relatório PDF com todas as descobertas
+4. Opcionalmente propor correcções para os casos vulneráveis
+
+### Análise Prévia (já identificado no código)
+
+| Módulo | Problema Provável |
+|--------|-------------------|
+| Registo Documento | Sem limite de tamanho nos campos de texto, sem validação de tamanho de ficheiro |
+| Criar Despacho | Sem limite de tamanho, sem validação inline (só toasts) |
+| Criar Processo | Sem validação explícita de campos obrigatórios no submit |
+| Upload Ficheiros | `accept` não bloqueia drag-and-drop de formatos inválidos, sem check de tamanho |
+| Todos os módulos | Sem sanitização de HTML/XSS no input (embora React escape por defeito no render) |
 
