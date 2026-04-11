@@ -288,8 +288,13 @@ const DocumentDetail = () => {
           { label: document.entry_number }
         ]} 
       />
+      {/* Check-in/Check-out Banner */}
+      <DocumentCheckoutBanner 
+        documentId={document.id} 
+        onCheckoutChange={setIsLockedByOther} 
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
         {/* Main Content - 9 columns */}
         <div className="lg:col-span-9 space-y-6">
           
