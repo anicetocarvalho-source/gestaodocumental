@@ -1,69 +1,47 @@
 
 
-## Implementação das Correcções de Validação
+## Testes Automatizados para Rotas Protegidas e Redirects
 
 ### Objectivo
-Aplicar todas as correcções recomendadas no relatório de testes de casos extremos, endurecendo a validação em 6 módulos.
+Configurar Vitest + Testing Library e criar testes que verificam: rotas protegidas redirecionam para `/auth` sem sessão, `/auth` redireciona para `/` com sessão, rotas inexistentes mostram 404, e rotas restritas por role redirecionam para `/access-denied`.
 
-### Ficheiros a editar
+### Setup (3 ficheiros novos + 2 edições)
 
-**1. `src/components/documents/wizard/WizardStepBasicData.tsx`**
-- Adicionar `maxLength={200}` ao campo Título
-- Adicionar `maxLength={200}` ao campo Assunto
-- Adicionar `maxLength={2000}` ao campo Descrição (Textarea)
-- Adicionar `maxLength={100}` aos campos Remetente e Instituição (no WizardStepSender)
-- Adicionar `min` da data de hoje ao campo Data Limite (impedir datas no passado)
-- Mostrar contador de caracteres nos campos com limite
+**1. Instalar dependências**
+- `@testing-library/jest-dom`, `@testing-library/react`, `jsdom`, `vitest` como devDependencies
 
-**2. `src/components/documents/wizard/WizardStepSender.tsx`**
-- Adicionar `maxLength={150}` ao Nome do Remetente, Instituição e Referência Externa
+**2. Criar `vitest.config.ts`**
+- Ambiente jsdom, globals, setup file, alias `@/`
 
-**3. `src/components/documents/wizard/WizardStepFiles.tsx`**
-- Validar tamanho de ficheiro (rejeitar >20MB) no `handleDrop` e `handleFileSelect`
-- Validar tipo MIME/extensão no drag-and-drop (bloquear `.exe`, `.zip`, etc.)
-- Mostrar toast de erro com nome do ficheiro rejeitado
+**3. Criar `src/test/setup.ts`**
+- Import jest-dom matchers, mock `window.matchMedia`
 
-**4. `src/components/documents/RegisterDocumentWizard.tsx`**
-- Adicionar validação de `maxLength` no `validateStep`: título >200 chars = erro
-- Trim nos campos antes de submeter
+**4. Editar `tsconfig.app.json`**
+- Adicionar `"vitest/globals"` aos types
 
-**5. `src/pages/CreateDispatch.tsx`**
-- Adicionar `maxLength={200}` ao campo Assunto com contador
-- Adicionar `maxLength={5000}` ao Textarea de conteúdo
-- Converter `validateForm` para erros inline (`fieldErrors` state) em vez de só toasts
-- Impedir prazo no passado (já tem `disabled` no Calendar, confirmar)
+**5. Editar `package.json`**
+- Adicionar script `"test": "vitest run"`
 
-**6. `src/pages/CreateProcess.tsx`**
-- Adicionar `maxLength={200}` ao campo Assunto
-- Adicionar `maxLength={2000}` à Descrição
-- Adicionar `maxLength={150}` ao campo Requerente
-- Validar campos obrigatórios no `handleSubmit` (subject, processTypeId, requesterName) com toast
-- Validar tipo e tamanho de ficheiro no upload (mesma lógica do wizard)
-- Impedir deadline no passado via `min={new Date().toISOString().split('T')[0]}`
+### Testes (1 ficheiro)
 
-**7. `src/components/documents/DocumentSignatureModal.tsx`**
-- Adicionar `maxLength={100}` ao Nome do Signatário
-- Adicionar `maxLength={100}` ao Cargo
+**`src/test/routing.test.tsx`** — ~8 testes:
 
-**8. `src/components/documents/UploadModal.tsx`**
-- Validar tipo e tamanho de ficheiro no `handleDrop` e `handleFileSelect`
-- Rejeitar ficheiros >25MB e formatos não suportados
+Mocks necessários:
+- `@/integrations/supabase/client` — mock de `auth.getUser`, `auth.getSession`, `auth.onAuthStateChange`
+- `@/hooks/useUserRole` — mock de `primaryRole`
 
-### Constantes partilhadas
-Criar `src/lib/validation-constants.ts` com:
-- `MAX_TITLE_LENGTH = 200`
-- `MAX_SUBJECT_LENGTH = 200`
-- `MAX_DESCRIPTION_LENGTH = 2000`
-- `MAX_DISPATCH_CONTENT_LENGTH = 5000`
-- `MAX_NAME_LENGTH = 150`
-- `MAX_FILE_SIZE_MB = 20`
-- `ALLOWED_FILE_EXTENSIONS` e `ALLOWED_MIME_TYPES`
-- Função utilitária `validateFile(file: File): { valid: boolean; error?: string }`
+Cenários:
+1. **Rota protegida sem sessão** → redireciona para `/auth`
+2. **Rota protegida com sessão (role admin)** → renderiza conteúdo
+3. **Rota admin com role consulta** → redireciona para `/access-denied`
+4. **Rota `/auth` com sessão activa** → redireciona para `/`
+5. **Rota inexistente** → renderiza NotFound
+6. **`canAccessRoute` unit tests** — testa a função directamente com várias combinações role/path
+7. **`canPerformAction` unit tests** — testa permissões de acção
 
-### Padrão de implementação
-- Todos os campos de texto recebem `maxLength` no HTML (prevenção nativa)
-- Campos com limite mostram contador `{value.length}/{max}`
-- Ficheiros validados tanto no `onChange` do input como no `onDrop` do drag-and-drop
-- Erros inline com bordas vermelhas (padrão já usado no wizard de documentos)
-- Toasts mantidos como feedback secundário
+### Detalhe técnico
+- ProtectedRoute depende de `useAuth` e `useUserRole` — ambos serão mockados
+- Os testes usam `MemoryRouter` com `initialEntries` para simular navegação
+- Sem necessidade de browser — tudo em jsdom
+- Ficheiros: 4 novos, 2 editados
 
