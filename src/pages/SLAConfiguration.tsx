@@ -127,7 +127,7 @@ const SLAConfiguration = () => {
     currentPhase: "normal",
   });
   const [selectedSimulationRule, setSelectedSimulationRule] = useState<string>("");
-  const simulationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const simulationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<{
