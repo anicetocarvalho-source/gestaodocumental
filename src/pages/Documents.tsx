@@ -117,6 +117,9 @@ const Documents = () => {
   const { data: documentTypes } = useDocumentTypes({ activeOnly: true });
   const deleteDocument = useDeleteDocument();
   const archiveDocument = useArchiveDocument();
+  const { data: activeCheckouts } = useActiveCheckouts();
+  
+  const checkedOutDocIds = new Set(activeCheckouts?.map(c => c.document_id) || []);
 
   // View mode state
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
