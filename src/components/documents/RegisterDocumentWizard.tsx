@@ -153,6 +153,8 @@ export function RegisterDocumentWizard() {
     if (step === 1) {
       if (!formData.title.trim()) {
         errors.title = "O título é obrigatório";
+      } else if (formData.title.trim().length > 200) {
+        errors.title = "O título não pode ter mais de 200 caracteres";
       }
       if (!formData.documentTypeId) {
         errors.documentTypeId = "Seleccione o tipo de documento";
@@ -204,8 +206,8 @@ export function RegisterDocumentWizard() {
     setIsSubmitting(true);
     try {
       const document = await createDocument.mutateAsync({
-        title: formData.title,
-        description: formData.description || undefined,
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
         document_type_id: formData.documentTypeId || undefined,
         classification_id: formData.classificationId || undefined,
         origin: formData.senderInstitution || undefined,
