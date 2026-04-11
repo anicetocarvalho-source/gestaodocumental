@@ -8,7 +8,7 @@ export function useActiveCheckouts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('document_checkouts')
-        .select('document_id, checked_out_by, expires_at, profile:profiles!document_checkouts_checked_out_by_fkey(full_name)')
+        .select('document_id, checked_out_by, expires_at')
         .gt('expires_at', new Date().toISOString());
 
       if (error) throw error;
@@ -16,7 +16,6 @@ export function useActiveCheckouts() {
         document_id: string;
         checked_out_by: string;
         expires_at: string;
-        profile?: { full_name: string };
       }>;
     },
     refetchInterval: 30000,
