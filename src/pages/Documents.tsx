@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDocuments, useDeleteDocument } from "@/hooks/useDocuments";
 import { useArchiveDocument } from "@/hooks/useDocumentActions";
+import { useActiveCheckouts } from "@/hooks/useDocumentCheckout";
 import { useDocumentTypes } from "@/hooks/useReferenceData";
 import { 
   DocumentStatus, 
