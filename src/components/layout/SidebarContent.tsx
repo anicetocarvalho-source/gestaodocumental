@@ -29,6 +29,7 @@ import {
   Tags,
   Bot,
   History,
+  BookOpen,
   LucideIcon,
   LogOut,
   UserCircle,
