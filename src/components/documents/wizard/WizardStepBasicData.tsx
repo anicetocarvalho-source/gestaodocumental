@@ -24,6 +24,13 @@ import {
   confidentialityLabels,
 } from "@/types/database";
 import { useState } from "react";
+import {
+  MAX_TITLE_LENGTH,
+  MAX_SUBJECT_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  charCountText,
+  getTodayISO,
+} from "@/lib/validation-constants";
 
 interface FormData {
   title: string;
@@ -122,11 +129,17 @@ export function WizardStepBasicData({
             value={formData.title}
             onChange={(e) => updateFormData("title", e.target.value)}
             disabled={isSubmitting}
+            maxLength={MAX_TITLE_LENGTH}
             className={cn(fieldErrors.title && "border-destructive focus:border-destructive focus:ring-destructive/20")}
           />
-          {fieldErrors.title && (
-            <p className="text-xs text-destructive">{fieldErrors.title}</p>
-          )}
+          <div className="flex justify-between">
+            {fieldErrors.title ? (
+              <p className="text-xs text-destructive">{fieldErrors.title}</p>
+            ) : <span />}
+            <p className="text-xs text-muted-foreground">
+              {charCountText(formData.title.length, MAX_TITLE_LENGTH)}
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -319,7 +332,11 @@ export function WizardStepBasicData({
                 value={formData.subject}
                 onChange={(e) => updateFormData("subject", e.target.value)}
                 disabled={isSubmitting}
+                maxLength={MAX_SUBJECT_LENGTH}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {charCountText(formData.subject.length, MAX_SUBJECT_LENGTH)}
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -331,7 +348,11 @@ export function WizardStepBasicData({
                 value={formData.description}
                 onChange={(e) => updateFormData("description", e.target.value)}
                 disabled={isSubmitting}
+                maxLength={MAX_DESCRIPTION_LENGTH}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {charCountText(formData.description.length, MAX_DESCRIPTION_LENGTH)}
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -342,6 +363,7 @@ export function WizardStepBasicData({
                 value={formData.dueDate}
                 onChange={(e) => updateFormData("dueDate", e.target.value)}
                 disabled={isSubmitting}
+                min={getTodayISO()}
               />
             </div>
           </CollapsibleContent>
