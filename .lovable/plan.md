@@ -1,89 +1,69 @@
 
 
-## Teste de Limites e Casos Extremos — Plano de Execução
+## Implementação das Correcções de Validação
 
 ### Objectivo
-Testar sistematicamente todos os módulos de criação/edição da plataforma com inputs extremos e documentar como reage a cada caso. O teste será executado via browser automation nos formulários reais.
+Aplicar todas as correcções recomendadas no relatório de testes de casos extremos, endurecendo a validação em 6 módulos.
 
-### Módulos a Testar
+### Ficheiros a editar
 
-#### 1. Registo de Documento (`/register-document`)
-**Validação existente**: Apenas `title`, `documentTypeId`, `currentUnitId` (campos obrigatórios no passo 1). Sem limite de tamanho nos campos de texto. Sem validação de tamanho de ficheiro no código (apenas label "máx. 20MB" mas sem enforcement).
+**1. `src/components/documents/wizard/WizardStepBasicData.tsx`**
+- Adicionar `maxLength={200}` ao campo Título
+- Adicionar `maxLength={200}` ao campo Assunto
+- Adicionar `maxLength={2000}` ao campo Descrição (Textarea)
+- Adicionar `maxLength={100}` aos campos Remetente e Instituição (no WizardStepSender)
+- Adicionar `min` da data de hoje ao campo Data Limite (impedir datas no passado)
+- Mostrar contador de caracteres nos campos com limite
 
-Testes:
-- Campos obrigatórios em branco → avançar passo
-- Título com 500+ caracteres, caracteres especiais (`<script>`, emojis, acentos)
-- Campo `subject` e `description` com strings enormes
-- Upload de ficheiro `.exe`, `.zip` (formatos não listados no `accept`)
-- Upload de ficheiro >20MB
+**2. `src/components/documents/wizard/WizardStepSender.tsx`**
+- Adicionar `maxLength={150}` ao Nome do Remetente, Instituição e Referência Externa
 
-#### 2. Criar Despacho (`/create-dispatch`)
-**Validação existente**: `dispatchType`, `subject.trim()`, `dispatchText.trim()`, `recipients.length > 0`. Tudo via toasts, sem inline. Sem limites de tamanho.
+**3. `src/components/documents/wizard/WizardStepFiles.tsx`**
+- Validar tamanho de ficheiro (rejeitar >20MB) no `handleDrop` e `handleFileSelect`
+- Validar tipo MIME/extensão no drag-and-drop (bloquear `.exe`, `.zip`, etc.)
+- Mostrar toast de erro com nome do ficheiro rejeitado
 
-Testes:
-- Emitir sem tipo, sem assunto, sem conteúdo, sem destinatários
-- Assunto e conteúdo com 500+ caracteres e caracteres especiais
-- Prazo no passado
+**4. `src/components/documents/RegisterDocumentWizard.tsx`**
+- Adicionar validação de `maxLength` no `validateStep`: título >200 chars = erro
+- Trim nos campos antes de submeter
 
-#### 3. Criar Processo (`/create-process`)
-**Validação existente**: Validação por steps (`isStep3Valid`), mas sem verificação de campos obrigatórios explícita no `handleSubmit`. Sem limites de tamanho.
+**5. `src/pages/CreateDispatch.tsx`**
+- Adicionar `maxLength={200}` ao campo Assunto com contador
+- Adicionar `maxLength={5000}` ao Textarea de conteúdo
+- Converter `validateForm` para erros inline (`fieldErrors` state) em vez de só toasts
+- Impedir prazo no passado (já tem `disabled` no Calendar, confirmar)
 
-Testes:
-- Submeter sem assunto
-- Campos com strings enormes
-- Prazo no passado, SLA negativo
+**6. `src/pages/CreateProcess.tsx`**
+- Adicionar `maxLength={200}` ao campo Assunto
+- Adicionar `maxLength={2000}` à Descrição
+- Adicionar `maxLength={150}` ao campo Requerente
+- Validar campos obrigatórios no `handleSubmit` (subject, processTypeId, requesterName) com toast
+- Validar tipo e tamanho de ficheiro no upload (mesma lógica do wizard)
+- Impedir deadline no passado via `min={new Date().toISOString().split('T')[0]}`
 
-#### 4. Criar Utilizador (modal em `/user-management`)
-**Validação existente**: Zod schema com `email`, `password` (8+ chars, maiúscula, minúscula, número), `full_name` (2-100 chars). Bem validado.
+**7. `src/components/documents/DocumentSignatureModal.tsx`**
+- Adicionar `maxLength={100}` ao Nome do Signatário
+- Adicionar `maxLength={100}` ao Cargo
 
-Testes:
-- Email inválido, password fraca
-- Nome com 1 char, nome com 101+ chars
-- Caracteres especiais no nome e cargo
+**8. `src/components/documents/UploadModal.tsx`**
+- Validar tipo e tamanho de ficheiro no `handleDrop` e `handleFileSelect`
+- Rejeitar ficheiros >25MB e formatos não suportados
 
-#### 5. Upload de Ficheiros (vários modais)
-**Validação existente**: `accept` no input limita no selector, mas não bloqueia drag-and-drop. Sem validação de tamanho no código.
+### Constantes partilhadas
+Criar `src/lib/validation-constants.ts` com:
+- `MAX_TITLE_LENGTH = 200`
+- `MAX_SUBJECT_LENGTH = 200`
+- `MAX_DESCRIPTION_LENGTH = 2000`
+- `MAX_DISPATCH_CONTENT_LENGTH = 5000`
+- `MAX_NAME_LENGTH = 150`
+- `MAX_FILE_SIZE_MB = 20`
+- `ALLOWED_FILE_EXTENSIONS` e `ALLOWED_MIME_TYPES`
+- Função utilitária `validateFile(file: File): { valid: boolean; error?: string }`
 
-Testes:
-- Drag-and-drop de `.exe`
-- Ficheiro de 0 bytes
-- Ficheiro >25MB
-
-#### 6. Assinatura de Documento (modal)
-**Validação existente**: `signerName.trim()` obrigatório + assinatura desenhada.
-
-Testes:
-- Nome em branco, só espaços
-- Nome com 500+ caracteres
-
-### Execução
-
-Para cada teste, registar:
-- **Input**: O que foi inserido
-- **Resultado**: O que aconteceu (erro inline, toast, crash, aceite silencioso)
-- **Veredicto**: OK / Vulnerável / Melhoria necessária
-
-### Entregável
-
-Um documento PDF (`/mnt/documents/edge-case-test-report.pdf`) com tabela de resultados por módulo, categorizando cada caso como:
-- ✅ **Tratado** — erro claro e adequado
-- ⚠️ **Parcial** — aceita mas não deveria, ou mensagem confusa
-- ❌ **Vulnerável** — sem validação, crash, ou comportamento inesperado
-
-### Implementação
-
-1. Navegar a cada formulário no browser e testar cada caso
-2. Documentar resultados
-3. Gerar relatório PDF com todas as descobertas
-4. Opcionalmente propor correcções para os casos vulneráveis
-
-### Análise Prévia (já identificado no código)
-
-| Módulo | Problema Provável |
-|--------|-------------------|
-| Registo Documento | Sem limite de tamanho nos campos de texto, sem validação de tamanho de ficheiro |
-| Criar Despacho | Sem limite de tamanho, sem validação inline (só toasts) |
-| Criar Processo | Sem validação explícita de campos obrigatórios no submit |
-| Upload Ficheiros | `accept` não bloqueia drag-and-drop de formatos inválidos, sem check de tamanho |
-| Todos os módulos | Sem sanitização de HTML/XSS no input (embora React escape por defeito no render) |
+### Padrão de implementação
+- Todos os campos de texto recebem `maxLength` no HTML (prevenção nativa)
+- Campos com limite mostram contador `{value.length}/{max}`
+- Ficheiros validados tanto no `onChange` do input como no `onDrop` do drag-and-drop
+- Erros inline com bordas vermelhas (padrão já usado no wizard de documentos)
+- Toasts mantidos como feedback secundário
 
