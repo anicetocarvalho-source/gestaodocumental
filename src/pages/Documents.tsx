@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDocuments, useDeleteDocument } from "@/hooks/useDocuments";
 import { useArchiveDocument } from "@/hooks/useDocumentActions";
+import { useActiveCheckouts } from "@/hooks/useDocumentCheckout";
 import { useDocumentTypes } from "@/hooks/useReferenceData";
 import { 
   DocumentStatus, 
@@ -116,6 +117,9 @@ const Documents = () => {
   const { data: documentTypes } = useDocumentTypes({ activeOnly: true });
   const deleteDocument = useDeleteDocument();
   const archiveDocument = useArchiveDocument();
+  const { data: activeCheckouts } = useActiveCheckouts();
+  
+  const checkedOutDocIds = new Set(activeCheckouts?.map(c => c.document_id) || []);
 
   // View mode state
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -631,7 +635,19 @@ const Documents = () => {
                           onCheckedChange={(checked) => handleSelectDocument(doc.id, checked as boolean)}
                         />
                       </td>
-                      <td className="font-mono text-sm text-muted-foreground">{doc.entry_number}</td>
+                      <td className="font-mono text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          {doc.entry_number}
+                          {checkedOutDocIds.has(doc.id) && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Lock className="h-3.5 w-3.5 text-warning" />
+                              </TooltipTrigger>
+                              <TooltipContent>Documento em edição</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </span>
+                      </td>
                       <td>
                         <Link to={`/documents/${doc.id}`} className="flex items-center gap-3 group">
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors flex-shrink-0">

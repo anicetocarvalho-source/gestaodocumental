@@ -61,6 +61,7 @@ import { DocumentSignatureModal, SignatureData } from "@/components/documents/Do
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
 import { LinkedEntitiesPanel } from "@/components/documents/LinkedEntitiesPanel";
+import { DocumentCheckoutBanner } from "@/components/documents/DocumentCheckoutBanner";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -75,6 +76,7 @@ const DocumentDetail = () => {
   const [newComment, setNewComment] = useState("");
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isLockedByOther, setIsLockedByOther] = useState(false);
   
   const { canDo } = usePermissions();
   
@@ -286,8 +288,13 @@ const DocumentDetail = () => {
           { label: document.entry_number }
         ]} 
       />
+      {/* Check-in/Check-out Banner */}
+      <DocumentCheckoutBanner 
+        documentId={document.id} 
+        onCheckoutChange={setIsLockedByOther} 
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
         {/* Main Content - 9 columns */}
         <div className="lg:col-span-9 space-y-6">
           
