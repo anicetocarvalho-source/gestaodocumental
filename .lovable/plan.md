@@ -1,47 +1,79 @@
 
 
-## Testes Automatizados para Rotas Protegidas e Redirects
+## Check-in/Check-out de Documentos
 
 ### Objectivo
-Configurar Vitest + Testing Library e criar testes que verificam: rotas protegidas redirecionam para `/auth` sem sessão, `/auth` redireciona para `/` com sessão, rotas inexistentes mostram 404, e rotas restritas por role redirecionam para `/access-denied`.
+Implementar bloqueio de edição concorrente em documentos com indicação visual de quem tem o documento em check-out e desbloqueio automático por timeout.
 
-### Setup (3 ficheiros novos + 2 edições)
+### 1. Migração de base de dados
 
-**1. Instalar dependências**
-- `@testing-library/jest-dom`, `@testing-library/react`, `jsdom`, `vitest` como devDependencies
+Criar tabela `document_checkouts`:
 
-**2. Criar `vitest.config.ts`**
-- Ambiente jsdom, globals, setup file, alias `@/`
+```sql
+CREATE TABLE public.document_checkouts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID NOT NULL UNIQUE,
+  checked_out_by UUID NOT NULL,
+  checked_out_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '2 hours'),
+  notes TEXT,
+  CONSTRAINT fk_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
+);
 
-**3. Criar `src/test/setup.ts`**
-- Import jest-dom matchers, mock `window.matchMedia`
+ALTER TABLE public.document_checkouts ENABLE ROW LEVEL SECURITY;
+```
 
-**4. Editar `tsconfig.app.json`**
-- Adicionar `"vitest/globals"` aos types
+RLS policies:
+- **SELECT**: todos os authenticated podem ver (para mostrar quem bloqueou)
+- **INSERT**: authenticated users podem fazer check-out
+- **DELETE**: o próprio utilizador que fez check-out, admins, ou quando expirado
+- **UPDATE**: o próprio utilizador ou admins
 
-**5. Editar `package.json`**
-- Adicionar script `"test": "vitest run"`
+Função `security definer` para verificar se um documento está em check-out válido (não expirado):
 
-### Testes (1 ficheiro)
+```sql
+CREATE FUNCTION public.is_document_checked_out(doc_id UUID)
+RETURNS TABLE(checked_out boolean, user_id uuid, full_name text, expires_at timestamptz)
+```
 
-**`src/test/routing.test.tsx`** — ~8 testes:
+### 2. Hook `useDocumentCheckout`
 
-Mocks necessários:
-- `@/integrations/supabase/client` — mock de `auth.getUser`, `auth.getSession`, `auth.onAuthStateChange`
-- `@/hooks/useUserRole` — mock de `primaryRole`
+Novo ficheiro `src/hooks/useDocumentCheckout.ts`:
+- `useCheckoutStatus(documentId)` — query que retorna o estado actual do check-out (polling a cada 30s)
+- `useCheckOut()` — mutation para fazer check-out (insere na tabela, falha se já existe registo não expirado)
+- `useCheckIn()` — mutation para devolver o documento (apaga o registo)
+- `useForceCheckIn()` — mutation para admin forçar desbloqueio
+- `useExtendCheckout()` — mutation para renovar o timeout
 
-Cenários:
-1. **Rota protegida sem sessão** → redireciona para `/auth`
-2. **Rota protegida com sessão (role admin)** → renderiza conteúdo
-3. **Rota admin com role consulta** → redireciona para `/access-denied`
-4. **Rota `/auth` com sessão activa** → redireciona para `/`
-5. **Rota inexistente** → renderiza NotFound
-6. **`canAccessRoute` unit tests** — testa a função directamente com várias combinações role/path
-7. **`canPerformAction` unit tests** — testa permissões de acção
+### 3. Componente `DocumentCheckoutBanner`
 
-### Detalhe técnico
-- ProtectedRoute depende de `useAuth` e `useUserRole` — ambos serão mockados
-- Os testes usam `MemoryRouter` com `initialEntries` para simular navegação
-- Sem necessidade de browser — tudo em jsdom
-- Ficheiros: 4 novos, 2 editados
+Novo ficheiro `src/components/documents/DocumentCheckoutBanner.tsx`:
+- Banner amarelo/vermelho no topo do `DocumentDetail` mostrando:
+  - **Se eu tenho check-out**: "Documento em edição por si. Expira em X min." + botão "Devolver"
+  - **Se outro utilizador tem**: "Documento bloqueado por [Nome] desde [hora]. Expira em [hora]." + botão "Forçar Desbloqueio" (só admin)
+  - **Se expirado**: apaga automaticamente o registo na próxima query
+- Ícone de cadeado no header do documento
+
+### 4. Integração no `DocumentDetail.tsx`
+
+- Importar `DocumentCheckoutBanner` e renderizar antes do conteúdo principal
+- Desabilitar botões de edição/workflow quando documento está em check-out por outro utilizador
+- Adicionar botão "Check-out para Edição" nas acções do documento
+- O check-in automático acontece via limpeza: a query ignora registos com `expires_at < now()`
+
+### 5. Indicação visual na lista de documentos
+
+- No `Documents.tsx` / tabela de documentos, mostrar ícone de cadeado ao lado de documentos em check-out
+- Query join com `document_checkouts` na listagem
+
+### Ficheiros a criar/editar
+
+| Ficheiro | Acção |
+|----------|-------|
+| `supabase/migrations/...` | Nova tabela + RLS + função |
+| `src/hooks/useDocumentCheckout.ts` | **Novo** — hook completo |
+| `src/components/documents/DocumentCheckoutBanner.tsx` | **Novo** — banner visual |
+| `src/pages/DocumentDetail.tsx` | Editar — integrar banner + desabilitar acções |
+| `src/hooks/useDocuments.ts` | Editar — join com checkouts na listagem |
+| `src/pages/Documents.tsx` | Editar — ícone de cadeado na tabela |
 
