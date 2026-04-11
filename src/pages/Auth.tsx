@@ -86,7 +86,7 @@ const Auth = () => {
     }
 
     setLoading(true);
-    const redirectUrl = `${window.location.origin}/auth?type=recovery`;
+    const redirectUrl = `${window.location.origin}/reset-password`;
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
@@ -100,12 +100,6 @@ const Auth = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("type") === "recovery") {
-      toast.info("Pode agora definir uma nova palavra-passe nas definições.");
-    }
-  }, []);
 
   if (view === "reset-sent") {
     return (
