@@ -677,6 +677,41 @@ export type Database = {
           },
         ]
       }
+      document_checkouts: {
+        Row: {
+          checked_out_at: string
+          checked_out_by: string
+          document_id: string
+          expires_at: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          checked_out_at?: string
+          checked_out_by: string
+          document_id: string
+          expires_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          checked_out_at?: string
+          checked_out_by?: string
+          document_id?: string
+          expires_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_checkouts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_comments: {
         Row: {
           author_id: string | null
@@ -2623,6 +2658,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_document_checked_out: {
+        Args: { doc_id: string }
+        Returns: {
+          checked_out: boolean
+          expires_at: string
+          full_name: string
+          user_id: string
+        }[]
       }
       user_can_access_dispatch: {
         Args: { _dispatch_id: string; _user_id: string }
