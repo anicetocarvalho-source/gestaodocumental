@@ -1,45 +1,60 @@
 
 
-## Página de Documentação Interactiva dos Fluxos
+## Tour Guiado por Perfil de Utilizador
 
 ### Objectivo
-Criar uma nova página `/flow-documentation` que apresenta visualmente todos os fluxos da plataforma, com navegação por perfil de utilizador e diagramas interactivos.
+Transformar o tour generico actual (igual para todos) num tour personalizado que mostra a cada perfil (Admin, Gestor, Tecnico, Consulta) apenas os fluxos e funcionalidades relevantes para o seu role, na primeira vez que acedem ao sistema.
 
-### Estrutura da Página
+### O que existe
+- `useGuidedTour.ts` — hook com driver.js, auto-start na primeira visita, tour unico para todos
+- `OnboardingChecklist.tsx` — checklist localStorage no dashboard
+- `useUserRole.ts` — hook que retorna o role do utilizador autenticado
+- Tour key: `nodidoc_tour_completed` (localStorage)
 
-A página terá:
-1. **Filtro por Role** — Tabs (Admin / Gestor / Técnico / Consulta) que filtram os fluxos visíveis
-2. **Lista de Fluxos** — Cards colapsáveis (Accordion) com cada fluxo
-3. **Detalhe do Fluxo** — Dentro de cada accordion: diagrama visual (Mermaid renderizado como SVG), tabela de passos, ecrãs envolvidos (links clicáveis para as páginas reais), dados necessários, e condições de erro
+### Alteracoes
 
-### Ficheiros a criar/editar
+**1. `src/hooks/useGuidedTour.ts`** — Refactoring principal:
+- Criar sets de steps por role: `adminTourSteps`, `gestorTourSteps`, `tecnicoTourSteps`, `consultaTourSteps`
+- Cada set inclui os steps base (sidebar, pesquisa, perfil) + steps especificos:
+  - **Admin**: gestao de utilizadores, permissoes, workflow builder, SLA, relatorios, auditoria
+  - **Gestor**: aprovacoes, despachos, relatorios, processos, repositorio
+  - **Tecnico**: registo de documentos, processos, digitalizacao, OCR
+  - **Consulta**: pesquisa, repositorio, arquivo (apenas leitura)
+- Alterar auto-start para detectar o role via `useUserRole()` e seleccionar os steps adequados
+- Mudar a key de localStorage para incluir o role: `nodidoc_tour_completed_<role>` — assim se o role mudar, o tour re-executa
+- Adicionar funcao `startRoleTour(role: AppRole)` para iniciar manualmente
 
-| Ficheiro | Acção |
-|----------|-------|
-| `src/pages/FlowDocumentation.tsx` | **Criar** — Página principal com tabs por role, accordion por fluxo, diagramas inline |
-| `src/lib/flowData.ts` | **Criar** — Dados estáticos dos 11 fluxos documentados (passos, ecrãs, erros, roles aplicáveis) |
-| `src/App.tsx` | **Editar** — Adicionar rota `/flow-documentation` |
-| `src/components/layout/SidebarContent.tsx` | **Editar** — Adicionar link na secção "Ferramentas" |
-| `src/lib/permissions.ts` | **Editar** — Adicionar permissão para a rota (todos os roles) |
+**2. `src/components/dashboard/OnboardingChecklist.tsx`**:
+- Filtrar itens da checklist por role (ex: "Criar processo" nao aparece para Consulta)
+- Adaptar acoes sugeridas ao perfil do utilizador
 
-### Componentes utilizados
-- `DashboardLayout` (layout existente)
-- `Tabs` / `TabsList` / `TabsTrigger` / `TabsContent` (UI existente)
-- `Accordion` / `AccordionItem` / `AccordionTrigger` / `AccordionContent` (UI existente)
-- `Card`, `Badge`, `ScrollArea` (UI existente)
-- Diagramas de fluxo renderizados com CSS/HTML (setas e caixas estilizadas com Tailwind) — sem dependência externa
+**3. `src/pages/Index.tsx`**:
+- Passar o role ao tour no auto-start (ja usa `useGuidedTour` que sera actualizado internamente)
 
-### Dados dos fluxos (em `flowData.ts`)
-Os 11 fluxos documentados anteriormente, cada um com:
-- `id`, `name`, `description`
-- `roles: AppRole[]` — perfis que executam este fluxo
-- `steps: { number, action, screen, route }[]`
-- `requiredData: string[]`
-- `errors: { condition, consequence }[]`
+**4. Novos `data-tour` attributes** em componentes que ainda nao os tem:
+- `src/components/layout/SidebarContent.tsx` — adicionar `data-tour` nos grupos de menu (admin, documentos, etc.)
 
-### Design visual
-- Cada fluxo mostra uma sequência horizontal/vertical de caixas conectadas por setas (estilizadas com Tailwind, sem biblioteca externa)
-- Caixas clicáveis que navegam para o ecrã correspondente
-- Badges coloridos por role
-- Secção de erros com ícones de alerta
+### Steps por Role (resumo)
+
+| Step | Admin | Gestor | Tecnico | Consulta |
+|------|-------|--------|---------|----------|
+| Boas-vindas personalizada | x | x | x | x |
+| Menu principal | x | x | x | x |
+| Pesquisa rapida | x | x | x | x |
+| Accoes rapidas | x | x | x | - |
+| KPIs | x | x | - | - |
+| Aprovacoes | x | x | - | - |
+| Gestao utilizadores | x | - | - | - |
+| Registo documentos | x | x | x | - |
+| Relatorios | x | x | - | - |
+| Repositorio/Arquivo | x | x | x | x |
+| Notificacoes | x | x | x | x |
+| Perfil | x | x | x | x |
+
+### Detalhe tecnico
+- Sem novas dependencias — usa driver.js existente
+- Role detectado via `useUserRole()` dentro do hook
+- Mensagem de boas-vindas inclui o nome do role (ex: "Bem-vindo como Gestor!")
+- Tour completa-se por role, nao globalmente
+- Ficheiros editados: 3 (`useGuidedTour.ts`, `OnboardingChecklist.tsx`, `SidebarContent.tsx`)
 
