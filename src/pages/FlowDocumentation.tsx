@@ -184,7 +184,7 @@ export default function FlowDocumentation() {
     : flows.filter((f) => f.roles.includes(activeRole));
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Documentação de Fluxos">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Documentação de Fluxos</h1>
