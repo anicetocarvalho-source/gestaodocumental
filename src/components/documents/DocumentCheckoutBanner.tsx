@@ -27,10 +27,26 @@ export function DocumentCheckoutBanner({ documentId, onCheckoutChange }: Documen
   const isMyCheckout = checkout?.checked_out_by === user?.id;
   const isLockedByOther = !!checkout && !isMyCheckout;
 
+  // Fetch profile name for the user who checked out
+  const { data: lockerProfile } = useQuery({
+    queryKey: ['profile-name', checkout?.checked_out_by],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', checkout!.checked_out_by)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!checkout && !isMyCheckout,
+  });
+
   // Notify parent about lock state
-  if (onCheckoutChange) {
-    onCheckoutChange(isLockedByOther);
-  }
+  useEffect(() => {
+    if (onCheckoutChange) {
+      onCheckoutChange(isLockedByOther);
+    }
+  }, [isLockedByOther, onCheckoutChange]);
 
   if (isLoading) return null;
 
