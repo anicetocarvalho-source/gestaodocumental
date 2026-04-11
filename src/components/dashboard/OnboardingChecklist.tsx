@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, X, ChevronDown, ChevronUp, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useUserRole, AppRole } from "@/hooks/useUserRole";
 
 interface ChecklistItem {
   id: string;
@@ -12,6 +13,7 @@ interface ChecklistItem {
   description: string;
   action?: string;
   href?: string;
+  roles: AppRole[];
 }
 
 const checklistItems: ChecklistItem[] = [
@@ -19,6 +21,7 @@ const checklistItems: ChecklistItem[] = [
     id: "tour",
     title: "Completar o tour guiado",
     description: "Familiarize-se com a interface do sistema",
+    roles: ["admin", "gestor", "tecnico", "consulta"],
   },
   {
     id: "profile",
@@ -26,6 +29,7 @@ const checklistItems: ChecklistItem[] = [
     description: "Adicione a sua foto e informações",
     action: "Configurar",
     href: "/settings",
+    roles: ["admin", "gestor", "tecnico", "consulta"],
   },
   {
     id: "document",
@@ -33,6 +37,7 @@ const checklistItems: ChecklistItem[] = [
     description: "Crie o seu primeiro registo documental",
     action: "Registar",
     href: "/documents/new",
+    roles: ["admin", "gestor", "tecnico"],
   },
   {
     id: "process",
@@ -40,6 +45,15 @@ const checklistItems: ChecklistItem[] = [
     description: "Inicie um processo administrativo",
     action: "Criar",
     href: "/processes/new",
+    roles: ["admin", "gestor", "tecnico"],
+  },
+  {
+    id: "search",
+    title: "Pesquisar no repositório",
+    description: "Explore os documentos disponíveis",
+    action: "Pesquisar",
+    href: "/search",
+    roles: ["consulta"],
   },
   {
     id: "notifications",
@@ -47,6 +61,7 @@ const checklistItems: ChecklistItem[] = [
     description: "Personalize os seus alertas",
     action: "Configurar",
     href: "/settings",
+    roles: ["admin", "gestor", "tecnico", "consulta"],
   },
 ];
 
@@ -54,6 +69,7 @@ const CHECKLIST_KEY = "nodidoc_onboarding_checklist";
 
 export function OnboardingChecklist() {
   const navigate = useNavigate();
+  const { primaryRole } = useUserRole();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDismissed, setIsDismissed] = useState(() => {
     return localStorage.getItem(`${CHECKLIST_KEY}_dismissed`) === "true";
@@ -63,17 +79,25 @@ export function OnboardingChecklist() {
     return stored ? JSON.parse(stored) : [];
   });
 
+  // Filter items by role
+  const visibleItems = primaryRole
+    ? checklistItems.filter((item) => item.roles.includes(primaryRole))
+    : checklistItems.filter((item) => item.roles.includes("consulta"));
+
   // Check if tour is completed
   useEffect(() => {
-    if (localStorage.getItem("nodidoc_tour_completed") === "true" && !completedItems.includes("tour")) {
+    const tourKey = primaryRole
+      ? `nodidoc_tour_completed_${primaryRole}`
+      : "nodidoc_tour_completed";
+    if (localStorage.getItem(tourKey) === "true" && !completedItems.includes("tour")) {
       const updated = [...completedItems, "tour"];
       setCompletedItems(updated);
       localStorage.setItem(CHECKLIST_KEY, JSON.stringify(updated));
     }
-  }, [completedItems]);
+  }, [completedItems, primaryRole]);
 
-  const progress = (completedItems.length / checklistItems.length) * 100;
-  const allCompleted = completedItems.length === checklistItems.length;
+  const progress = (completedItems.filter((id) => visibleItems.some((i) => i.id === id)).length / visibleItems.length) * 100;
+  const allCompleted = visibleItems.every((item) => completedItems.includes(item.id));
 
   const toggleItem = (id: string) => {
     const updated = completedItems.includes(id)
@@ -91,6 +115,8 @@ export function OnboardingChecklist() {
   if (isDismissed || allCompleted) {
     return null;
   }
+
+  const completedCount = completedItems.filter((id) => visibleItems.some((i) => i.id === id)).length;
 
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
@@ -126,14 +152,14 @@ export function OnboardingChecklist() {
         <div className="flex items-center gap-3 mt-2">
           <Progress value={progress} className="h-1.5 flex-1" />
           <span className="text-xs text-muted-foreground">
-            {completedItems.length}/{checklistItems.length}
+            {completedCount}/{visibleItems.length}
           </span>
         </div>
       </CardHeader>
       {isExpanded && (
         <CardContent className="pt-2">
           <div className="space-y-2">
-            {checklistItems.map((item) => {
+            {visibleItems.map((item) => {
               const isCompleted = completedItems.includes(item.id);
               return (
                 <div
