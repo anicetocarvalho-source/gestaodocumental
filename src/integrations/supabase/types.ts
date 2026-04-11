@@ -1522,6 +1522,93 @@ export type Database = {
           },
         ]
       }
+      organizations: {
+        Row: {
+          address: string | null
+          code: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          domain: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          max_users: number
+          name: string
+          notes: string | null
+          plan: string
+          storage_quota_mb: number
+          storage_used_mb: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          max_users?: number
+          name: string
+          notes?: string | null
+          plan?: string
+          storage_quota_mb?: number
+          storage_used_mb?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          max_users?: number
+          name?: string
+          notes?: string | null
+          plan?: string
+          storage_quota_mb?: number
+          storage_used_mb?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_type: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_type?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_type?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       process_audit_log: {
         Row: {
           action: string
