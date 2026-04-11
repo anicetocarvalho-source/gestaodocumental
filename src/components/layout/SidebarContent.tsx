@@ -166,37 +166,47 @@ export function SidebarContent({ collapsed = false, onNavigate }: SidebarContent
           defaultOpen 
           onNavigate={onNavigate}
         />
-        <SidebarNavGroup 
-          label="Gestão Documental" 
-          items={filteredDocuments} 
-          collapsed={collapsed} 
-          defaultOpen 
-          onNavigate={onNavigate}
-        />
-        <SidebarNavGroup 
-          label="Digitalização" 
-          items={filteredDigitization} 
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-        />
-        <SidebarNavGroup 
-          label="Arquivo" 
-          items={filteredArchive} 
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-        />
-        <SidebarNavGroup 
-          label="Ferramentas" 
-          items={filteredTools} 
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-        />
-        <SidebarNavGroup 
-          label="Administração" 
-          items={filteredManagement} 
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-        />
+        <div data-tour="nav-documents">
+          <SidebarNavGroup 
+            label="Gestão Documental" 
+            items={filteredDocuments} 
+            collapsed={collapsed} 
+            defaultOpen 
+            onNavigate={onNavigate}
+          />
+        </div>
+        <div data-tour="nav-digitization">
+          <SidebarNavGroup 
+            label="Digitalização" 
+            items={filteredDigitization} 
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
+        </div>
+        <div data-tour="nav-archive">
+          <SidebarNavGroup 
+            label="Arquivo" 
+            items={filteredArchive} 
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
+        </div>
+        <div data-tour="nav-tools">
+          <SidebarNavGroup 
+            label="Ferramentas" 
+            items={filteredTools} 
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
+        </div>
+        <div data-tour="nav-admin">
+          <SidebarNavGroup 
+            label="Administração" 
+            items={filteredManagement} 
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
+        </div>
       </nav>
 
       {/* Utilizador */}
