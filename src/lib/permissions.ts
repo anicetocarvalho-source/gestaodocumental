@@ -35,6 +35,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/workflow-builder": ["admin"],
   "/process-templates": ["admin", "gestor"],
   "/settings": ["admin"],
+  "/super-admin": ["admin"],
   "/flow-documentation": ["admin", "gestor", "tecnico", "consulta"],
   "/profile": ["admin", "gestor", "tecnico", "consulta"],
   "/protocol-book": ["admin", "gestor", "tecnico", "consulta"],
