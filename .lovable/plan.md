@@ -1,80 +1,101 @@
 
 
-## Dashboard de Super-Admin
+## Multi-Tenancy: Isolamento de Dados por Organização
 
-### Objectivo
-Criar uma página dedicada `/super-admin` com dashboard de gestão global da plataforma: organizações, quotas de armazenamento, estatísticas de uso por instituição e configurações globais. Acessível apenas ao role `admin`.
+### Contexto
+
+A tabela `organizations` já existe (criada no Super-Admin dashboard). Falta:
+1. Adicionar `organization_id` às tabelas principais
+2. Associar utilizadores a organizações (via `profiles`)
+3. Actualizar RLS para isolar dados
+4. Criar fluxo de registo de nova organização
+5. Actualizar queries frontend para funcionar com o novo modelo
+
+### Escala do impacto
+
+**387 queries** em **16 ficheiros** referenciam tabelas afectadas. Isto é uma refactoring estrutural profundo.
 
 ### 1. Migração de base de dados
 
-Criar tabelas para suportar multi-tenancy básico e métricas:
+Adicionar `organization_id` a todas as tabelas principais:
 
-```sql
--- Tabela de organizações (tenants)
-CREATE TABLE public.organizations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  code TEXT NOT NULL UNIQUE,
-  domain TEXT,
-  logo_url TEXT,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  storage_quota_mb INTEGER NOT NULL DEFAULT 5120, -- 5GB default
-  storage_used_mb INTEGER NOT NULL DEFAULT 0,
-  max_users INTEGER NOT NULL DEFAULT 50,
-  plan TEXT NOT NULL DEFAULT 'standard',
-  contact_email TEXT,
-  contact_phone TEXT,
-  address TEXT,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Tabela de configurações globais da plataforma
-CREATE TABLE public.platform_settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  setting_key TEXT NOT NULL UNIQUE,
-  setting_value TEXT,
-  setting_type TEXT NOT NULL DEFAULT 'text',
-  description TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+```text
+profiles                 ← FK para organizations (obrigatório)
+documents                ← FK para organizations
+processes                ← FK para organizations  
+dispatches               ← FK para organizations
+organizational_units     ← FK para organizations
+document_movements       ← herda via document
+protocol_entries         ← FK para organizations
+classification_codes     ← FK para organizations (ou global)
+document_types           ← FK para organizations (ou global)
+notifications            ← herda via user
+digitization_batches     ← FK para organizations
 ```
 
-RLS: apenas admin pode ver/gerir estas tabelas.
+**Abordagem**: `organization_id` nullable inicialmente (para não quebrar dados existentes), com trigger para auto-preencher baseado no `profiles.organization_id` do utilizador autenticado.
 
-Seed de configurações globais iniciais (max upload size, manutenção, versão, etc.).
+**Função helper** `get_user_organization_id(uuid)` — SECURITY DEFINER que retorna o `organization_id` do utilizador.
 
-### 2. Nova página `SuperAdminDashboard.tsx`
+### 2. RLS por organização
 
-Página com 4 tabs:
+Actualizar **todas** as políticas RLS das tabelas acima para incluir filtro:
+```sql
+organization_id = (SELECT organization_id FROM profiles WHERE user_id = auth.uid())
+```
 
-- **Visão Geral**: cards com total de organizações, utilizadores, documentos, armazenamento; gráficos de uso
-- **Organizações**: tabela CRUD de organizações com quota, plano, estado activo, nº utilizadores
-- **Armazenamento**: barra de progresso por organização, alertas de quota perto do limite
-- **Configurações Globais**: edição de parâmetros da plataforma (tamanho máximo upload, modo manutenção, etc.)
+Usar a função helper para evitar recursão.
 
-### 3. Hook `useSuperAdmin.ts`
+### 3. Fluxo de registo de organização
 
-- `useOrganizations()` — CRUD de organizações
-- `usePlatformStats()` — estatísticas globais (conta documentos, processos, utilizadores, armazenamento)
-- `usePlatformSettings()` — gestão de configurações globais
+Nova página `/register-organization` (pública ou admin-only):
+- Formulário: nome, código, domínio, email contacto, plano
+- Cria organização + primeiro utilizador admin
+- Edge function `create-organization` que:
+  1. Cria registo em `organizations`
+  2. Cria utilizador via `auth.admin.createUser`
+  3. Atribui role `admin` e `organization_id`
 
-### 4. Integração na navegação
+### 4. AuthContext + Profile
 
-- Adicionar item "Super-Admin" na sidebar (grupo Administração, apenas `admin`)
-- Registar rota `/super-admin` em `App.tsx` com `ProtectedRoute`
-- Adicionar permissão em `permissions.ts`
+- Adicionar `organization_id` ao tipo `Profile` em `AuthContext.tsx`
+- Expor `organizationId` no contexto para uso nos hooks
+
+### 5. Hooks frontend
+
+Actualizar queries em ~16 ficheiros para filtrar por `organization_id` quando aplicável. Na prática, o RLS cuida disto — mas inserts precisam incluir o campo.
+
+Ficheiros afectados:
+- `useDocuments.ts` — insert com `organization_id`
+- `useProcesses.ts` — insert com `organization_id`  
+- `useDispatches.ts` — insert com `organization_id`
+- `useProtocol.ts` — insert com `organization_id`
+- `useRepository.ts` — sem alteração (RLS filtra)
+- `useDashboardStats.ts` — sem alteração (RLS filtra)
+- `useMovements.ts` — sem alteração (herda do documento)
+- `useSettings.ts` — verificar scope
+- `useSuperAdmin.ts` — manter acesso global (admin vê tudo)
 
 ### Ficheiros a criar/editar
 
 | Ficheiro | Acção |
 |----------|-------|
-| `supabase/migrations/...` | Nova tabela `organizations`, `platform_settings` + RLS |
-| `src/hooks/useSuperAdmin.ts` | **Novo** — hooks para organizações, stats e settings |
-| `src/pages/SuperAdminDashboard.tsx` | **Novo** — dashboard completo com 4 tabs |
-| `src/App.tsx` | Editar — registar rota `/super-admin` |
-| `src/lib/permissions.ts` | Editar — adicionar `/super-admin: ["admin"]` |
-| `src/components/layout/SidebarContent.tsx` | Editar — adicionar item na sidebar |
+| `supabase/migrations/...` | `organization_id` em ~10 tabelas + RLS + função helper + trigger auto-fill |
+| `supabase/functions/create-organization/index.ts` | **Novo** — edge function para criar org + admin user |
+| `src/contexts/AuthContext.tsx` | Editar — expor `organization_id` |
+| `src/hooks/useDocuments.ts` | Editar — incluir `organization_id` nos inserts |
+| `src/hooks/useProcesses.ts` | Editar — incluir `organization_id` nos inserts |
+| `src/hooks/useDispatches.ts` | Editar — incluir `organization_id` nos inserts |
+| `src/hooks/useProtocol.ts` | Editar — incluir `organization_id` nos inserts |
+| `src/hooks/useDigitization.ts` | Editar — incluir `organization_id` nos inserts |
+| `src/hooks/useSuperAdmin.ts` | Editar — stats por organização |
+| `src/pages/SuperAdminDashboard.tsx` | Editar — vista de dados por organização |
+| `src/types/database.ts` | Editar — adicionar `organization_id` aos tipos |
+
+### Notas técnicas
+
+- **SELECTs não mudam** — o RLS filtra automaticamente por organização
+- **INSERTs precisam** do `organization_id` — via trigger automático (preenche se null) ou explícito
+- **Super-admin** mantém visão global com política RLS separada (`has_role(admin)`)
+- Tabelas de referência (`classification_codes`, `document_types`) podem ser globais ou per-org — recomendo per-org com opção de templates globais
 
