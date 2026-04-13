@@ -78,16 +78,19 @@ function OrganizationsTab() {
   const { data: orgs, isLoading, createOrganization, updateOrganization, deleteOrganization } = useOrganizations();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", code: "", plan: "standard", storage_quota_mb: 5120, max_users: 50, contact_email: "", domain: "", notes: "" });
+  const [form, setForm] = useState({ name: "", code: "", plan: "standard", storage_quota_mb: 5120, max_users: 50, contact_email: "", domain: "", notes: "", admin_email: "", admin_password: "", admin_full_name: "" });
 
-  const openNew = () => { setEditing(null); setForm({ name: "", code: "", plan: "standard", storage_quota_mb: 5120, max_users: 50, contact_email: "", domain: "", notes: "" }); setDialogOpen(true); };
-  const openEdit = (org: any) => { setEditing(org); setForm({ name: org.name, code: org.code, plan: org.plan, storage_quota_mb: org.storage_quota_mb, max_users: org.max_users, contact_email: org.contact_email || "", domain: org.domain || "", notes: org.notes || "" }); setDialogOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ name: "", code: "", plan: "standard", storage_quota_mb: 5120, max_users: 50, contact_email: "", domain: "", notes: "", admin_email: "", admin_password: "", admin_full_name: "" }); setDialogOpen(true); };
+  const openEdit = (org: any) => { setEditing(org); setForm({ name: org.name, code: org.code, plan: org.plan, storage_quota_mb: org.storage_quota_mb, max_users: org.max_users, contact_email: org.contact_email || "", domain: org.domain || "", notes: org.notes || "", admin_email: "", admin_password: "", admin_full_name: "" }); setDialogOpen(true); };
 
   const handleSave = async () => {
     if (!form.name || !form.code) { toast({ title: "Preencha nome e código", variant: "destructive" }); return; }
     if (editing) {
-      await updateOrganization.mutateAsync({ id: editing.id, ...form });
+      await updateOrganization.mutateAsync({ id: editing.id, name: form.name, code: form.code, plan: form.plan, storage_quota_mb: form.storage_quota_mb, max_users: form.max_users, contact_email: form.contact_email, domain: form.domain, notes: form.notes });
     } else {
+      if (!form.admin_email || !form.admin_password || !form.admin_full_name) {
+        toast({ title: "Preencha os dados do administrador da organização", variant: "destructive" }); return;
+      }
       await createOrganization.mutateAsync(form);
     }
     setDialogOpen(false);
