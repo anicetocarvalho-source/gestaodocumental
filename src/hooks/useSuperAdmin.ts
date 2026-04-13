@@ -19,7 +19,7 @@ export function useOrganizations() {
   });
 
   const createOrganization = useMutation({
-    mutationFn: async (org: {
+    mutationFn: async (input: {
       name: string;
       code: string;
       domain?: string;
@@ -27,16 +27,33 @@ export function useOrganizations() {
       storage_quota_mb?: number;
       max_users?: number;
       contact_email?: string;
-      contact_phone?: string;
-      address?: string;
       notes?: string;
+      admin_email: string;
+      admin_password: string;
+      admin_full_name: string;
     }) => {
-      const { data, error } = await supabase
-        .from("organizations")
-        .insert(org)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke("create-organization", {
+        body: {
+          org_name: input.name,
+          org_code: input.code,
+          domain: input.domain,
+          contact_email: input.contact_email,
+          plan: input.plan,
+          admin_email: input.admin_email,
+          admin_password: input.admin_password,
+          admin_full_name: input.admin_full_name,
+        },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      // Update quota/max_users if non-default
+      if (data?.organization?.id && (input.storage_quota_mb || input.max_users || input.notes)) {
+        await supabase.from("organizations").update({
+          storage_quota_mb: input.storage_quota_mb ?? 5120,
+          max_users: input.max_users ?? 50,
+          notes: input.notes || null,
+        }).eq("id", data.organization.id);
+      }
       return data;
     },
     onSuccess: () => {

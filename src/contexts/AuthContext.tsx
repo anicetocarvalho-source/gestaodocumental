@@ -12,6 +12,7 @@ interface Profile {
   unit_id: string | null;
   avatar_url: string | null;
   is_active: boolean;
+  organization_id: string | null;
 }
 
 interface AuthContextType {
