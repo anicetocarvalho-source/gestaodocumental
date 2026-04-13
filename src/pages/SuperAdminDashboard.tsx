@@ -200,6 +200,29 @@ function OrganizationsTab() {
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
             </div>
+            {!editing && (
+              <>
+                <div className="border-t pt-4 mt-2">
+                  <h4 className="text-sm font-semibold mb-3">Administrador da Organização</h4>
+                  <div className="grid gap-3">
+                    <div className="space-y-2">
+                      <Label>Nome Completo *</Label>
+                      <Input value={form.admin_full_name} onChange={(e) => setForm({ ...form, admin_full_name: e.target.value })} placeholder="Nome do administrador" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Email *</Label>
+                        <Input type="email" value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} placeholder="admin@org.ao" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Palavra-passe *</Label>
+                        <Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} placeholder="Min. 8 caracteres" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
