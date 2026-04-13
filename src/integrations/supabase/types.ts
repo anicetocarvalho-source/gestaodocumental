@@ -24,6 +24,7 @@ export type Database = {
           is_active: boolean
           level: number
           name: string
+          organization_id: string | null
           parent_id: string | null
           retention_years: number | null
         }
@@ -36,6 +37,7 @@ export type Database = {
           is_active?: boolean
           level?: number
           name: string
+          organization_id?: string | null
           parent_id?: string | null
           retention_years?: number | null
         }
@@ -48,10 +50,18 @@ export type Database = {
           is_active?: boolean
           level?: number
           name?: string
+          organization_id?: string | null
           parent_id?: string | null
           retention_years?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "classification_codes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "classification_codes_parent_id_fkey"
             columns: ["parent_id"]
@@ -199,6 +209,7 @@ export type Database = {
           name: string
           notes: string | null
           operator_id: string | null
+          organization_id: string | null
           priority: string
           processed_pages: number
           started_at: string | null
@@ -217,6 +228,7 @@ export type Database = {
           name: string
           notes?: string | null
           operator_id?: string | null
+          organization_id?: string | null
           priority?: string
           processed_pages?: number
           started_at?: string | null
@@ -235,6 +247,7 @@ export type Database = {
           name?: string
           notes?: string | null
           operator_id?: string | null
+          organization_id?: string | null
           priority?: string
           processed_pages?: number
           started_at?: string | null
@@ -262,6 +275,13 @@ export type Database = {
             columns: ["operator_id"]
             isOneToOne: false
             referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "digitization_batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -551,6 +571,7 @@ export type Database = {
           dispatch_type: Database["public"]["Enums"]["dispatch_type"]
           emitted_at: string | null
           id: string
+          organization_id: string | null
           origin_unit_id: string | null
           priority: Database["public"]["Enums"]["dispatch_priority"]
           requires_approval: boolean
@@ -575,6 +596,7 @@ export type Database = {
           dispatch_type: Database["public"]["Enums"]["dispatch_type"]
           emitted_at?: string | null
           id?: string
+          organization_id?: string | null
           origin_unit_id?: string | null
           priority?: Database["public"]["Enums"]["dispatch_priority"]
           requires_approval?: boolean
@@ -599,6 +621,7 @@ export type Database = {
           dispatch_type?: Database["public"]["Enums"]["dispatch_type"]
           emitted_at?: string | null
           id?: string
+          organization_id?: string | null
           origin_unit_id?: string | null
           priority?: Database["public"]["Enums"]["dispatch_priority"]
           requires_approval?: boolean
@@ -610,6 +633,13 @@ export type Database = {
           workflow_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "dispatches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dispatches_origin_unit_id_fkey"
             columns: ["origin_unit_id"]
@@ -1077,6 +1107,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          organization_id: string | null
           requires_signature: boolean
         }
         Insert: {
@@ -1087,6 +1118,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          organization_id?: string | null
           requires_signature?: boolean
         }
         Update: {
@@ -1097,6 +1129,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          organization_id?: string | null
           requires_signature?: boolean
         }
         Relationships: [
@@ -1105,6 +1138,13 @@ export type Database = {
             columns: ["default_classification_id"]
             isOneToOne: false
             referencedRelation: "classification_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_types_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1125,6 +1165,7 @@ export type Database = {
           external_reference: string | null
           id: string
           is_archived: boolean
+          organization_id: string | null
           origin: string | null
           origin_unit_id: string | null
           priority: string
@@ -1151,6 +1192,7 @@ export type Database = {
           external_reference?: string | null
           id?: string
           is_archived?: boolean
+          organization_id?: string | null
           origin?: string | null
           origin_unit_id?: string | null
           priority?: string
@@ -1177,6 +1219,7 @@ export type Database = {
           external_reference?: string | null
           id?: string
           is_archived?: boolean
+          organization_id?: string | null
           origin?: string | null
           origin_unit_id?: string | null
           priority?: string
@@ -1208,6 +1251,13 @@ export type Database = {
             columns: ["document_type_id"]
             isOneToOne: false
             referencedRelation: "document_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -1489,6 +1539,7 @@ export type Database = {
           is_active: boolean
           level: number
           name: string
+          organization_id: string | null
           parent_id: string | null
           updated_at: string
         }
@@ -1499,6 +1550,7 @@ export type Database = {
           is_active?: boolean
           level?: number
           name: string
+          organization_id?: string | null
           parent_id?: string | null
           updated_at?: string
         }
@@ -1509,10 +1561,18 @@ export type Database = {
           is_active?: boolean
           level?: number
           name?: string
+          organization_id?: string | null
           parent_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "organizational_units_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organizational_units_parent_id_fkey"
             columns: ["parent_id"]
@@ -2216,6 +2276,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          organization_id: string | null
           phone: string | null
           position: string | null
           unit_id: string | null
@@ -2229,6 +2290,7 @@ export type Database = {
           full_name: string
           id?: string
           is_active?: boolean
+          organization_id?: string | null
           phone?: string | null
           position?: string | null
           unit_id?: string | null
@@ -2242,6 +2304,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          organization_id?: string | null
           phone?: string | null
           position?: string | null
           unit_id?: string | null
@@ -2249,6 +2312,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_unit_id_fkey"
             columns: ["unit_id"]
@@ -2267,6 +2337,7 @@ export type Database = {
           document_id: string | null
           id: string
           observations: string | null
+          organization_id: string | null
           protocol_number: string
           received_at: string | null
           recipient_institution: string | null
@@ -2287,6 +2358,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           observations?: string | null
+          organization_id?: string | null
           protocol_number: string
           received_at?: string | null
           recipient_institution?: string | null
@@ -2307,6 +2379,7 @@ export type Database = {
           document_id?: string | null
           id?: string
           observations?: string | null
+          organization_id?: string | null
           protocol_number?: string
           received_at?: string | null
           recipient_institution?: string | null
@@ -2325,6 +2398,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -2728,6 +2808,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
