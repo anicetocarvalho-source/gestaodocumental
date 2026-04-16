@@ -1,101 +1,33 @@
 
 
-## Multi-Tenancy: Isolamento de Dados por Organização
+## Plano de Correcção dos Problemas Encontrados
 
 ### Contexto
 
-A tabela `organizations` já existe (criada no Super-Admin dashboard). Falta:
-1. Adicionar `organization_id` às tabelas principais
-2. Associar utilizadores a organizações (via `profiles`)
-3. Actualizar RLS para isolar dados
-4. Criar fluxo de registo de nova organização
-5. Actualizar queries frontend para funcionar com o novo modelo
+O teste end-to-end revelou **1 bug crítico** e **1 problema de dados** que requerem correcção.
 
-### Escala do impacto
+### 1. Corrigir bug do detalhe de documento
 
-**387 queries** em **16 ficheiros** referenciam tabelas afectadas. Isto é uma refactoring estrutural profundo.
+O problema é que a query com múltiplas joins no `useDocument` falha silenciosamente quando tabelas relacionadas (como `organizational_units`, `profiles`, `document_files`) têm RLS que bloqueia acesso ou quando FK references apontam para registos que não passam o filtro de organização.
 
-### 1. Migração de base de dados
+**Solução:** Actualizar a RLS das tabelas `organizational_units`, `document_files`, `document_movements`, `document_signatures`, `document_comments` para permitir leitura quando `organization_id IS NULL` (dados pré-multi-tenancy), garantindo que as joins não falhem silenciosamente.
 
-Adicionar `organization_id` a todas as tabelas principais:
+### 2. Backfill `organization_id` nos dados existentes
 
-```text
-profiles                 ← FK para organizations (obrigatório)
-documents                ← FK para organizations
-processes                ← FK para organizations  
-dispatches               ← FK para organizations
-organizational_units     ← FK para organizations
-document_movements       ← herda via document
-protocol_entries         ← FK para organizations
-classification_codes     ← FK para organizations (ou global)
-document_types           ← FK para organizations (ou global)
-notifications            ← herda via user
-digitization_batches     ← FK para organizations
-```
+Criar uma migração que:
+- Cria uma organização default ("MINAGRIF") se não existir
+- Atribui `organization_id` da organização default a todos os registos com `organization_id = NULL` (profiles, documents, dispatches, protocol_entries, etc.)
+- Isto resolve o filtro do Protocolo e garante consistência futura
 
-**Abordagem**: `organization_id` nullable inicialmente (para não quebrar dados existentes), com trigger para auto-preencher baseado no `profiles.organization_id` do utilizador autenticado.
-
-**Função helper** `get_user_organization_id(uuid)` — SECURITY DEFINER que retorna o `organization_id` do utilizador.
-
-### 2. RLS por organização
-
-Actualizar **todas** as políticas RLS das tabelas acima para incluir filtro:
-```sql
-organization_id = (SELECT organization_id FROM profiles WHERE user_id = auth.uid())
-```
-
-Usar a função helper para evitar recursão.
-
-### 3. Fluxo de registo de organização
-
-Nova página `/register-organization` (pública ou admin-only):
-- Formulário: nome, código, domínio, email contacto, plano
-- Cria organização + primeiro utilizador admin
-- Edge function `create-organization` que:
-  1. Cria registo em `organizations`
-  2. Cria utilizador via `auth.admin.createUser`
-  3. Atribui role `admin` e `organization_id`
-
-### 4. AuthContext + Profile
-
-- Adicionar `organization_id` ao tipo `Profile` em `AuthContext.tsx`
-- Expor `organizationId` no contexto para uso nos hooks
-
-### 5. Hooks frontend
-
-Actualizar queries em ~16 ficheiros para filtrar por `organization_id` quando aplicável. Na prática, o RLS cuida disto — mas inserts precisam incluir o campo.
-
-Ficheiros afectados:
-- `useDocuments.ts` — insert com `organization_id`
-- `useProcesses.ts` — insert com `organization_id`  
-- `useDispatches.ts` — insert com `organization_id`
-- `useProtocol.ts` — insert com `organization_id`
-- `useRepository.ts` — sem alteração (RLS filtra)
-- `useDashboardStats.ts` — sem alteração (RLS filtra)
-- `useMovements.ts` — sem alteração (herda do documento)
-- `useSettings.ts` — verificar scope
-- `useSuperAdmin.ts` — manter acesso global (admin vê tudo)
-
-### Ficheiros a criar/editar
+### Ficheiros a editar
 
 | Ficheiro | Acção |
 |----------|-------|
-| `supabase/migrations/...` | `organization_id` em ~10 tabelas + RLS + função helper + trigger auto-fill |
-| `supabase/functions/create-organization/index.ts` | **Novo** — edge function para criar org + admin user |
-| `src/contexts/AuthContext.tsx` | Editar — expor `organization_id` |
-| `src/hooks/useDocuments.ts` | Editar — incluir `organization_id` nos inserts |
-| `src/hooks/useProcesses.ts` | Editar — incluir `organization_id` nos inserts |
-| `src/hooks/useDispatches.ts` | Editar — incluir `organization_id` nos inserts |
-| `src/hooks/useProtocol.ts` | Editar — incluir `organization_id` nos inserts |
-| `src/hooks/useDigitization.ts` | Editar — incluir `organization_id` nos inserts |
-| `src/hooks/useSuperAdmin.ts` | Editar — stats por organização |
-| `src/pages/SuperAdminDashboard.tsx` | Editar — vista de dados por organização |
-| `src/types/database.ts` | Editar — adicionar `organization_id` aos tipos |
+| `supabase/migrations/...` | Backfill `organization_id` + ajustar RLS em tabelas auxiliares |
 
-### Notas técnicas
+### Notas
 
-- **SELECTs não mudam** — o RLS filtra automaticamente por organização
-- **INSERTs precisam** do `organization_id` — via trigger automático (preenche se null) ou explícito
-- **Super-admin** mantém visão global com política RLS separada (`has_role(admin)`)
-- Tabelas de referência (`classification_codes`, `document_types`) podem ser globais ou per-org — recomendo per-org com opção de templates globais
+- A correcção do RLS é conservadora: apenas adiciona `OR organization_id IS NULL` onde falta
+- O backfill é idempotente (só actua em registos NULL)
+- Nenhuma alteração no frontend necessária
 
