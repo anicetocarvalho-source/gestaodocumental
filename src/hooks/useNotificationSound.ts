@@ -49,7 +49,7 @@ export function useNotificationSound() {
         .from('notification_preferences')
         .select('play_sound, show_toast')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       // Default to true if no preferences set
       preferencesRef.current = data || { play_sound: true, show_toast: true };
