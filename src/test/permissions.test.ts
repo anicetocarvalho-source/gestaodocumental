@@ -209,14 +209,14 @@ describe("Permissions: canPerformAction()", () => {
       });
     });
 
-    it("consulta APENAS pode executar acções 'view' (read-only)", () => {
+    it("consulta APENAS pode executar acções de leitura (view/download)", () => {
+      const READ_ONLY_ACTIONS = ["view", "download"];
       Object.entries(actionPermissions).forEach(([module, actions]) => {
         Object.entries(actions as Record<string, AppRole[]>).forEach(([action, roles]) => {
           if (roles.includes("consulta")) {
-            // Se consulta tem acesso, deve ser apenas para leitura
             expect(
-              ["view"].includes(action),
-              `consulta tem acesso a "${module}.${action}" mas deveria ser apenas 'view'`
+              READ_ONLY_ACTIONS.includes(action),
+              `consulta tem acesso a "${module}.${action}" mas deveria ser apenas read-only (${READ_ONLY_ACTIONS.join("/")})`
             ).toBe(true);
           }
         });
