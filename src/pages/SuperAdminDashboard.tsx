@@ -27,17 +27,19 @@ const SuperAdminDashboard = () => {
       <div className="space-y-4">
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="organizations">Organizações</TabsTrigger>
             <TabsTrigger value="storage">Armazenamento</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
+            <TabsTrigger value="seed">Dados de Teste</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="organizations"><OrganizationsTab /></TabsContent>
           <TabsContent value="storage"><StorageTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
+          <TabsContent value="seed"><SeedDataTab /></TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
