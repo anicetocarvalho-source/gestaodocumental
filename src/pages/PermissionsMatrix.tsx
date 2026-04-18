@@ -212,7 +212,7 @@ export default function PermissionsMatrix() {
   const modules = Object.entries(actionPermissions);
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Matriz de Permissões">
       <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
