@@ -39,6 +39,17 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/flow-documentation": ["admin", "gestor", "tecnico", "consulta"],
   "/profile": ["admin", "gestor", "tecnico", "consulta"],
   "/protocol-book": ["admin", "gestor", "tecnico", "consulta"],
+
+  // Rotas sensíveis - acesso restrito
+  "/audit-logs": ["admin", "gestor"],
+  "/sla-configuration": ["admin"],
+  "/pending-approvals": ["admin", "gestor"],
+  "/workflow-visualization": ["admin", "gestor"],
+  "/document-intelligence": ["admin", "gestor", "tecnico"],
+  "/intelligent-search": ["admin", "gestor", "tecnico", "consulta"],
+  "/procedure-guide": ["admin", "gestor", "tecnico", "consulta"],
+  "/movement-history": ["admin", "gestor", "tecnico", "consulta"],
+  "/search": ["admin", "gestor", "tecnico", "consulta"],
   
   // Páginas de detalhe seguem as permissões das páginas pai
   "/documents/new": ["admin", "gestor", "tecnico"],
