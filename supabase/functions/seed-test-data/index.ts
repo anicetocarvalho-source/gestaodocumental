@@ -203,7 +203,7 @@ async function seedAll(admin: any, callerAuthId: string, orgId: string | null) {
       subject: subjectsPool[i],
       description: `${SEED_TAG} Documento de teste #${i + 1} para validação de fluxos.`,
       status,
-      priority: ["normal", "alta", "urgente", "baixa"][i % 4],
+      priority: ["normal", "high", "urgent", "low"][i % 4],
       confidentiality: "public",
       sender_name: sender.name,
       sender_institution: sender.inst,
