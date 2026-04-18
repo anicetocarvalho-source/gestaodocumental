@@ -196,9 +196,11 @@ async function seedAll(admin: any, callerAuthId: string, orgId: string | null) {
     { name: "Pedro Quintas", inst: "INSS" },
   ];
 
+  const seedStamp = Date.now().toString().slice(-8);
   const docsToInsert = statuses.map((status, i) => {
     const sender = senders[i % senders.length];
     return {
+      entry_number: `SEED-${seedStamp}-${String(i + 1).padStart(3, "0")}`,
       title: subjectsPool[i],
       subject: subjectsPool[i],
       description: `${SEED_TAG} Documento de teste #${i + 1} para validação de fluxos.`,
