@@ -458,7 +458,7 @@ async function seedAll(admin: any, callerAuthId: string, orgId: string | null) {
   // ───── Digitization batches (3) ─────
   const batchRows = [
     { name: "Lote Arquivo 2023 — Janeiro", status: "pending", priority: "normal", total_pages: 250, processed_pages: 0 },
-    { name: "Lote Arquivo 2023 — Fevereiro", status: "processing", priority: "alta", total_pages: 380, processed_pages: 145 },
+    { name: "Lote Arquivo 2023 — Fevereiro", status: "processing", priority: "high", total_pages: 380, processed_pages: 145 },
     { name: "Lote Arquivo 2022 — Dezembro", status: "completed", priority: "normal", total_pages: 200, processed_pages: 200, completed_at: new Date().toISOString() },
   ].map(b => ({
     ...b,
