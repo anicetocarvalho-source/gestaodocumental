@@ -27,17 +27,19 @@ const SuperAdminDashboard = () => {
       <div className="space-y-4">
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="organizations">Organizações</TabsTrigger>
             <TabsTrigger value="storage">Armazenamento</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
+            <TabsTrigger value="seed">Dados de Teste</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="organizations"><OrganizationsTab /></TabsContent>
           <TabsContent value="storage"><StorageTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
+          <TabsContent value="seed"><SeedDataTab /></TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
@@ -376,6 +378,110 @@ function SettingsTab() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ───── Seed Data ───── */
+function SeedDataTab() {
+  const [loading, setLoading] = useState<"seed" | "clear" | null>(null);
+  const [result, setResult] = useState<any>(null);
+  const [confirmOpen, setConfirmOpen] = useState<"seed" | "clear" | null>(null);
+
+  const run = async (action: "seed" | "clear") => {
+    setLoading(action);
+    setResult(null);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("seed-test-data", { body: { action } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setResult(data);
+      toast({ title: action === "seed" ? "Dados de teste carregados" : "Dados de teste removidos" });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(null);
+      setConfirmOpen(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Dados de Teste</CardTitle>
+          <CardDescription>
+            Carrega registos representativos (documentos, despachos, processos, protocolo, digitalização, retenção, notificações)
+            para validar end-to-end todos os fluxos da plataforma com os 4 perfis de utilizador.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-md border border-warning/30 bg-warning-muted/30 p-3 text-sm">
+            <p className="font-medium text-warning">Atenção</p>
+            <ul className="mt-1 ml-4 list-disc text-muted-foreground space-y-0.5 text-xs">
+              <li>Os registos seed são marcados com <code className="text-xs">[SEED]</code> e podem ser removidos a qualquer momento.</li>
+              <li>Recarregar substitui os registos seed anteriores (operação idempotente).</li>
+              <li>Os ficheiros físicos não são carregados — apenas os metadados.</li>
+              <li>Os utilizadores de teste (gestor, técnico, consulta) são associados às unidades criadas.</li>
+            </ul>
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={() => setConfirmOpen("seed")} disabled={loading !== null}>
+              {loading === "seed" ? "A carregar…" : "Carregar Dados de Teste"}
+            </Button>
+            <Button variant="outline" onClick={() => setConfirmOpen("clear")} disabled={loading !== null}>
+              {loading === "clear" ? "A limpar…" : "Limpar Dados de Teste"}
+            </Button>
+          </div>
+
+          {result?.summary && (
+            <div className="rounded-md border bg-muted/40 p-3">
+              <p className="text-sm font-medium mb-2">Resumo da operação</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                {Object.entries(result.summary).map(([k, v]) => (
+                  <div key={k} className="flex justify-between rounded bg-background px-2 py-1 border">
+                    <span className="text-muted-foreground">{k}</span>
+                    <span className="font-mono font-medium">{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result?.cleared && (
+            <div className="rounded-md border bg-muted/40 p-3 text-xs">
+              <p className="font-medium mb-1">Registos removidos</p>
+              <pre className="text-muted-foreground">{JSON.stringify(result.cleared, null, 2)}</pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={confirmOpen !== null} onOpenChange={(o) => !o && setConfirmOpen(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmOpen === "seed" ? "Confirmar carregamento" : "Confirmar limpeza"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirmOpen === "seed"
+              ? "Esta operação remove dados seed anteriores e cria novos registos de teste. Continuar?"
+              : "Esta operação remove todos os registos marcados como [SEED]. Esta acção é irreversível. Continuar?"}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(null)}>Cancelar</Button>
+            <Button
+              variant={confirmOpen === "clear" ? "destructive" : "default"}
+              onClick={() => confirmOpen && run(confirmOpen)}
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
