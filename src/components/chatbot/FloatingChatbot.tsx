@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownContent } from "@/components/assistant/MarkdownContent";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/minagrif-assistant`;
 
@@ -30,11 +31,16 @@ export function FloatingChatbot() {
   }, [messages, streamingContent]);
 
   const streamChat = async (chatMessages: { role: string; content: string }[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("Necessita iniciar sessão para usar o assistente.");
+    }
+
     const response = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ messages: chatMessages }),
     });
