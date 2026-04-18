@@ -14,7 +14,7 @@ interface ProtectedContentProps {
   roles?: AppRole[];
   /** Módulo e acção para verificar permissão */
   permission?: {
-    module: "documents" | "processes" | "users" | "settings";
+    module: "documents" | "processes" | "users" | "settings" | "dispatches" | "archive" | "reports" | "digitization";
     action: string;
   };
   /** Conteúdo alternativo quando não autorizado */
@@ -79,7 +79,7 @@ interface ProtectedButtonProps {
   children: ReactNode;
   roles?: AppRole[];
   permission?: {
-    module: "documents" | "processes" | "users" | "settings";
+    module: "documents" | "processes" | "users" | "settings" | "dispatches" | "archive" | "reports" | "digitization";
     action: string;
   };
   disabledTooltip?: string;
