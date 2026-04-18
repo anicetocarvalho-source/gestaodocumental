@@ -1,4 +1,5 @@
 import { Check, X, Shield } from "lucide-react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -211,7 +212,8 @@ export default function PermissionsMatrix() {
   const modules = Object.entries(actionPermissions);
 
   return (
-    <div className="space-y-6">
+    <DashboardLayout>
+      <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -263,6 +265,7 @@ export default function PermissionsMatrix() {
           <RoutesTable />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

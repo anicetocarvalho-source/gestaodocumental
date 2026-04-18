@@ -18,6 +18,7 @@ import DispatchDetail from "./pages/DispatchDetail";
 import ApprovalQueue from "./pages/ApprovalQueue";
 import UserManagement from "./pages/UserManagement";
 import Permissions from "./pages/Permissions";
+import PermissionsMatrix from "./pages/PermissionsMatrix";
 import AuditLogs from "./pages/AuditLogs";
 import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/pending-approvals" element={<ProtectedRoute><PendingApprovals /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
               <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
+              <Route path="/permissions-matrix" element={<ProtectedRoute><PermissionsMatrix /></ProtectedRoute>} />
               <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />

@@ -31,6 +31,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   // Gestão - Admin e Gestor
   "/users": ["admin"],
   "/permissions": ["admin"],
+  "/permissions-matrix": ["admin"],
   "/notifications": ["admin", "gestor", "tecnico", "consulta"],
   "/workflow-builder": ["admin"],
   "/process-templates": ["admin", "gestor"],
