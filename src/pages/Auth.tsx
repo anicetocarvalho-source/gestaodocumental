@@ -314,26 +314,34 @@ const Auth = () => {
                 <p className="text-xs text-center text-muted-foreground font-medium">
                   Acesso rápido (contas de teste)
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-start text-sm h-auto py-2.5 px-3"
-                  onClick={() => {
-                    setEmail("anicetojjc@gmail.com");
-                    setPassword("123456");
-                  }}
-                  disabled={loading}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="h-4 w-4 text-primary" />
+                {[
+                  { email: "anicetojjc@gmail.com", password: "123456", name: "Aniceto de Carvalho", role: "Administrador" },
+                  { email: "gestor@nodidoc.test", password: "123456", name: "Gestor Teste", role: "Gestor" },
+                  { email: "tecnico@nodidoc.test", password: "123456", name: "Técnico Teste", role: "Técnico" },
+                  { email: "consulta@nodidoc.test", password: "123456", name: "Consulta Teste", role: "Consulta" },
+                ].map((u) => (
+                  <Button
+                    key={u.email}
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-sm h-auto py-2.5 px-3"
+                    onClick={() => {
+                      setEmail(u.email);
+                      setPassword(u.password);
+                    }}
+                    disabled={loading}
+                  >
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-foreground">{u.name}</p>
+                        <p className="text-xs text-muted-foreground">{u.role}</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="font-medium text-foreground">Aniceto de Carvalho</p>
-                      <p className="text-xs text-muted-foreground">Administrador</p>
-                    </div>
-                  </div>
-                </Button>
+                  </Button>
+                ))}
               </div>
 
               <Separator className="my-4" />
