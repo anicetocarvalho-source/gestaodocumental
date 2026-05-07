@@ -46,6 +46,8 @@ import FlowDocumentation from "./pages/FlowDocumentation";
 import Profile from "./pages/Profile";
 import ProtocolBook from "./pages/ProtocolBook";
 import PhysicalSealRegister from "./pages/PhysicalSealRegister";
+import PhysicalSealsList from "./pages/PhysicalSealsList";
+import PhysicalSealDetail from "./pages/PhysicalSealDetail";
 import ResetPassword from "./pages/ResetPassword";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -111,7 +113,9 @@ const App = () => (
               <Route path="/flow-documentation" element={<ProtectedRoute><FlowDocumentation /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/protocol-book" element={<ProtectedRoute><ProtocolBook /></ProtectedRoute>} />
+              <Route path="/physical-seals" element={<ProtectedRoute><PhysicalSealsList /></ProtectedRoute>} />
               <Route path="/physical-seals/new" element={<ProtectedRoute><PhysicalSealRegister /></ProtectedRoute>} />
+              <Route path="/physical-seals/:id" element={<ProtectedRoute><PhysicalSealDetail /></ProtectedRoute>} />
               <Route path="/super-admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
               
