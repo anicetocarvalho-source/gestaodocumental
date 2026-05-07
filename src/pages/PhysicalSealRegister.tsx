@@ -122,6 +122,7 @@ export default function PhysicalSealRegister() {
       const { data: inserted, error: insErr } = await supabase
         .from("physical_seals")
         .insert({
+          organization_id: profile.organization_id,
           protocol_number: protoNum as string,
           protocol_type: protocolType,
           document_title: documentTitle.trim(),
