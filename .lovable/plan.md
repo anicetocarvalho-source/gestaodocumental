@@ -1,64 +1,88 @@
 
-User wants to seed the database with realistic test data so all flows can be exercised end-to-end across all 4 roles.
+# Plano: Selo Físico de Rastreabilidade — Schema da Base de Dados
 
-Let me check what exists already and what needs seeding.
+Esta migração cria a fundação de dados para a feature. Sem UI nem Edge Functions ainda.
 
-Existing tables (from context): organizational_units, classification_codes, document_types, profiles, user_roles, documents, document_files, document_movements, document_signatures, document_comments, dispatches, dispatch_approvals, dispatch_recipients, dispatch_documents, processes, protocol_entries, digitization_batches, document_retention, notifications, conversations, messages, etc.
+## Desvio importante face ao pedido
 
-Existing test users (4 roles): admin, gestor, tecnico, consulta — already created.
+O pedido especifica RLS via `auth.jwt() ->> 'organization_id'`. Este projeto **não coloca `organization_id` no JWT**; usa a função `public.get_user_org_id(auth.uid())` (SECURITY DEFINER, lê de `profiles`). Vou usar esse padrão, que é o já adotado em todo o NODIDOC e é equivalente em segurança. Confirmem se preferem outra abordagem antes de aprovar.
 
-What's needed: a seeding edge function (admin-only) that populates representative data covering all major flows.
+## O que vai ser criado
 
-## Plan
+### 1. Tabela `audit_log` (nova — não existe)
+Append-only. Colunas: `id, table_name, record_id, action, old_data jsonb, new_data jsonb, user_id, created_at`.
+- RLS ON. Policy: `INSERT` permitido (executado via triggers SECURITY DEFINER); `SELECT` para admin/gestor da mesma org (filtra cruzando `record_id` quando aplicável — aqui simplificado para admin/gestor).
+- **Sem policies de UPDATE/DELETE** → bloqueia mutação. Adicionalmente, `REVOKE UPDATE, DELETE` em `authenticated, anon`.
 
-Create an admin-only edge function `seed-test-data` that populates the database with realistic Portuguese (PT) demo data covering every flow.
+### 2. Tabela `physical_seals`
+Conforme spec, com FK `organization_id → organizations(id)` e `created_by → auth.users(id)`.
+- Trigger `BEFORE INSERT` para preencher `organization_id` automaticamente via `get_user_org_id(auth.uid())` se vier null (padrão NODIDOC).
+- CHECKs em `protocol_type` e `status`.
 
-### What gets seeded
+### 3. Tabela `seal_movements` (cadeia de custódia)
+Conforme spec. FK para `physical_seals(id)` ON DELETE CASCADE.
 
-| Module | Records | Purpose |
-|---|---|---|
-| Organizational units | 5 (DG, DAF, DRH, DJ, DTI) | Routing/forwarding tests |
-| Classification codes | 8 (CDC tree, 2 levels) | Classification & retention tests |
-| Document types | 6 (Ofício, Memorando, Despacho, Requerimento, Circular, Relatório) | Type selector tests |
-| Documents | 15 across all statuses (received, validating, in_progress, pending_signature, signed, dispatched, archived) | Lists, filters, detail, workflow |
-| Document movements | 2-4 per doc | Movement history, notifications |
-| Document comments | 1-2 per doc | Collaboration tests |
-| Document signatures | On signed docs | Signature flow |
-| Dispatches | 6 (rascunho, em_aprovacao, aprovado, assinado, emitido, cancelado) | Approval workflow + signing |
-| Dispatch approvals + recipients | Linked to dispatches | Approval queue tests |
-| Processes | 4 (different statuses) | Process flows |
-| Protocol entries | 8 (4 ENT + 4 SAI) | Protocol book tests |
-| Digitization batches | 3 (pending, processing, completed) | Digitization module |
-| Document retention | 4 (pending destruction, expiring soon) | Archive/retention tests |
-| Notifications | 5-10 per test user | Notification panel tests |
+### 4. Tabela `seal_validation_log`
+Conforme spec. `seal_id` ON DELETE SET NULL (preserva analítica).
 
-### Behaviour
+### 5. Tabela auxiliar `protocol_counters`
+```
+(organization_id uuid, protocol_type text, year int, counter int, PRIMARY KEY(organization_id, protocol_type, year))
+```
 
-- **Admin-only**: validates `has_role(caller, 'admin')` before running
-- **Idempotent**: checks for existing seed data via a marker tag (`description LIKE '[SEED]%'`) and clears it before re-seeding, so it can be run multiple times safely
-- **Multi-tenant aware**: all records get the caller's `organization_id` via `get_user_org_id()`
-- **Realistic PT-PT content**: Portuguese subjects, sender names, ministerial context (NODIDOC)
-- **Uses existing test users**: assigns documents/dispatches across the 4 test profiles to exercise role-based visibility
-- **No file uploads to storage**: documents reference placeholder filenames only (real PDF upload requires Storage API + binary content; seeding metadata is enough to exercise UI flows). A note will be shown explaining this.
+### 6. Função `get_next_protocol_number(org_id uuid, ptype text, yr int) returns text`
+- `SECURITY DEFINER`, `SET search_path = public`.
+- Faz `INSERT ... ON CONFLICT DO UPDATE SET counter = protocol_counters.counter + 1 RETURNING counter` (atómico, sem race conditions, sem `LOCK TABLE`).
+- Devolve `format('%s-%s-%s', ptype, yr, lpad(counter::text, 5, '0'))` → ex: `ENT-2026-00417`.
+- Valida `ptype IN ('ENT','SAI','INT')`.
 
-### UI trigger
+### 7. Triggers de auditoria
+Função `public.log_audit_event()` SECURITY DEFINER que insere em `audit_log` com `TG_OP`, `TG_TABLE_NAME`, `OLD/NEW` em jsonb e `auth.uid()`.
+Triggers `AFTER INSERT OR UPDATE OR DELETE` em `physical_seals` e `seal_movements`.
 
-Add a "Carregar Dados de Teste" button to `/super-admin` (admin-only page) that:
-1. Calls the edge function
-2. Shows a confirmation dialog warning it will reset existing seed data
-3. Displays summary of created records on success
-4. Includes a second button "Limpar Dados de Teste" to remove all `[SEED]` records
+### 8. Índices (todos os pedidos)
+- `physical_seals`: `(organization_id, protocol_number) UNIQUE`, `(validation_token)` UNIQUE já no constraint, `(organization_id, created_at DESC)`, `(pdf_hash) WHERE pdf_hash IS NOT NULL`.
+- `seal_movements`: `(seal_id, created_at DESC)`, `(to_user_id, created_at DESC)`.
+- `seal_validation_log`: `(seal_id, validated_at DESC)`, `(validation_token, validated_at DESC)`.
 
-### Files
+## Policies RLS — resumo
 
-| File | Action |
-|---|---|
-| `supabase/functions/seed-test-data/index.ts` | Create — seeds + cleanup logic |
-| `src/pages/SuperAdminDashboard.tsx` | Add seeding card with 2 buttons + result display |
-| `mem://features/test-data-seeding` | Create memory documenting the seeder |
+| Tabela | Operação | Quem | Condição |
+|---|---|---|---|
+| physical_seals | SELECT | authenticated | `organization_id = get_user_org_id(auth.uid())` |
+| physical_seals | INSERT | authenticated | mesma org + `created_by = auth.uid()` |
+| physical_seals | UPDATE | authenticated | mesma org (apenas admin/gestor cancelar — via `has_any_role`) |
+| seal_movements | SELECT | authenticated | seal pertence à org do user |
+| seal_movements | INSERT | authenticated | seal pertence à org + `to_user_id` é do mesmo tenant |
+| seal_validation_log | INSERT | anon, authenticated | `true` (portal público) |
+| seal_validation_log | SELECT | authenticated | seal pertence à org do user |
+| audit_log | INSERT | (definer) | trigger SECURITY DEFINER |
+| audit_log | SELECT | authenticated | `has_any_role(auth.uid(), ARRAY['admin','gestor']::app_role[])` |
+| audit_log | UPDATE/DELETE | — | sem policy + REVOKE |
 
-### Out of scope
+## Exemplo de execução de `get_next_protocol_number`
 
-- Real file binaries in Storage buckets (only metadata seeded)
-- Email log seeding (generated naturally when triggers fire)
-- Audit log seeding (auto-created by triggers on insert)
+```sql
+SELECT public.get_next_protocol_number(
+  '00000000-0000-0000-0000-000000000001'::uuid, 'ENT', 2026
+);
+-- → 'ENT-2026-00001'
+
+SELECT public.get_next_protocol_number(
+  '00000000-0000-0000-0000-000000000001'::uuid, 'ENT', 2026
+);
+-- → 'ENT-2026-00002'
+
+SELECT public.get_next_protocol_number(
+  '00000000-0000-0000-0000-000000000001'::uuid, 'SAI', 2026
+);
+-- → 'SAI-2026-00001'  -- contador independente por tipo
+```
+
+## O que NÃO está incluído (por design)
+- Sem UI, sem Edge Functions, sem geração de QR, sem upload PDF, sem cálculo SHA-256.
+- Sem alterações a tabelas existentes.
+- Storage: o bucket `documents` já existe e será reutilizado quando a feature de upload for implementada.
+
+## Após aprovação
+Executo a migração via ferramenta de migrações Supabase (1 ficheiro SQL único). Os tipos TypeScript em `src/integrations/supabase/types.ts` serão regenerados automaticamente.
