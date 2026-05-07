@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       classification_codes: {
         Row: {
           code: string
@@ -1639,6 +1672,77 @@ export type Database = {
         }
         Relationships: []
       }
+      physical_seals: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string
+          document_title: string
+          id: string
+          organization_id: string
+          pdf_hash: string | null
+          pdf_storage_path: string | null
+          protocol_number: string
+          protocol_type: string
+          qr_payload: string
+          recipient_name: string | null
+          sender_name: string | null
+          status: string
+          subject: string
+          validation_token: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by: string
+          document_title: string
+          id?: string
+          organization_id: string
+          pdf_hash?: string | null
+          pdf_storage_path?: string | null
+          protocol_number: string
+          protocol_type: string
+          qr_payload: string
+          recipient_name?: string | null
+          sender_name?: string | null
+          status?: string
+          subject: string
+          validation_token: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string
+          document_title?: string
+          id?: string
+          organization_id?: string
+          pdf_hash?: string | null
+          pdf_storage_path?: string | null
+          protocol_number?: string
+          protocol_type?: string
+          qr_payload?: string
+          recipient_name?: string | null
+          sender_name?: string | null
+          status?: string
+          subject?: string
+          validation_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_seals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_settings: {
         Row: {
           created_at: string
@@ -2328,6 +2432,35 @@ export type Database = {
           },
         ]
       }
+      protocol_counters: {
+        Row: {
+          counter: number
+          organization_id: string
+          protocol_type: string
+          year: number
+        }
+        Insert: {
+          counter?: number
+          organization_id: string
+          protocol_type: string
+          year: number
+        }
+        Update: {
+          counter?: number
+          organization_id?: string
+          protocol_type?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_counters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       protocol_entries: {
         Row: {
           created_at: string
@@ -2523,6 +2656,94 @@ export type Database = {
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seal_movements: {
+        Row: {
+          created_at: string
+          from_department: string | null
+          from_user_id: string | null
+          id: string
+          movement_type: string
+          notes: string | null
+          scanned_qr: boolean
+          seal_id: string
+          to_department: string | null
+          to_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_department?: string | null
+          from_user_id?: string | null
+          id?: string
+          movement_type: string
+          notes?: string | null
+          scanned_qr?: boolean
+          seal_id: string
+          to_department?: string | null
+          to_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_department?: string | null
+          from_user_id?: string | null
+          id?: string
+          movement_type?: string
+          notes?: string | null
+          scanned_qr?: boolean
+          seal_id?: string
+          to_department?: string | null
+          to_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seal_movements_seal_id_fkey"
+            columns: ["seal_id"]
+            isOneToOne: false
+            referencedRelation: "physical_seals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seal_validation_log: {
+        Row: {
+          id: string
+          ip_address: unknown
+          pdf_hash_match: boolean | null
+          pdf_uploaded: boolean
+          seal_id: string | null
+          user_agent: string | null
+          validated_at: string
+          validation_token: string
+        }
+        Insert: {
+          id?: string
+          ip_address?: unknown
+          pdf_hash_match?: boolean | null
+          pdf_uploaded?: boolean
+          seal_id?: string | null
+          user_agent?: string | null
+          validated_at?: string
+          validation_token: string
+        }
+        Update: {
+          id?: string
+          ip_address?: unknown
+          pdf_hash_match?: boolean | null
+          pdf_uploaded?: boolean
+          seal_id?: string | null
+          user_agent?: string | null
+          validated_at?: string
+          validation_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seal_validation_log_seal_id_fkey"
+            columns: ["seal_id"]
+            isOneToOne: false
+            referencedRelation: "physical_seals"
             referencedColumns: ["id"]
           },
         ]
@@ -2808,6 +3029,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_next_protocol_number: {
+        Args: { org_id: string; ptype: string; yr: number }
+        Returns: string
+      }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
