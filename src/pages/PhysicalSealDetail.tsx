@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   ArrowRight, Archive, Undo2, Send, QrCode, Loader2, Plus, Clock, Stamp, Printer, Download,
+  Search, Filter, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,6 +41,48 @@ export default function PhysicalSealDetail() {
   const [notes, setNotes] = useState("");
   const [scannedQr, setScannedQr] = useState(false);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Filtros do histórico
+  const [searchQ, setSearchQ] = useState("");
+  const [filterType, setFilterType] = useState<MovementType | "all">("all");
+  const [filterScanned, setFilterScanned] = useState<"all" | "yes" | "no">("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+
+  const filteredMovements = movements.filter((m) => {
+    if (filterType !== "all" && m.movement_type !== filterType) return false;
+    if (filterScanned === "yes" && !m.scanned_qr) return false;
+    if (filterScanned === "no" && m.scanned_qr) return false;
+    if (filterFrom) {
+      if (new Date(m.created_at) < new Date(filterFrom)) return false;
+    }
+    if (filterTo) {
+      const to = new Date(filterTo);
+      to.setHours(23, 59, 59, 999);
+      if (new Date(m.created_at) > to) return false;
+    }
+    if (searchQ.trim()) {
+      const q = searchQ.toLowerCase();
+      const hay = [m.from_department, m.to_department, m.notes]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const activeFilters =
+    (filterType !== "all" ? 1 : 0) +
+    (filterScanned !== "all" ? 1 : 0) +
+    (filterFrom ? 1 : 0) +
+    (filterTo ? 1 : 0) +
+    (searchQ.trim() ? 1 : 0);
+
+  const clearFilters = () => {
+    setSearchQ(""); setFilterType("all"); setFilterScanned("all");
+    setFilterFrom(""); setFilterTo("");
+  };
 
   const handleDownloadPdf = () => {
     if (!seal) return;
