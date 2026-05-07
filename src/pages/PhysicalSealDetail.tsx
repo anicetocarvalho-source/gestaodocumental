@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
@@ -13,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { QRCodeCanvas } from "qrcode.react";
 import {
-  ArrowRight, Archive, Undo2, Send, QrCode, Loader2, Plus, Clock, Stamp,
+  ArrowRight, Archive, Undo2, Send, QrCode, Loader2, Plus, Clock, Stamp, Printer, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   usePhysicalSeal, useSealMovements, useCreateSealMovement, MovementType,
 } from "@/hooks/usePhysicalSeals";
+import { generateSealLabelPdf } from "@/lib/sealLabelPdf";
 
 const MOVEMENT_META: Record<MovementType, { label: string; icon: typeof Send; color: string }> = {
   initial: { label: "Registo Inicial", icon: Stamp, color: "text-muted-foreground" },
@@ -38,6 +39,22 @@ export default function PhysicalSealDetail() {
   const [toDept, setToDept] = useState("");
   const [notes, setNotes] = useState("");
   const [scannedQr, setScannedQr] = useState(false);
+  const qrWrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPdf = () => {
+    if (!seal) return;
+    const canvas = qrWrapperRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
+    if (!canvas) {
+      toast.error("QR ainda não está pronto");
+      return;
+    }
+    try {
+      generateSealLabelPdf(seal, canvas);
+      toast.success("Etiqueta gerada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar PDF");
+    }
+  };
 
   const handleAdd = async () => {
     if (!id) return;
@@ -123,11 +140,21 @@ export default function PhysicalSealDetail() {
           <CardHeader>
             <CardTitle className="text-base">Etiqueta</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-2">
-            <QRCodeCanvas value={seal.qr_payload} size={140} level="M" />
+          <CardContent className="flex flex-col items-center gap-3">
+            <div ref={qrWrapperRef}>
+              <QRCodeCanvas value={seal.qr_payload} size={140} level="M" />
+            </div>
             <p className="text-xs font-mono text-muted-foreground break-all text-center">
               {seal.validation_token}
             </p>
+            <div className="flex w-full gap-2">
+              <Button onClick={handleDownloadPdf} variant="default" size="sm" className="flex-1">
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </Button>
+              <Button onClick={handleDownloadPdf} variant="outline" size="sm" className="flex-1">
+                <Printer className="h-4 w-4 mr-1" /> Imprimir
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
