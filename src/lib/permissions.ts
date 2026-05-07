@@ -54,6 +54,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   
   // Páginas de detalhe seguem as permissões das páginas pai
   "/documents/new": ["admin", "gestor", "tecnico"],
+  "/physical-seals/new": ["admin", "gestor", "tecnico"],
   "/processes/new": ["admin", "gestor", "tecnico"],
   "/dispatches/new": ["admin", "gestor", "tecnico"],
 };
