@@ -38,8 +38,8 @@ const actionVariant = (a: string): "success" | "warning" | "destructive" | "defa
 };
 
 export default function SystemAuditPanel() {
-  const { role, isLoading: loadingRole } = useUserRole();
-  const isAuthorized = role === "admin" || role === "gestor";
+  const { hasAnyRole, isLoading: loadingRole } = useUserRole();
+  const isAuthorized = hasAnyRole(["admin", "gestor"]);
 
   const [filters, setFilters] = useState<SystemAuditFilters>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
