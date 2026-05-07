@@ -41,6 +41,7 @@ interface ValidationResult {
   };
   movements_count?: number;
   last_movement?: LastMovement | null;
+  movements?: LastMovement[];
   pdf_hash_match: boolean | null;
 }
 
