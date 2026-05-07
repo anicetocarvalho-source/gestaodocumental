@@ -84,19 +84,16 @@ Deno.serve(async (req) => {
       orgName = (org as any)?.name ?? null;
     }
 
-    // Latest movement (public-safe summary)
-    const { data: lastMov } = await supabase
+    // All movements (public-safe summary) - newest first
+    const { data: allMovs } = await supabase
       .from("seal_movements")
       .select("movement_type, from_department, to_department, scanned_qr, created_at")
       .eq("seal_id", seal.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: false });
 
-    const { count: movementsCount } = await supabase
-      .from("seal_movements")
-      .select("id", { count: "exact", head: true })
-      .eq("seal_id", seal.id);
+    const movements = allMovs ?? [];
+    const lastMov = movements[0] ?? null;
+    const movementsCount = movements.length;
 
     return new Response(
       JSON.stringify({
@@ -113,8 +110,9 @@ Deno.serve(async (req) => {
           has_pdf_hash: !!seal.pdf_hash,
           organization_name: orgName,
         },
-        movements_count: movementsCount ?? 0,
-        last_movement: lastMov ?? null,
+        movements_count: movementsCount,
+        last_movement: lastMov,
+        movements,
         pdf_hash_match: pdfHashMatch,
       }),
       {

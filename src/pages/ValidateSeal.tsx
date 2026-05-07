@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ShieldCheck, ShieldAlert, ShieldX, Loader2, FileCheck2, FileX2, Upload, Search,
-  Send, Archive, Undo2, Stamp, QrCode, ArrowRight, Activity, Clock,
+  Send, Archive, Undo2, Stamp, QrCode, ArrowRight, Activity, Clock, Filter, X,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -40,6 +41,7 @@ interface ValidationResult {
   };
   movements_count?: number;
   last_movement?: LastMovement | null;
+  movements?: LastMovement[];
   pdf_hash_match: boolean | null;
 }
 
@@ -221,6 +223,10 @@ function ResultCard({ result }: { result: ValidationResult }) {
 
         <Separator />
 
+        <MovementsHistorySection movements={result.movements ?? []} />
+
+        <Separator />
+
         <IntegritySection
           hasHash={seal.has_pdf_hash}
           match={result.pdf_hash_match}
@@ -343,6 +349,131 @@ function IntegritySection({ hasHash, match }: { hasHash: boolean; match: boolean
         <p className="text-xs text-muted-foreground">
           O ficheiro fornecido difere do original registado. Pode ter sido alterado.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function MovementsHistorySection({ movements }: { movements: LastMovement[] }) {
+  const [type, setType] = useState<string>("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const filtered = useMemo(() => {
+    return movements.filter((m) => {
+      if (type !== "all" && m.movement_type !== type) return false;
+      if (from && !(m.from_department ?? "").toLowerCase().includes(from.toLowerCase())) return false;
+      if (to && !(m.to_department ?? "").toLowerCase().includes(to.toLowerCase())) return false;
+      if (dateFrom && new Date(m.created_at) < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        if (new Date(m.created_at) > end) return false;
+      }
+      return true;
+    });
+  }, [movements, type, from, to, dateFrom, dateTo]);
+
+  const hasFilters = type !== "all" || from || to || dateFrom || dateTo;
+  const clear = () => {
+    setType("all"); setFrom(""); setTo(""); setDateFrom(""); setDateTo("");
+  };
+
+  if (movements.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium text-sm">Histórico de Movimentos</span>
+        <Badge variant="secondary" className="text-xs ml-auto">
+          {filtered.length} de {movements.length}
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="initial">Registo Inicial</SelectItem>
+            <SelectItem value="handoff">Encaminhamento</SelectItem>
+            <SelectItem value="archive">Arquivamento</SelectItem>
+            <SelectItem value="return">Devolução</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Origem (departamento)"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="h-9 text-xs"
+        />
+        <Input
+          placeholder="Destino (departamento)"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="h-9 text-xs"
+        />
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="h-9 text-xs"
+          aria-label="Data inicial"
+        />
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="h-9 text-xs"
+          aria-label="Data final"
+        />
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clear} className="h-9 text-xs">
+            <X className="h-3 w-3 mr-1" /> Limpar filtros
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-2 max-h-80 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-center text-muted-foreground py-4">
+            Nenhum movimento corresponde aos filtros.
+          </p>
+        ) : (
+          filtered.map((m, i) => {
+            const meta = MOV_META[m.movement_type] ?? MOV_META.handoff;
+            const Icon = meta.icon;
+            return (
+              <div key={i} className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                    <span className="font-medium">{meta.label}</span>
+                    {m.scanned_qr && (
+                      <Badge variant="outline" className="gap-1 text-[10px] py-0 h-4">
+                        <QrCode className="h-2.5 w-2.5" /> QR
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {new Date(m.created_at).toLocaleString("pt-PT")}
+                  </span>
+                </div>
+                {(m.from_department || m.to_department) && (
+                  <div className="text-muted-foreground flex items-center gap-2">
+                    <span>{m.from_department || "—"}</span>
+                    <ArrowRight className="h-3 w-3" />
+                    <span>{m.to_department || "—"}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
