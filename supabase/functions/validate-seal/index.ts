@@ -110,8 +110,9 @@ Deno.serve(async (req) => {
           has_pdf_hash: !!seal.pdf_hash,
           organization_name: orgName,
         },
-        movements_count: movementsCount ?? 0,
-        last_movement: lastMov ?? null,
+        movements_count: movementsCount,
+        last_movement: lastMov,
+        movements,
         pdf_hash_match: pdfHashMatch,
       }),
       {
