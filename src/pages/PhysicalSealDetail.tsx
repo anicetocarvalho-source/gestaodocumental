@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   ArrowRight, Archive, Undo2, Send, QrCode, Loader2, Plus, Clock, Stamp, Printer, Download,
+  Search, Filter, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,6 +41,48 @@ export default function PhysicalSealDetail() {
   const [notes, setNotes] = useState("");
   const [scannedQr, setScannedQr] = useState(false);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Filtros do histórico
+  const [searchQ, setSearchQ] = useState("");
+  const [filterType, setFilterType] = useState<MovementType | "all">("all");
+  const [filterScanned, setFilterScanned] = useState<"all" | "yes" | "no">("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+
+  const filteredMovements = movements.filter((m) => {
+    if (filterType !== "all" && m.movement_type !== filterType) return false;
+    if (filterScanned === "yes" && !m.scanned_qr) return false;
+    if (filterScanned === "no" && m.scanned_qr) return false;
+    if (filterFrom) {
+      if (new Date(m.created_at) < new Date(filterFrom)) return false;
+    }
+    if (filterTo) {
+      const to = new Date(filterTo);
+      to.setHours(23, 59, 59, 999);
+      if (new Date(m.created_at) > to) return false;
+    }
+    if (searchQ.trim()) {
+      const q = searchQ.toLowerCase();
+      const hay = [m.from_department, m.to_department, m.notes]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const activeFilters =
+    (filterType !== "all" ? 1 : 0) +
+    (filterScanned !== "all" ? 1 : 0) +
+    (filterFrom ? 1 : 0) +
+    (filterTo ? 1 : 0) +
+    (searchQ.trim() ? 1 : 0);
+
+  const clearFilters = () => {
+    setSearchQ(""); setFilterType("all"); setFilterScanned("all");
+    setFilterFrom(""); setFilterTo("");
+  };
 
   const handleDownloadPdf = () => {
     if (!seal) return;
@@ -210,9 +253,55 @@ export default function PhysicalSealDetail() {
 
         {/* Timeline */}
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Histórico de Movimentos</CardTitle>
-            <CardDescription>{movements.length} registo(s)</CardDescription>
+          <CardHeader className="space-y-3">
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <div>
+                <CardTitle className="text-base">Histórico de Movimentos</CardTitle>
+                <CardDescription>
+                  {filteredMovements.length} de {movements.length} registo(s)
+                  {activeFilters > 0 && ` · ${activeFilters} filtro(s) activos`}
+                </CardDescription>
+              </div>
+              {activeFilters > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+                  <X className="h-3.5 w-3.5" /> Limpar
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="relative sm:col-span-2 lg:col-span-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar (de, para, notas)..."
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                  className="pl-8 h-9"
+                />
+              </div>
+              <Select value={filterType} onValueChange={(v) => setFilterType(v as MovementType | "all")}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="initial">Registo Inicial</SelectItem>
+                  <SelectItem value="handoff">Encaminhamento</SelectItem>
+                  <SelectItem value="archive">Arquivamento</SelectItem>
+                  <SelectItem value="return">Devolução</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterScanned} onValueChange={(v) => setFilterScanned(v as "all" | "yes" | "no")}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="QR" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">QR (todos)</SelectItem>
+                  <SelectItem value="yes">Só QR escaneado</SelectItem>
+                  <SelectItem value="no">Sem QR</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-1">
+                <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="h-9" title="De" />
+                <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="h-9" title="Até" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingMov ? (
@@ -223,9 +312,16 @@ export default function PhysicalSealDetail() {
               <p className="text-sm text-muted-foreground text-center py-8">
                 Sem movimentos registados.
               </p>
+            ) : filteredMovements.length === 0 ? (
+              <div className="text-center py-8 space-y-2">
+                <Filter className="h-6 w-6 text-muted-foreground/50 mx-auto" />
+                <p className="text-sm text-muted-foreground">
+                  Nenhum movimento corresponde aos filtros.
+                </p>
+              </div>
             ) : (
               <ol className="relative border-l border-border ml-3 space-y-5">
-                {movements.map((m) => {
+                {filteredMovements.map((m) => {
                   const meta = MOVEMENT_META[m.movement_type] ?? MOVEMENT_META.handoff;
                   const Icon = meta.icon;
                   return (
