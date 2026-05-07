@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { useAuditLogs, useAuditLogStats } from "@/hooks/useAuditLogs";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import SystemAuditPanel from "@/components/audit/SystemAuditPanel";
+import { Database } from "lucide-react";
 
 const actionTypes = [
   { value: "create", label: "Criação" },
@@ -128,7 +130,15 @@ const AuditLogs = () => {
             <Activity className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
+          <TabsTrigger value="system" className="gap-2">
+            <Database className="h-4 w-4" />
+            Sistema
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="system" className="space-y-6">
+          <SystemAuditPanel />
+        </TabsContent>
 
         <TabsContent value="logs" className="space-y-6">
           {/* Stats */}
