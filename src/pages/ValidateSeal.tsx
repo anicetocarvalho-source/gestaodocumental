@@ -223,6 +223,10 @@ function ResultCard({ result }: { result: ValidationResult }) {
 
         <Separator />
 
+        <MovementsHistorySection movements={result.movements ?? []} />
+
+        <Separator />
+
         <IntegritySection
           hasHash={seal.has_pdf_hash}
           match={result.pdf_hash_match}
