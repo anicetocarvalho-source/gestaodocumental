@@ -9,8 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ShieldCheck, ShieldAlert, ShieldX, Loader2, FileCheck2, FileX2, Upload, Search,
+  Send, Archive, Undo2, Stamp, QrCode, ArrowRight, Activity, Clock,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+
+type MovementType = "initial" | "handoff" | "archive" | "return";
+
+interface LastMovement {
+  movement_type: MovementType;
+  from_department: string | null;
+  to_department: string | null;
+  scanned_qr: boolean;
+  created_at: string;
+}
 
 interface ValidationResult {
   valid: boolean;
@@ -27,6 +38,8 @@ interface ValidationResult {
     has_pdf_hash: boolean;
     organization_name: string | null;
   };
+  movements_count?: number;
+  last_movement?: LastMovement | null;
   pdf_hash_match: boolean | null;
 }
 
@@ -201,12 +214,75 @@ function ResultCard({ result }: { result: ValidationResult }) {
 
         <Separator />
 
+        <LastMovementSection
+          last={result.last_movement ?? null}
+          count={result.movements_count ?? 0}
+        />
+
+        <Separator />
+
         <IntegritySection
           hasHash={seal.has_pdf_hash}
           match={result.pdf_hash_match}
         />
       </CardContent>
     </Card>
+  );
+}
+
+const MOV_META: Record<MovementType, { label: string; icon: typeof Send; color: string }> = {
+  initial: { label: "Registo Inicial", icon: Stamp, color: "text-muted-foreground" },
+  handoff: { label: "Encaminhamento", icon: Send, color: "text-primary" },
+  archive: { label: "Arquivamento", icon: Archive, color: "text-success" },
+  return: { label: "Devolução", icon: Undo2, color: "text-warning" },
+};
+
+function LastMovementSection({ last, count }: { last: LastMovement | null; count: number }) {
+  if (!last) {
+    return (
+      <div className="flex items-start gap-2 rounded-md bg-muted/50 p-3 text-sm">
+        <Activity className="h-5 w-5 text-muted-foreground mt-0.5" />
+        <div>
+          <p className="font-medium">Sem movimentos registados</p>
+          <p className="text-xs text-muted-foreground">
+            Este selo ainda não tem encaminhamentos, arquivamentos ou devoluções.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const meta = MOV_META[last.movement_type] ?? MOV_META.handoff;
+  const Icon = meta.icon;
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Icon className={`h-4 w-4 ${meta.color}`} />
+          <span className="font-medium text-sm">Último Movimento: {meta.label}</span>
+          {last.scanned_qr && (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <QrCode className="h-3 w-3" /> QR escaneado
+            </Badge>
+          )}
+        </div>
+        <Badge variant="secondary" className="text-xs">
+          {count} no total
+        </Badge>
+      </div>
+      {(last.from_department || last.to_department) && (
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          <span>{last.from_department || "—"}</span>
+          <ArrowRight className="h-3 w-3" />
+          <span>{last.to_department || "—"}</span>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground flex items-center gap-1">
+        <Clock className="h-3 w-3" />
+        {new Date(last.created_at).toLocaleString("pt-PT")}
+      </p>
+    </div>
   );
 }
 
