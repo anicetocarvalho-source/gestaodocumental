@@ -72,8 +72,12 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
     const status = await checkAgent();
     setAgentStatus(status);
     if (status.available && status.printers && status.printers.length > 0) {
-      const stillThere = status.printers.find((p) => p.name === selectedPrinter);
-      if (!stillThere) setSelectedPrinter(status.printers[0].name);
+      const preferred =
+        status.printers.find((p) => p.name === prefs.defaultPrinterName) ??
+        status.printers.find((p) => p.name === selectedPrinter) ??
+        status.printers.find((p) => p.name === prefs.lastPrinterName) ??
+        status.printers[0];
+      setSelectedPrinter(preferred.name);
     }
     setAgentChecking(false);
   }
