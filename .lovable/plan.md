@@ -1,115 +1,128 @@
-## Portal Público de Validação `/v/:token`
+## Impressão de etiquetas — 3 modos
 
-Construir uma rota pública, sem auth, dedicada à validação institucional de selos NODIDOC, com 4 estados, integridade de PDF e respeito estrito por privacidade (sem PII).
+Adicionar `<PrintLabelDialog />` accionado pelos botões existentes em `PhysicalSealRegister.tsx` e `PhysicalSealDetail.tsx`. Sem libs novas. Sem localStorage (estado em React + contexto leve).
 
-### 1. Rota e isolamento de auth
-
-- Adicionar em `src/App.tsx` duas novas rotas **fora** do `ProtectedRoute`:
-  - `/v/:token` → `<PublicValidate />`
-  - `/v` (sem token) → estado "Selo não encontrado"
-- Manter as rotas internas `/validate-seal/*` existentes intactas (uso interno).
-- Garantir que `AuthProvider` não força redirect quando o utilizador é anónimo nesta rota (já não força — `ProtectedRoute` é o único guard).
-
-### 2. Edge Function — ajuste mínimo (sem PII)
-
-A função `validate-seal` actualmente devolve `sender_name` e `recipient_name` (PII). O portal público não pode expor isto.
-
-Opções:
-- **(A) Adicionar parâmetro `public: true`** ao body de `validate-seal`. Quando `true`, omitir `sender_name`, `recipient_name` e detalhes de movimentos com nomes/departamentos. (Recomendado — preserva compatibilidade.)
-- (B) Criar nova função `validate-seal-public` espelho da actual mas sem PII.
-
-Vou usar (A): a UI pública chama com `{ token, public: true, pdf_hash? }` e a função filtra a resposta. A UI interna continua a receber tudo.
-
-A resposta pública conterá apenas:
-`protocol_number`, `protocol_type`, `document_title`, `subject` (truncado a 200 chars), `created_at`, `has_pdf_hash`, `organization_name`, `status`, `cancelled_at`, `cancelled_reason`, `pdf_hash` (apenas primeiros 8 chars), `pdf_hash_match`.
-
-### 3. Página `src/pages/PublicValidate.tsx`
-
-Layout único, max-width 720px, mobile-first, system fonts, sem dependências externas de fonts.
-
-Estrutura:
-
-```text
-┌─────────────────────────────────┐
-│  Banda navy #0A1F44             │
-│  NODIDOC · Portal Público       │
-├─────────────────────────────────┤
-│  Banner de estado               │
-│  Card de metadados              │
-│  Verificação de integridade PDF │
-│  Nota legal                     │
-│  Footer minimal                 │
-└─────────────────────────────────┘
-```
-
-Quatro estados:
-1. **Loading** — spinner + "A verificar selo..."
-2. **Válido** (`valid: true`) — banner verde `#1F7A5C` "SELO VÁLIDO" + card metadados + secção verificação PDF (se `has_pdf_hash`).
-3. **Cancelado** (`status: 'cancelled'`) — banner vermelho `#B83A3A` "SELO CANCELADO" + data + razão + restantes metadados desbotados (`opacity-60`).
-4. **Não encontrado** (resposta sem `seal` ou `valid:false` com erro) — card cinzento, mensagem genérica, sem detalhes técnicos.
-
-### 4. Verificação de integridade PDF
-
-- Componente interno `<PdfIntegrityCheck sealHash={...} token={...} />`:
-  - Drag & drop + `<input type="file" accept="application/pdf">`
-  - Validar tipo MIME e tamanho ≤ 25MB inline (sem toasts).
-  - Calcular SHA-256 no browser via `crypto.subtle.digest('SHA-256', arrayBuffer)` (não enviar ficheiro para servidor).
-  - Re-chamar `validate-seal` com `pdf_hash` para registar tentativa no `seal_validation_log` (ficheiro continua sem sair do browser).
-  - Mostrar dois banners possíveis (✓ íntegro / ✗ divergente) + comparação lado-a-lado dos primeiros 8 chars.
-  - Botão "Verificar outro ficheiro" reinicia.
-
-### 5. SEO, meta e privacidade
-
-Em `index.html` não dá para personalizar por rota. Solução: usar `react-helmet-async` se já instalado, senão um pequeno hook que actualiza `document.title` e meta tags ao montar:
-
-- `<title>`: `Validação de Selo {protocol_number} · NODIDOC` (ou `Validação de Selo · NODIDOC` se não encontrado).
-- `<meta name="description">`: "Verificação pública de autenticidade de documento institucional via NODIDOC."
-- `<meta name="robots" content="noindex, nofollow">`
-- `<html lang="pt-PT">` — definir via `document.documentElement.lang = 'pt-PT'`.
-- Open Graph genérico: título "NODIDOC — Validação de Selo" e descrição genérica (sem dados do selo).
-
-### 6. Design tokens
-
-Adicionar a `src/index.css` (ou re-aproveitar se existirem):
-
-```css
---seal-public-navy: 218 73% 16%;     /* #0A1F44 */
---seal-public-text: 217 26% 15%;     /* #1A2332 */
---seal-public-success: 158 60% 30%;  /* #1F7A5C */
---seal-public-danger: 0 53% 48%;     /* #B83A3A */
---seal-public-gold: 41 49% 60%;      /* #C9A961 */
-```
-
-E classes utilitárias `bg-seal-success`, `bg-seal-danger`, `text-seal-navy` no `tailwind.config.ts`.
-
-Tipografia: cabeçalho com `font-family: Georgia, 'Times New Roman', serif`; corpo com `system-ui, -apple-system, Segoe UI, Roboto, sans-serif`. Protocolo em `ui-monospace, Menlo, Consolas, monospace`.
-
-### 7. Acessibilidade
-
-- `lang="pt-PT"` no `<html>` enquanto a rota está activa.
-- Contraste verificado AA (navy/branco, success/branco, danger/branco).
-- Estados de erro com ícone + texto + cor (não só cor).
-- Inputs e botões com `aria-label` e `aria-describedby` para mensagens de validação.
-- Drag&drop também acessível via clique (botão visível).
-
-### 8. Ficheiros a criar/editar
+### Estrutura de ficheiros
 
 **Criar**
-- `src/pages/PublicValidate.tsx` — página principal.
-- `src/components/seals/public/StateBanner.tsx` — banner reutilizável.
-- `src/components/seals/public/PdfIntegrityCheck.tsx` — secção upload + hash.
-- `src/components/seals/public/SealMetadataCard.tsx` — card de metadados.
-- `src/lib/api/sealsPublic.ts` — wrapper `validatePublic(token, pdfHash?)` usando `fetch` directo (sem `supabase.functions.invoke` para não exigir client autenticado).
-- `src/lib/hooks/usePageMeta.ts` — hook para title/meta/robots.
+- `src/lib/printing/zpl.ts` — `generateZPL(seal, { isDuplicate, copies, speed, density })`.
+- `src/lib/printing/local-agent.ts` — `checkAgent()`, `printZPL(zpl, printerName, copies)`.
+- `src/lib/printing/webusb.ts` — `isWebUSBAvailable()`, `requestZebraPrinter()`, `printZPLViaUSB(device, zpl, copies)`.
+- `src/lib/printing/browser-print.ts` — `printViaBrowser(seal, isDuplicate, copies)` (janela A4 2×4).
+- `src/lib/printing/types.ts` — tipos partilhados (`PrintMode`, `PrintOptions`, `AgentStatus`).
+- `src/contexts/PrintPreferencesContext.tsx` — guarda `lastMode` e `lastDevice` na sessão (apenas React state, sem persistência).
+- `src/components/seals/PrintLabelDialog.tsx` — modal principal.
 
 **Editar**
-- `src/App.tsx` — adicionar rotas `/v` e `/v/:token`.
-- `supabase/functions/validate-seal/index.ts` — aceitar `public: boolean`; quando `true`, remover PII da resposta e dos movimentos.
-- `src/index.css` + `tailwind.config.ts` — tokens de cor do portal público.
+- `src/pages/PhysicalSealRegister.tsx` — substituir handlers dos botões "Imprimir Etiqueta" / "Imprimir Duplicado" por abertura do dialog.
+- `src/pages/PhysicalSealDetail.tsx` — idem para botão "Imprimir".
+- `src/App.tsx` — montar `<PrintPreferencesProvider>` dentro do `AuthProvider`.
 
-### 9. Fora de âmbito
+### `generateZPL`
 
-- QR codes nas etiquetas (já feito noutra fase).
-- Analytics/tracking de terceiros — explicitamente não.
-- i18n — apenas pt-PT.
-- Fontes externas — apenas system fonts.
+Etiqueta 50×30mm @ 203dpi → 400×240 dots.
+
+```text
+^XA
+^PW400
+^LL240
+^CI28                      ; UTF-8
+^PR{speed}                 ; velocidade ips
+^MD{density}               ; densidade 0-30
+^FO20,15^A0N,18,18^FB360,1,0,C^FD{org_name}^FS
+^FO20,40^GB360,2,2^FS
+^FO20,55^BQN,2,4^FDLA,{qr_payload}^FS    ; QR esquerda
+^FO180,60^A0N,12,12^FDPROTOCOLO^FS
+^FO180,75^A0N,22,22^FD{protocol_number}^FS
+^FO180,105^A0N,12,12^FDDATA^FS
+^FO180,120^A0N,16,16^FD{date}^FS
+^FO180,145^A0N,12,12^FDHASH^FS
+^FO180,160^A0N,16,16^FD{hash8}^FS
+^FO20,210^A0N,14,14^FB360,1,0,C^FDvalida.nodidoc.ao^FS
+{if isDuplicate}
+^FO80,80^A0N,40,40^FWR^FDDUPLICADO^FS
+{endif}
+^PQ{copies}
+^XZ
+```
+
+Escape obrigatório de `^`, `~`, `\` no payload de texto. Multi-cópias usa `^PQ` (mais eficiente que repetir).
+
+### Modo 1 — Agente Local
+
+`checkAgent()`:
+- `fetch("http://localhost:9876/health", { signal: AbortSignal.timeout(2000) })` numa promise race.
+- Devolve `{ available, version, printers[] }` ou `{ available: false, error }`.
+- Se exception/timeout → "Agente não está activo. Inicie a aplicação NODIDOC Print Agent."
+
+`printZPL(zpl, printerName, copies)`:
+- `POST /print` JSON `{ zpl, printer_name, copies }`.
+- Devolve `{ job_id }` em sucesso, throw com mensagem do servidor em erro.
+
+### Modo 2 — WebUSB
+
+`isWebUSBAvailable()` → `typeof navigator !== 'undefined' && 'usb' in navigator`.
+
+`requestZebraPrinter()`:
+- `navigator.usb.requestDevice({ filters: [{ vendorId: 0x0A5F }, { vendorId: 0x04F9 }] })`.
+
+`printZPLViaUSB(device, zpl, copies)`:
+- `device.open()` → `selectConfiguration(1)` → `claimInterface(0)`.
+- Encontrar endpoint `direction === 'out' && type === 'bulk'`.
+- Para cada cópia: `device.transferOut(endpointNumber, new TextEncoder().encode(zpl))`.
+- `releaseInterface(0)` → `close()`.
+- Try/finally garante release mesmo em erro.
+
+### Modo 3 — Print do navegador
+
+`printViaBrowser(seal, isDuplicate, copies)`:
+- `window.open('', '_blank', 'width=800,height=600')`.
+- Injectar HTML standalone com `@page { size: A4; margin: 10mm }` e grelha CSS de 8 etiquetas (88,9 × 67,7 mm cada — formato L7165 equivalente).
+- Renderizar QR via `qrcode` (já instalado) como SVG inline data-uri.
+- `win.document.write(html); win.document.close(); win.focus(); win.print();`
+- Listener `afterprint` → `win.close()`.
+
+### `<PrintLabelDialog />`
+
+```tsx
+interface Props {
+  seal: PhysicalSeal;
+  isDuplicate?: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+}
+```
+
+Estado interno:
+- `mode: 'agent' | 'webusb' | 'browser'` (default = `lastMode` do contexto, fallback `'agent'`).
+- `agentStatus: AgentStatus | null`, `selectedPrinter: string | null`.
+- `usbDevice: USBDevice | null`.
+- `copies: number` (1-10), `speed: 2|3|4|6` (default 4), `density: number` (default 15).
+- `printing: boolean`.
+
+Comportamento:
+- On mount: `checkAgent()` automaticamente. Se WebUSB disponível, mostra a opção.
+- Radio cards mostram indicadores em tempo real.
+- Botão "Procurar agente" reactiva `checkAgent()`.
+- Botão "Selecionar impressora" → `requestZebraPrinter()`.
+- Speed/density apenas visíveis em modos `agent`/`webusb`.
+- Avisos:
+  - WebUSB: banner amarelo "Modo experimental. Para uso institucional, recomendamos o Agente Local NODIDOC."
+  - Browser: aviso "Use papel A4 com layout 2×4 de etiquetas auto-adesivas (88,9 × 67,7 mm)."
+- "Imprimir" → gera ZPL (modos 1/2) ou chama browser-print, mostra `toast.success("Etiqueta enviada para impressão")`, fecha modal.
+- Erros → `toast.error(mensagem)`, modal permanece aberto.
+- `console.info('[print]', { sealId, mode, copies, ts })` como log temporário.
+
+### Integração nos botões existentes
+
+Em `PhysicalSealRegister.tsx` e `PhysicalSealDetail.tsx`:
+- Adicionar `useState` para `printOpen` + `printDuplicate`.
+- Cada botão passa a abrir o dialog com `isDuplicate` adequado.
+- Renderizar `<PrintLabelDialog seal={seal} isDuplicate={...} isOpen={printOpen} onClose={...} />` no fim do JSX.
+
+### Fora de âmbito
+
+- Implementação do agente Tauri/Electron.
+- Persistência cross-session de preferências.
+- Fallback automático entre modos.
+- Reporte server-side de jobs de impressão (próximo prompt).
