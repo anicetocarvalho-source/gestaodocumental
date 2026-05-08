@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["vitest/globals"],
+    "types": ["vitest/globals", "w3c-web-usb"],
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
