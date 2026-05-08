@@ -116,6 +116,9 @@ const App = () => (
               <Route path="/flow-documentation" element={<ProtectedRoute><FlowDocumentation /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/protocol-book" element={<ProtectedRoute><ProtocolBook /></ProtectedRoute>} />
+              <Route path="/seals" element={<ProtectedRoute><PhysicalSealsList /></ProtectedRoute>} />
+              <Route path="/seals/new" element={<ProtectedRoute><PhysicalSealRegister /></ProtectedRoute>} />
+              <Route path="/seals/:id" element={<ProtectedRoute><PhysicalSealDetail /></ProtectedRoute>} />
               <Route path="/physical-seals" element={<ProtectedRoute><PhysicalSealsList /></ProtectedRoute>} />
               <Route path="/physical-seals/new" element={<ProtectedRoute><PhysicalSealRegister /></ProtectedRoute>} />
               <Route path="/physical-seals/:id" element={<ProtectedRoute><PhysicalSealDetail /></ProtectedRoute>} />
