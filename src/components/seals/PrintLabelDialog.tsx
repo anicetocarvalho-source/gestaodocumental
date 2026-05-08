@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Printer, RefreshCw, Usb, Globe2, Server, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Printer, RefreshCw, Usb, Globe2, Server, AlertTriangle, CheckCircle2, XCircle, Star, StarOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
