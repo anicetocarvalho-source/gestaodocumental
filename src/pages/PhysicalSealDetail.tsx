@@ -1,130 +1,183 @@
-import { useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { QRCodeCanvas } from "qrcode.react";
-import {
-  ArrowRight, Archive, Undo2, Send, QrCode, Loader2, Plus, Clock, Stamp, Printer, Download,
-  Search, Filter, X,
-} from "lucide-react";
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 import { toast } from "sonner";
 import {
-  usePhysicalSeal, useSealMovements, useCreateSealMovement, MovementType,
-} from "@/hooks/usePhysicalSeals";
-import { generateSealLabelPdf } from "@/lib/sealLabelPdf";
+  ArrowLeft,
+  Ban,
+  Printer,
+  Loader2,
+  Copy,
+  Download,
+  Sparkles,
+  ArrowRightLeft,
+  Archive,
+  Undo2,
+  ScanLine,
+  Plus,
+  AlertCircle,
+} from "lucide-react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { SealLabel } from "@/components/seals/SealLabel";
+import { RegisterMovementModal } from "@/components/seals/RegisterMovementModal";
+import { useCurrentOrganization } from "@/hooks/useCurrentOrganization";
+import {
+  cancelSeal,
+  getSeal,
+  getSealMovements,
+  getSignedPdfUrl,
+  type MovementType,
+  type SealMovement,
+} from "@/lib/api/seals";
 
-const MOVEMENT_META: Record<MovementType, { label: string; icon: typeof Send; color: string }> = {
-  initial: { label: "Registo Inicial", icon: Stamp, color: "text-muted-foreground" },
-  handoff: { label: "Encaminhamento", icon: Send, color: "text-primary" },
-  archive: { label: "Arquivamento", icon: Archive, color: "text-success" },
-  return: { label: "Devolução", icon: Undo2, color: "text-warning" },
+const MOVEMENT_META: Record<MovementType, { label: string; Icon: typeof Sparkles; tone: string }> = {
+  initial: { label: "Emissão inicial", Icon: Sparkles, tone: "text-primary bg-primary/10" },
+  handoff: { label: "Transferência", Icon: ArrowRightLeft, tone: "text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300" },
+  archive: { label: "Arquivamento", Icon: Archive, tone: "text-amber-700 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300" },
+  return: { label: "Devolução", Icon: Undo2, tone: "text-rose-700 bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300" },
 };
+
+function initials(name?: string | null) {
+  if (!name) return "?";
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase())
+    .join("");
+}
+
+function MovementItem({ m, last }: { m: SealMovement; last: boolean }) {
+  const meta = MOVEMENT_META[m.movement_type] || MOVEMENT_META.handoff;
+  const Icon = meta.Icon;
+  return (
+    <div className="relative pl-10 pb-6">
+      {!last && (
+        <div className="absolute left-4 top-8 bottom-0 w-px bg-border" aria-hidden />
+      )}
+      <div
+        className={cn(
+          "absolute left-0 top-1 h-8 w-8 rounded-full flex items-center justify-center",
+          meta.tone,
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-semibold">{meta.label}</span>
+        {m.scanned_qr && (
+          <Badge variant="secondary" className="gap-1">
+            <ScanLine className="h-3 w-3" /> Por leitura de QR
+          </Badge>
+        )}
+        <span className="text-xs text-muted-foreground ml-auto">
+          {format(new Date(m.created_at), "dd/MM/yyyy HH:mm", { locale: pt })}
+        </span>
+      </div>
+      <div className="mt-1 flex items-center gap-2 text-sm">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold">
+            {initials(m.from_user_name)}
+          </span>
+          <span className="text-muted-foreground">{m.from_user_name || "—"}</span>
+          {m.from_department && (
+            <span className="text-xs text-muted-foreground">({m.from_department})</span>
+          )}
+        </span>
+        <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">
+            {initials(m.to_user_name)}
+          </span>
+          <span>{m.to_user_name || "—"}</span>
+          {m.to_department && (
+            <span className="text-xs text-muted-foreground">({m.to_department})</span>
+          )}
+        </span>
+      </div>
+      {m.notes && (
+        <p className="mt-2 text-sm text-muted-foreground italic border-l-2 border-border pl-3">
+          {m.notes}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function PhysicalSealDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: seal, isLoading } = usePhysicalSeal(id);
-  const { data: movements = [], isLoading: loadingMov } = useSealMovements(id);
-  const createMov = useCreateSealMovement();
+  const qc = useQueryClient();
+  const { data: org } = useCurrentOrganization();
 
-  const [movType, setMovType] = useState<MovementType>("handoff");
-  const [fromDept, setFromDept] = useState("");
-  const [toDept, setToDept] = useState("");
-  const [notes, setNotes] = useState("");
-  const [scannedQr, setScannedQr] = useState(false);
-  const qrWrapperRef = useRef<HTMLDivElement>(null);
+  const [movementOpen, setMovementOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
-  // Filtros do histórico
-  const [searchQ, setSearchQ] = useState("");
-  const [filterType, setFilterType] = useState<MovementType | "all">("all");
-  const [filterScanned, setFilterScanned] = useState<"all" | "yes" | "no">("all");
-  const [filterFrom, setFilterFrom] = useState("");
-  const [filterTo, setFilterTo] = useState("");
-
-  const filteredMovements = movements.filter((m) => {
-    if (filterType !== "all" && m.movement_type !== filterType) return false;
-    if (filterScanned === "yes" && !m.scanned_qr) return false;
-    if (filterScanned === "no" && m.scanned_qr) return false;
-    if (filterFrom) {
-      if (new Date(m.created_at) < new Date(filterFrom)) return false;
-    }
-    if (filterTo) {
-      const to = new Date(filterTo);
-      to.setHours(23, 59, 59, 999);
-      if (new Date(m.created_at) > to) return false;
-    }
-    if (searchQ.trim()) {
-      const q = searchQ.toLowerCase();
-      const hay = [m.from_department, m.to_department, m.notes]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
+  const { data: seal, isLoading } = useQuery({
+    queryKey: ["seal", id],
+    enabled: !!id,
+    queryFn: () => getSeal(id!),
   });
 
-  const activeFilters =
-    (filterType !== "all" ? 1 : 0) +
-    (filterScanned !== "all" ? 1 : 0) +
-    (filterFrom ? 1 : 0) +
-    (filterTo ? 1 : 0) +
-    (searchQ.trim() ? 1 : 0);
+  const { data: movements = [], isLoading: loadingMovements } = useQuery({
+    queryKey: ["seal-movements", id],
+    enabled: !!id,
+    queryFn: () => getSealMovements(id!),
+  });
 
-  const clearFilters = () => {
-    setSearchQ(""); setFilterType("all"); setFilterScanned("all");
-    setFilterFrom(""); setFilterTo("");
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelSeal(id!, cancelReason.trim()),
+    onSuccess: () => {
+      toast.success("Selo cancelado.");
+      qc.invalidateQueries({ queryKey: ["seal", id] });
+      setCancelOpen(false);
+      setCancelReason("");
+    },
+    onError: (e: any) => toast.error(e?.message || "Não foi possível cancelar o selo."),
+  });
+
+  const copyHash = async () => {
+    if (!seal?.pdf_hash) return;
+    try {
+      await navigator.clipboard.writeText(seal.pdf_hash);
+      toast.success("Hash copiado.");
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
   };
 
-  const handleDownloadPdf = () => {
-    if (!seal) return;
-    const canvas = qrWrapperRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
-    if (!canvas) {
-      toast.error("QR ainda não está pronto");
-      return;
-    }
-    try {
-      generateSealLabelPdf(seal, canvas);
-      toast.success("Etiqueta gerada");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao gerar PDF");
-    }
-  };
-
-  const handleAdd = async () => {
-    if (!id) return;
-    if (movType === "handoff" && !toDept.trim()) {
-      toast.error("Indique o destino");
-      return;
-    }
-    try {
-      await createMov.mutateAsync({
-        seal_id: id,
-        movement_type: movType,
-        from_department: fromDept.trim() || null,
-        to_department: toDept.trim() || null,
-        notes: notes.trim() || null,
-        scanned_qr: scannedQr,
-      });
-      toast.success("Movimento registado");
-      setFromDept(""); setToDept(""); setNotes(""); setScannedQr(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao registar movimento");
-    }
+  const downloadPdf = async () => {
+    if (!seal?.pdf_storage_path) return;
+    setDownloading(true);
+    const url = await getSignedPdfUrl(seal.pdf_storage_path, 120);
+    setDownloading(false);
+    if (url) window.open(url, "_blank");
+    else toast.error("Não foi possível obter o ficheiro.");
   };
 
   if (isLoading) {
     return (
-      <DashboardLayout title="Selo Físico">
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
+      <DashboardLayout title="Detalhe do selo">
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> A carregar...
         </div>
       </DashboardLayout>
@@ -134,230 +187,214 @@ export default function PhysicalSealDetail() {
   if (!seal) {
     return (
       <DashboardLayout title="Selo não encontrado">
-        <p className="text-muted-foreground">O selo solicitado não existe ou foi removido.</p>
-        <Button asChild variant="outline" className="mt-4">
-          <Link to="/physical-seals">Voltar à lista</Link>
-        </Button>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+            <AlertCircle className="h-10 w-10" />
+            <p>O selo solicitado não existe ou foi removido.</p>
+            <Button asChild variant="outline">
+              <Link to="/seals"><ArrowLeft className="h-4 w-4 mr-2" /> Voltar à lista</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </DashboardLayout>
     );
   }
 
+  const orgName = org?.name ?? "Organização";
+
   return (
-    <DashboardLayout title={seal.protocol_number} subtitle={seal.document_title}>
+    <DashboardLayout title="Detalhe do selo" subtitle={seal.protocol_number}>
       <PageBreadcrumb
         items={[
           { label: "Documentos", href: "/documents" },
-          { label: "Selos Físicos", href: "/physical-seals" },
+          { label: "Selos", href: "/seals" },
           { label: seal.protocol_number },
         ]}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Seal info */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Stamp className="h-5 w-5 text-primary" /> Informação do Selo
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-            <div><span className="text-muted-foreground">Tipo:</span> <Badge variant="outline">{seal.protocol_type}</Badge></div>
-            <div><span className="text-muted-foreground">Estado:</span>{" "}
-              <Badge variant={seal.status === "active" ? "default" : "secondary"}>
-                {seal.status === "active" ? "Activo" : "Cancelado"}
-              </Badge>
-            </div>
-            <div><span className="text-muted-foreground">Remetente:</span> {seal.sender_name ?? "—"}</div>
-            <div><span className="text-muted-foreground">Destinatário:</span> {seal.recipient_name ?? "—"}</div>
-            <div className="sm:col-span-2"><span className="text-muted-foreground">Assunto:</span> {seal.subject}</div>
-            {seal.pdf_hash && (
-              <div className="sm:col-span-2 break-all">
-                <span className="text-muted-foreground">SHA-256:</span>{" "}
-                <span className="font-mono text-xs">{seal.pdf_hash}</span>
+      {/* Cabeçalho */}
+      <Card className="mb-4">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge variant="outline" className="font-mono">{seal.protocol_type}</Badge>
+                {seal.status === "active" ? (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-600">Activo</Badge>
+                ) : (
+                  <Badge variant="destructive">Cancelado</Badge>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Etiqueta</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-3">
-            <div ref={qrWrapperRef}>
-              <QRCodeCanvas value={seal.qr_payload} size={140} level="M" />
-            </div>
-            <p className="text-xs font-mono text-muted-foreground break-all text-center">
-              {seal.validation_token}
-            </p>
-            <div className="flex w-full gap-2">
-              <Button onClick={handleDownloadPdf} variant="default" size="sm" className="flex-1">
-                <Download className="h-4 w-4 mr-1" /> PDF
-              </Button>
-              <Button onClick={handleDownloadPdf} variant="outline" size="sm" className="flex-1">
-                <Printer className="h-4 w-4 mr-1" /> Imprimir
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3 mt-6">
-        {/* Add movement */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Plus className="h-4 w-4 text-primary" /> Registar Movimento
-            </CardTitle>
-            <CardDescription>Documente entregas, arquivamentos ou devoluções.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label>Tipo *</Label>
-              <Select value={movType} onValueChange={(v) => setMovType(v as MovementType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="handoff">Encaminhamento</SelectItem>
-                  <SelectItem value="archive">Arquivamento</SelectItem>
-                  <SelectItem value="return">Devolução</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>De (Unidade/Pessoa)</Label>
-              <Input value={fromDept} onChange={(e) => setFromDept(e.target.value)} placeholder="Origem" />
-            </div>
-            <div className="space-y-2">
-              <Label>Para (Unidade/Pessoa) {movType === "handoff" && "*"}</Label>
-              <Input value={toDept} onChange={(e) => setToDept(e.target.value)} placeholder="Destino" />
-            </div>
-            <div className="space-y-2">
-              <Label>Notas</Label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-            </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={scannedQr} onCheckedChange={(c) => setScannedQr(!!c)} />
-              <span className="flex items-center gap-1">
-                <QrCode className="h-3.5 w-3.5" /> QR foi escaneado
-              </span>
-            </label>
-            <Button onClick={handleAdd} disabled={createMov.isPending} className="w-full">
-              {createMov.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A guardar...</>
-              ) : (
-                <><Plus className="h-4 w-4 mr-2" /> Adicionar Movimento</>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Timeline */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="space-y-3">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <div>
-                <CardTitle className="text-base">Histórico de Movimentos</CardTitle>
-                <CardDescription>
-                  {filteredMovements.length} de {movements.length} registo(s)
-                  {activeFilters > 0 && ` · ${activeFilters} filtro(s) activos`}
-                </CardDescription>
+              <h1
+                className="font-bold text-primary"
+                style={{ fontFamily: "Georgia, serif", fontSize: "28pt", lineHeight: 1 }}
+              >
+                {seal.protocol_number}
+              </h1>
+              <div className="text-sm text-muted-foreground space-y-0.5">
+                <div>
+                  Criado em {format(new Date(seal.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}
+                </div>
+                {seal.cancelled_at && (
+                  <div className="text-destructive">
+                    Cancelado em {format(new Date(seal.cancelled_at), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}
+                    {seal.cancellation_reason && <> · {seal.cancellation_reason}</>}
+                  </div>
+                )}
               </div>
-              {activeFilters > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
-                  <X className="h-3.5 w-3.5" /> Limpar
+            </div>
+
+            <div className="flex flex-col items-end gap-3">
+              <SealLabel
+                protocolNumber={seal.protocol_number}
+                protocolType={seal.protocol_type}
+                createdAt={seal.created_at}
+                pdfHashTruncated={seal.pdf_hash ? seal.pdf_hash.slice(0, 8) : null}
+                organizationName={orgName}
+                qrPayload={seal.qr_payload}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toast.info("Impressão será disponibilizada em breve.")}
+                >
+                  <Printer className="h-4 w-4 mr-2" /> Imprimir
                 </Button>
-              )}
+                {seal.status === "active" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCancelOpen(true)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Ban className="h-4 w-4 mr-2" /> Cancelar
+                  </Button>
+                )}
+              </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <div className="relative sm:col-span-2 lg:col-span-2">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Pesquisar (de, para, notas)..."
-                  value={searchQ}
-                  onChange={(e) => setSearchQ(e.target.value)}
-                  className="pl-8 h-9"
-                />
-              </div>
-              <Select value={filterType} onValueChange={(v) => setFilterType(v as MovementType | "all")}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Tipo" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="initial">Registo Inicial</SelectItem>
-                  <SelectItem value="handoff">Encaminhamento</SelectItem>
-                  <SelectItem value="archive">Arquivamento</SelectItem>
-                  <SelectItem value="return">Devolução</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterScanned} onValueChange={(v) => setFilterScanned(v as "all" | "yes" | "no")}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="QR" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">QR (todos)</SelectItem>
-                  <SelectItem value="yes">Só QR escaneado</SelectItem>
-                  <SelectItem value="no">Sem QR</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-1">
-                <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="h-9" title="De" />
-                <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="h-9" title="Até" />
-              </div>
+      {/* Dados do documento */}
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Dados do documento</CardTitle>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
+          <div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Título</div>
+            <div className="font-medium">{seal.document_title}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Assunto</div>
+            <div>{seal.subject}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Remetente</div>
+            <div>{seal.sender_name || "—"}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide mb-1">Destinatário</div>
+            <div>{seal.recipient_name || "—"}</div>
+          </div>
+
+          <div className="sm:col-span-2">
+            <div className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
+              Hash SHA-256 do PDF
             </div>
-          </CardHeader>
-          <CardContent>
-            {loadingMov ? (
-              <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : movements.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Sem movimentos registados.
-              </p>
-            ) : filteredMovements.length === 0 ? (
-              <div className="text-center py-8 space-y-2">
-                <Filter className="h-6 w-6 text-muted-foreground/50 mx-auto" />
-                <p className="text-sm text-muted-foreground">
-                  Nenhum movimento corresponde aos filtros.
-                </p>
+            {seal.pdf_hash ? (
+              <div className="flex items-start gap-2">
+                <code className="flex-1 font-mono text-xs break-all bg-muted rounded px-2 py-1.5">
+                  {seal.pdf_hash}
+                </code>
+                <Button variant="outline" size="icon" onClick={copyHash} title="Copiar">
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
             ) : (
-              <ol className="relative border-l border-border ml-3 space-y-5">
-                {filteredMovements.map((m) => {
-                  const meta = MOVEMENT_META[m.movement_type] ?? MOVEMENT_META.handoff;
-                  const Icon = meta.icon;
-                  return (
-                    <li key={m.id} className="ml-6">
-                      <span className="absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-border">
-                        <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
-                      </span>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-sm">{meta.label}</span>
-                        {m.scanned_qr && (
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <QrCode className="h-3 w-3" /> QR escaneado
-                          </Badge>
-                        )}
-                      </div>
-                      {(m.from_department || m.to_department) && (
-                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          <span>{m.from_department || "—"}</span>
-                          <ArrowRight className="h-3 w-3" />
-                          <span>{m.to_department || "—"}</span>
-                        </div>
-                      )}
-                      {m.notes && <p className="text-sm mt-1">{m.notes}</p>}
-                      <Separator className="my-2" />
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(m.created_at).toLocaleString("pt-PT")}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ol>
+              <span className="text-muted-foreground italic">Sem PDF associado</span>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {seal.pdf_storage_path && (
+            <div className="sm:col-span-2">
+              <Button onClick={downloadPdf} disabled={downloading} variant="outline">
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Descarregar PDF
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cadeia de custódia */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Cadeia de custódia</CardTitle>
+          {seal.status === "active" && (
+            <Button onClick={() => setMovementOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Registar Movimento
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {loadingMovements ? (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" /> A carregar movimentos...
+            </div>
+          ) : movements.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Ainda não há movimentos registados.
+            </p>
+          ) : (
+            <div className="pt-2">
+              {movements.map((m, i) => (
+                <MovementItem key={m.id} m={m} last={i === movements.length - 1} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <RegisterMovementModal
+        sealId={seal.id}
+        open={movementOpen}
+        onOpenChange={setMovementOpen}
+      />
+
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar selo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta operação é irreversível. Indique a razão do cancelamento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Razão do cancelamento"
+            rows={3}
+            maxLength={500}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!cancelReason.trim() || cancelMutation.isPending}
+              onClick={() => cancelMutation.mutate()}
+            >
+              {cancelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
