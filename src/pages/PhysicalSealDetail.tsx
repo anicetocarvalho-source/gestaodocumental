@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SealLabel } from "@/components/seals/SealLabel";
 import { RegisterMovementModal } from "@/components/seals/RegisterMovementModal";
+import { PrintLabelDialog } from "@/components/seals/PrintLabelDialog";
 import { useCurrentOrganization } from "@/hooks/useCurrentOrganization";
 import {
   cancelSeal,
@@ -131,6 +132,7 @@ export default function PhysicalSealDetail() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const { data: seal, isLoading } = useQuery({
     queryKey: ["seal", id],
@@ -257,7 +259,7 @@ export default function PhysicalSealDetail() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.info("Impressão será disponibilizada em breve.")}
+                  onClick={() => setPrintOpen(true)}
                 >
                   <Printer className="h-4 w-4 mr-2" /> Imprimir
                 </Button>
