@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const { data: seal, error } = await supabase
       .from("physical_seals")
       .select(
-        "id, protocol_number, protocol_type, document_title, subject, sender_name, recipient_name, pdf_hash, status, created_at, organization_id",
+        "id, protocol_number, protocol_type, document_title, subject, sender_name, recipient_name, pdf_hash, status, created_at, cancelled_at, organization_id",
       )
       .eq("validation_token", token)
       .maybeSingle();
