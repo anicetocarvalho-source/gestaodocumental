@@ -244,6 +244,15 @@ export default function PhysicalSealRegister() {
             </CardContent>
           </Card>
         </div>
+        {sealForPrint && (
+          <PrintLabelDialog
+            seal={sealForPrint}
+            organizationName={orgName}
+            isDuplicate={printDuplicate}
+            isOpen={printOpen}
+            onClose={() => setPrintOpen(false)}
+          />
+        )}
       </DashboardLayout>
     );
   }
