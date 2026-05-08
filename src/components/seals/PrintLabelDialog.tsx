@@ -105,11 +105,11 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
           throw new Error(agentStatus?.error ?? "Agente Local não disponível.");
         }
         const zpl = generateZPL({ seal, organizationName, options });
-        await printZPL(zpl, selectedPrinter, copies);
+        await printZPL(zpl, selectedPrinter);
       } else if (mode === "webusb") {
         if (!usbDevice) throw new Error("Seleccione uma impressora USB primeiro.");
         const zpl = generateZPL({ seal, organizationName, options });
-        await printZPLViaUSB(usbDevice, zpl, copies);
+        await printZPLViaUSB(usbDevice, zpl);
       } else {
         await printViaBrowser({ seal, organizationName, isDuplicate, copies });
       }
