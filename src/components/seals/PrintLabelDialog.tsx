@@ -96,51 +96,104 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
     }
   }
 
-  async function handlePrint() {
-    setPrinting(true);
-    const options: PrintOptions = { isDuplicate, copies, speed, density };
-    try {
-      if (mode === "agent") {
-        if (!agentStatus?.available) {
-          throw new Error(agentStatus?.error ?? "Agente Local não disponível.");
-        }
-        const zpl = generateZPL({ seal, organizationName, options });
-        await printZPL(zpl, selectedPrinter);
-      } else if (mode === "webusb") {
-        if (!usbDevice) throw new Error("Seleccione uma impressora USB primeiro.");
-        const zpl = generateZPL({ seal, organizationName, options });
-        await printZPLViaUSB(usbDevice, zpl);
-      } else {
-        await printViaBrowser({ seal, organizationName, isDuplicate, copies });
+  function labelFor(m: PrintMode): string {
+    return m === "agent" ? "Agente Local" : m === "webusb" ? "WebUSB" : "Print do navegador";
+  }
+
+  /**
+   * Tenta imprimir num único modo. Lança erro em falha — sem efeitos colaterais
+   * de UI (toasts/log/close), para permitir encadeamento de fallbacks.
+   */
+  async function tryPrint(targetMode: PrintMode, options: PrintOptions): Promise<void> {
+    if (targetMode === "agent") {
+      if (!agentStatus?.available) {
+        throw new Error(agentStatus?.error ?? "Agente Local não disponível.");
       }
-
-      // Log temporário (será reportado ao backend num próximo prompt)
-      console.info("[print]", {
-        sealId: seal.id,
-        protocol: seal.protocol_number,
-        mode,
-        copies,
-        isDuplicate,
-        ts: new Date().toISOString(),
-      });
-
-      prefs.setLastMode(mode);
-      prefs.setLastPrinterName(selectedPrinter);
-      toast.success("Etiqueta enviada para impressão");
-      onClose();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Falha ao imprimir.";
-      toast.error(msg);
-    } finally {
-      setPrinting(false);
+      const zpl = generateZPL({ seal, organizationName, options });
+      await printZPL(zpl, selectedPrinter);
+    } else if (targetMode === "webusb") {
+      if (!isWebUSBAvailable()) {
+        throw new Error("WebUSB não suportado neste navegador.");
+      }
+      if (!usbDevice) {
+        throw new Error("Nenhuma impressora USB seleccionada.");
+      }
+      const zpl = generateZPL({ seal, organizationName, options });
+      await printZPLViaUSB(usbDevice, zpl);
+    } else {
+      await printViaBrowser({ seal, organizationName, isDuplicate, copies });
     }
   }
 
-  const canPrint =
-    !printing &&
-    ((mode === "agent" && agentStatus?.available && !!selectedPrinter) ||
-      (mode === "webusb" && !!usbDevice) ||
-      mode === "browser");
+  async function handlePrint() {
+    setPrinting(true);
+    const options: PrintOptions = { isDuplicate, copies, speed, density };
+
+    // Cadeia de fallback automático: começa pelo modo escolhido e desce até ao navegador.
+    // - agent → webusb (se disponível e impressora seleccionada) → browser
+    // - webusb → browser
+    // - browser → sem fallback (último recurso)
+    const chain: PrintMode[] = [mode];
+    if (mode === "agent") {
+      if (isWebUSBAvailable() && usbDevice) chain.push("webusb");
+      chain.push("browser");
+    } else if (mode === "webusb") {
+      chain.push("browser");
+    }
+
+    let usedMode: PrintMode | null = null;
+    let lastError: Error | null = null;
+
+    for (let i = 0; i < chain.length; i++) {
+      const attempt = chain[i];
+      try {
+        await tryPrint(attempt, options);
+        usedMode = attempt;
+        break;
+      } catch (e: unknown) {
+        lastError = e instanceof Error ? e : new Error("Falha ao imprimir.");
+        const next = chain[i + 1];
+        if (next) {
+          toast.warning(
+            `${labelFor(attempt)} falhou (${lastError.message}). A tentar ${labelFor(next)}…`,
+          );
+        }
+      }
+    }
+
+    setPrinting(false);
+
+    if (!usedMode) {
+      toast.error(lastError?.message ?? "Não foi possível imprimir em nenhum modo.");
+      return;
+    }
+
+    console.info("[print]", {
+      sealId: seal.id,
+      protocol: seal.protocol_number,
+      requestedMode: mode,
+      usedMode,
+      fallback: usedMode !== mode,
+      copies,
+      isDuplicate,
+      ts: new Date().toISOString(),
+    });
+
+    prefs.setLastMode(usedMode);
+    prefs.setLastPrinterName(selectedPrinter);
+
+    if (usedMode === mode) {
+      toast.success("Etiqueta enviada para impressão");
+    } else {
+      toast.success(`Etiqueta enviada via ${labelFor(usedMode)} (fallback automático)`);
+    }
+    onClose();
+  }
+
+  // O botão fica activo desde que haja pelo menos um modo viável.
+  // Para `agent`/`webusb`, mesmo sem requisitos cumpridos o fallback automático
+  // garante impressão pelo menos via navegador.
+  const canPrint = !printing;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
