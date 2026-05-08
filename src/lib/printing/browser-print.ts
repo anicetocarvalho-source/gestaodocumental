@@ -15,7 +15,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 interface BrowserPrintInput {
-  seal: Seal;
+  seal: Pick<Seal, "protocol_number" | "protocol_type" | "created_at" | "pdf_hash" | "qr_payload">;
   organizationName: string;
   isDuplicate: boolean;
   copies: number;
