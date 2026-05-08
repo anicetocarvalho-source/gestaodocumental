@@ -134,6 +134,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+       </PrintPreferencesProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
