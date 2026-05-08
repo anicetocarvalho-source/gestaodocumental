@@ -96,24 +96,37 @@ Deno.serve(async (req) => {
     const lastMov = movements[0] ?? null;
     const movementsCount = movements.length;
 
+    const sealPayload: Record<string, unknown> = {
+      protocol_number: seal.protocol_number,
+      protocol_type: seal.protocol_type,
+      document_title: seal.document_title,
+      subject: typeof seal.subject === "string" ? seal.subject.slice(0, 200) : seal.subject,
+      created_at: seal.created_at,
+      cancelled_at: (seal as any).cancelled_at ?? null,
+      has_pdf_hash: !!seal.pdf_hash,
+      pdf_hash_prefix: seal.pdf_hash ? String(seal.pdf_hash).slice(0, 8) : null,
+      organization_name: orgName,
+    };
+
+    if (!isPublic) {
+      sealPayload.sender_name = seal.sender_name;
+      sealPayload.recipient_name = seal.recipient_name;
+    }
+
+    const publicMovements = movements.map((m) => ({
+      movement_type: m.movement_type,
+      created_at: m.created_at,
+      ...(isPublic ? {} : { from_department: m.from_department, to_department: m.to_department, scanned_qr: m.scanned_qr }),
+    }));
+
     return new Response(
       JSON.stringify({
         valid: seal.status === "active",
         status: seal.status,
-        seal: {
-          protocol_number: seal.protocol_number,
-          protocol_type: seal.protocol_type,
-          document_title: seal.document_title,
-          subject: seal.subject,
-          sender_name: seal.sender_name,
-          recipient_name: seal.recipient_name,
-          created_at: seal.created_at,
-          has_pdf_hash: !!seal.pdf_hash,
-          organization_name: orgName,
-        },
+        seal: sealPayload,
         movements_count: movementsCount,
-        last_movement: lastMov,
-        movements,
+        last_movement: isPublic ? (lastMov ? { movement_type: lastMov.movement_type, created_at: lastMov.created_at } : null) : lastMov,
+        movements: publicMovements,
         pdf_hash_match: pdfHashMatch,
       }),
       {
