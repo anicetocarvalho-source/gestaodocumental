@@ -1,3 +1,4 @@
+/// <reference types="w3c-web-usb" />
 /**
  * Modal de impressão de etiquetas — 3 modos:
  * 1) Agente Local NODIDOC (recomendado, institucional)

@@ -1,3 +1,4 @@
+/// <reference types="w3c-web-usb" />
 /**
  * Cliente WebUSB para impressoras Zebra/Brother.
  * Apenas Chrome/Edge desktop, requer HTTPS (excepto localhost).
