@@ -190,11 +190,10 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
     onClose();
   }
 
-  const canPrint =
-    !printing &&
-    ((mode === "agent" && agentStatus?.available && !!selectedPrinter) ||
-      (mode === "webusb" && !!usbDevice) ||
-      mode === "browser");
+  // O botão fica activo desde que haja pelo menos um modo viável.
+  // Para `agent`/`webusb`, mesmo sem requisitos cumpridos o fallback automático
+  // garante impressão pelo menos via navegador.
+  const canPrint = !printing;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
