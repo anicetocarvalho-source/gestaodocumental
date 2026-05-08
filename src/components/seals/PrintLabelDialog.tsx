@@ -31,8 +31,13 @@ import { printViaBrowser } from "@/lib/printing/browser-print";
 import { SealLabel } from "@/components/seals/SealLabel";
 import { usePrintPreferences } from "@/contexts/PrintPreferencesContext";
 
+export type SealForPrint = Pick<
+  Seal,
+  "id" | "protocol_number" | "protocol_type" | "created_at" | "pdf_hash" | "qr_payload"
+>;
+
 interface Props {
-  seal: Seal;
+  seal: SealForPrint;
   organizationName: string;
   isDuplicate?: boolean;
   isOpen: boolean;
