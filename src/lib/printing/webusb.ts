@@ -40,10 +40,16 @@ function findBulkOutEndpoint(device: USBDevice): { ifaceNumber: number; epNumber
   throw new Error("Endpoint USB de saída não encontrado.");
 }
 
+/**
+ * Envia ZPL para a impressora via WebUSB.
+ *
+ * IMPORTANTE: o número de cópias está embebido no ZPL via `^PQ`
+ * (ver `generateZPL`). Fazemos um único `transferOut` — repetir aqui
+ * resultaria em `copies × copies` impressões.
+ */
 export async function printZPLViaUSB(
   device: USBDevice,
   zpl: string,
-  copies: number,
 ): Promise<void> {
   await device.open();
   let claimed = -1;
@@ -55,12 +61,7 @@ export async function printZPLViaUSB(
     await device.claimInterface(ifaceNumber);
     claimed = ifaceNumber;
     const data = new TextEncoder().encode(zpl);
-    // ZPL multi-cópias é tratado por ^PQ; mantemos 1 envio.
-    // Alguns firmwares ignoram ^PQ — repetimos manualmente se necessário.
-    const sends = Math.max(1, copies);
-    for (let i = 0; i < (sends > 1 ? 1 : 1); i++) {
-      await device.transferOut(epNumber, data);
-    }
+    await device.transferOut(epNumber, data);
   } finally {
     if (claimed >= 0) {
       try {
