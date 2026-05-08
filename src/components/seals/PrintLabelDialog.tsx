@@ -49,7 +49,9 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
   const [mode, setMode] = useState<PrintMode>(prefs.lastMode);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [agentChecking, setAgentChecking] = useState(false);
-  const [selectedPrinter, setSelectedPrinter] = useState<string | null>(prefs.lastPrinterName);
+  const [selectedPrinter, setSelectedPrinter] = useState<string | null>(
+    prefs.defaultPrinterName ?? prefs.lastPrinterName,
+  );
   const [usbDevice, setUsbDevice] = useState<USBDevice | null>(null);
   const [copies, setCopies] = useState(1);
   const [speed, setSpeed] = useState<2 | 3 | 4 | 6>(4);
