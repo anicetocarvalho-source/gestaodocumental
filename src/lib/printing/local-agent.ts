@@ -36,15 +36,21 @@ export async function checkAgent(timeoutMs = 2000): Promise<AgentStatus> {
   }
 }
 
+/**
+ * Envia ZPL para o Agente Local.
+ *
+ * IMPORTANTE: o número de cópias é controlado dentro do ZPL via `^PQ`
+ * (ver `generateZPL`). Aqui enviamos sempre `copies: 1` para evitar que
+ * o agente multiplique o trabalho e imprima `copies × copies` etiquetas.
+ */
 export async function printZPL(
   zpl: string,
   printerName: string | null,
-  copies: number,
 ): Promise<{ job_id: string }> {
   const res = await fetch(`${AGENT_URL}/print`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ zpl, printer_name: printerName, copies }),
+    body: JSON.stringify({ zpl, printer_name: printerName, copies: 1 }),
   });
   if (!res.ok) {
     let message = `Falha ao enviar para impressão (${res.status}).`;
