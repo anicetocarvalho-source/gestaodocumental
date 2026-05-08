@@ -96,6 +96,10 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
     }
   }
 
+  function labelFor(m: PrintMode): string {
+    return m === "agent" ? "Agente Local" : m === "webusb" ? "WebUSB" : "Print do navegador";
+  }
+
   /**
    * Tenta imprimir num único modo. Lança erro em falha — sem efeitos colaterais
    * de UI (toasts/log/close), para permitir encadeamento de fallbacks.
