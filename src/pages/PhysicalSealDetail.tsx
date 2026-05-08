@@ -397,6 +397,13 @@ export default function PhysicalSealDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PrintLabelDialog
+        seal={seal}
+        organizationName={orgName}
+        isOpen={printOpen}
+        onClose={() => setPrintOpen(false)}
+      />
     </DashboardLayout>
   );
 }
