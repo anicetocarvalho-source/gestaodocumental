@@ -63,6 +63,19 @@ export default function PhysicalSealRegister() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dragOver, setDragOver] = useState(false);
   const [success, setSuccess] = useState<CreateSealResponse | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printDuplicate, setPrintDuplicate] = useState(false);
+
+  const sealForPrint: SealForPrint | null = success
+    ? {
+        id: success.id ?? "",
+        protocol_number: success.protocol_number,
+        protocol_type: type,
+        created_at: success.created_at,
+        pdf_hash: success.pdf_hash,
+        qr_payload: success.qr_payload,
+      }
+    : null;
 
   const orgName = org?.name ?? "Organização";
 
@@ -174,13 +187,13 @@ export default function PhysicalSealRegister() {
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button
-                  onClick={() => toast.info("Impressão será disponibilizada em breve.")}
+                  onClick={() => { setPrintDuplicate(false); setPrintOpen(true); }}
                   variant="default"
                 >
                   <Printer className="h-4 w-4 mr-2" /> Imprimir Etiqueta
                 </Button>
                 <Button
-                  onClick={() => toast.info("Impressão de duplicado será disponibilizada em breve.")}
+                  onClick={() => { setPrintDuplicate(true); setPrintOpen(true); }}
                   variant="outline"
                 >
                   <Printer className="h-4 w-4 mr-2" /> Imprimir Duplicado
