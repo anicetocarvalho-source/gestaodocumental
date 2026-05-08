@@ -1,380 +1,454 @@
-import { useState, useRef } from "react";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Repeat,
+  UploadCloud,
+  X,
+  FileText,
+  Loader2,
+  Stamp,
+  Printer,
+  Eye,
+  Plus,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { QRCodeCanvas } from "qrcode.react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import { Loader2, Upload, FileCheck2, Printer, Plus, ShieldCheck, Stamp } from "lucide-react";
-import { validateFiles, MAX_FILE_SIZE_MB } from "@/lib/validation-constants";
+import { cn } from "@/lib/utils";
+import { SealLabel } from "@/components/seals/SealLabel";
+import { useCurrentOrganization } from "@/hooks/useCurrentOrganization";
+import { createSeal, type CreateSealResponse, type ProtocolType } from "@/lib/api/seals";
 
-type ProtocolType = "ENT" | "SAI" | "INT";
+const TYPE_OPTIONS: Array<{
+  value: ProtocolType;
+  label: string;
+  icon: typeof ArrowDownToLine;
+  hint: string;
+}> = [
+  { value: "ENT", label: "Entrada", icon: ArrowDownToLine, hint: "Recebido pela organização" },
+  { value: "SAI", label: "Saída", icon: ArrowUpFromLine, hint: "Enviado para o exterior" },
+  { value: "INT", label: "Interno", icon: Repeat, hint: "Circulação interna" },
+];
 
-interface CreatedSeal {
-  id: string;
-  protocol_number: string;
-  protocol_type: ProtocolType;
-  document_title: string;
-  subject: string;
-  sender_name: string | null;
-  recipient_name: string | null;
-  validation_token: string;
-  qr_payload: string;
-  pdf_hash: string | null;
-  created_at: string;
-}
+const MAX_PDF = 25 * 1024 * 1024;
+const PROTOCOL_PLACEHOLDER = "XXX-2026-00000";
 
-async function sha256(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  const hash = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+function formatBytes(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export default function PhysicalSealRegister() {
-  const { profile } = useAuth();
-  const [protocolType, setProtocolType] = useState<ProtocolType>("ENT");
-  const [documentTitle, setDocumentTitle] = useState("");
+  const navigate = useNavigate();
+  const { data: org } = useCurrentOrganization();
+
+  const [type, setType] = useState<ProtocolType>("ENT");
+  const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
-  const [senderName, setSenderName] = useState("");
-  const [recipientName, setRecipientName] = useState("");
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfHash, setPdfHash] = useState<string | null>(null);
-  const [hashing, setHashing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [seal, setSeal] = useState<CreatedSeal | null>(null);
-  const labelRef = useRef<HTMLDivElement>(null);
+  const [sender, setSender] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [pdf, setPdf] = useState<File | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dragOver, setDragOver] = useState(false);
+  const [success, setSuccess] = useState<CreateSealResponse | null>(null);
 
-  const handleFile = async (f: File | null) => {
-    if (!f) {
-      setPdfFile(null);
-      setPdfHash(null);
-      return;
-    }
-    const valid = validateFiles([f], MAX_FILE_SIZE_MB);
-    if (valid.length === 0) return;
-    setPdfFile(f);
-    setHashing(true);
-    try {
-      const h = await sha256(f);
-      setPdfHash(h);
-    } catch {
-      toast.error("Falha ao calcular SHA-256");
-      setPdfHash(null);
-    } finally {
-      setHashing(false);
-    }
+  const orgName = org?.name ?? "Organização";
+
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!title.trim()) next.title = "Indique o título do documento.";
+    if (title.length > 200) next.title = "Máximo 200 caracteres.";
+    if (!subject.trim()) next.subject = "Indique o assunto.";
+    if (subject.length > 500) next.subject = "Máximo 500 caracteres.";
+    if (type === "ENT" && !sender.trim()) next.sender = "O remetente é obrigatório para entradas.";
+    if (type === "SAI" && !recipient.trim()) next.recipient = "O destinatário é obrigatório para saídas.";
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
-  const resetForm = () => {
-    setSeal(null);
-    setDocumentTitle("");
+  const setPdfFile = (file: File | null) => {
+    setPdfError(null);
+    if (!file) {
+      setPdf(null);
+      return;
+    }
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setPdfError("Apenas ficheiros PDF são aceites.");
+      return;
+    }
+    if (file.size > MAX_PDF) {
+      setPdfError("O ficheiro excede o limite de 25 MB.");
+      return;
+    }
+    setPdf(file);
+  };
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const fd = new FormData();
+      fd.append("protocol_type", type);
+      fd.append("document_title", title.trim());
+      fd.append("subject", subject.trim());
+      if (sender.trim()) fd.append("sender_name", sender.trim());
+      if (recipient.trim()) fd.append("recipient_name", recipient.trim());
+      if (pdf) fd.append("pdf_file", pdf);
+      return createSeal(fd);
+    },
+    onSuccess: (res) => {
+      toast.success(`Selo ${res.protocol_number} registado com sucesso.`);
+      setSuccess(res);
+    },
+    onError: (e: any) => {
+      toast.error(e?.message || "Não foi possível registar o selo. Tente novamente.");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    mutation.mutate();
+  };
+
+  const reset = () => {
+    setType("ENT");
+    setTitle("");
     setSubject("");
-    setSenderName("");
-    setRecipientName("");
-    setPdfFile(null);
-    setPdfHash(null);
+    setSender("");
+    setRecipient("");
+    setPdf(null);
+    setPdfError(null);
+    setErrors({});
+    setSuccess(null);
   };
 
-  const handleSubmit = async () => {
-    if (!profile?.organization_id) {
-      toast.error("Organização não identificada");
-      return;
-    }
-    if (!documentTitle.trim() || !subject.trim()) {
-      toast.error("Preencha título e assunto");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // 1. Get next protocol number
-      const year = new Date().getFullYear();
-      const { data: protoNum, error: protoErr } = await supabase.rpc(
-        "get_next_protocol_number",
-        { org_id: profile.organization_id, ptype: protocolType, yr: year }
-      );
-      if (protoErr || !protoNum) throw protoErr ?? new Error("Falha no protocolo");
+  const previewProtocol = useMemo(
+    () => `${type}-${new Date().getFullYear()}-XXXXX`,
+    [type],
+  );
 
-      const validationToken = crypto.randomUUID();
-      const qrPayload = `${window.location.origin}/validate-seal/${validationToken}`;
+  if (success) {
+    return (
+      <DashboardLayout title="Selo registado" subtitle="Etiqueta gerada com sucesso">
+        <PageBreadcrumb
+          items={[
+            { label: "Documentos", href: "/documents" },
+            { label: "Selos", href: "/seals" },
+            { label: "Novo" },
+          ]}
+        />
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Stamp className="h-5 w-5 text-primary" /> Selo emitido
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Protocolo:</span>{" "}
+                  <span className="font-mono font-semibold">{success.protocol_number}</span>
+                </div>
+                <div className="break-all">
+                  <span className="text-muted-foreground">Token de validação:</span>{" "}
+                  <span className="font-mono">{success.validation_token}</span>
+                </div>
+                {success.pdf_hash && (
+                  <div className="break-all">
+                    <span className="text-muted-foreground">Hash PDF (SHA-256):</span>{" "}
+                    <span className="font-mono text-xs">{success.pdf_hash}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  onClick={() => toast.info("Impressão será disponibilizada em breve.")}
+                  variant="default"
+                >
+                  <Printer className="h-4 w-4 mr-2" /> Imprimir Etiqueta
+                </Button>
+                <Button
+                  onClick={() => toast.info("Impressão de duplicado será disponibilizada em breve.")}
+                  variant="outline"
+                >
+                  <Printer className="h-4 w-4 mr-2" /> Imprimir Duplicado
+                </Button>
+                <Button onClick={reset} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" /> Registar Outro
+                </Button>
+                {success.id && (
+                  <Button asChild variant="outline">
+                    <Link to={`/seals/${success.id}`}>
+                      <Eye className="h-4 w-4 mr-2" /> Ver Detalhes
+                    </Link>
+                  </Button>
+                )}
+                {!success.id && (
+                  <Button asChild variant="outline">
+                    <Link to="/seals">
+                      <Eye className="h-4 w-4 mr-2" /> Voltar à lista
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-      // 2. Optional PDF upload
-      let pdfStoragePath: string | null = null;
-      if (pdfFile) {
-        const path = `seals/${profile.organization_id}/${protoNum}-${Date.now()}.pdf`;
-        const { error: upErr } = await supabase.storage
-          .from("documents")
-          .upload(path, pdfFile, { contentType: "application/pdf", upsert: false });
-        if (upErr) throw upErr;
-        pdfStoragePath = path;
-      }
-
-      // 3. Insert seal
-      const { data: inserted, error: insErr } = await supabase
-        .from("physical_seals")
-        .insert({
-          organization_id: profile.organization_id,
-          protocol_number: protoNum as string,
-          protocol_type: protocolType,
-          document_title: documentTitle.trim(),
-          subject: subject.trim(),
-          sender_name: senderName.trim() || null,
-          recipient_name: recipientName.trim() || null,
-          pdf_hash: pdfHash,
-          pdf_storage_path: pdfStoragePath,
-          validation_token: validationToken,
-          qr_payload: qrPayload,
-          created_by: profile.user_id,
-        })
-        .select()
-        .maybeSingle();
-
-      if (insErr || !inserted) throw insErr ?? new Error("Falha ao registar selo");
-
-      setSeal(inserted as CreatedSeal);
-      toast.success(`Selo ${protoNum} criado`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao criar selo");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handlePrint = () => {
-    if (!labelRef.current) return;
-    const html = labelRef.current.innerHTML;
-    const w = window.open("", "_blank", "width=600,height=600");
-    if (!w) return;
-    w.document.write(`<html><head><title>Selo ${seal?.protocol_number}</title>
-      <style>
-        body { font-family: system-ui, sans-serif; padding: 16px; }
-        .label { border: 2px solid #000; padding: 12px; width: 320px; }
-        .row { display: flex; gap: 12px; align-items: center; }
-        h2 { margin: 0 0 4px; font-size: 16px; }
-        .muted { color: #555; font-size: 11px; }
-        .mono { font-family: ui-monospace, monospace; font-size: 11px; word-break: break-all; }
-      </style></head><body>${html}</body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
-  };
+          <Card>
+            <CardHeader>
+              <CardTitle>Pré-visualização</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4">
+              <SealLabel
+                protocolNumber={success.protocol_number}
+                protocolType={type}
+                createdAt={success.created_at}
+                pdfHashTruncated={success.pdf_hash ? success.pdf_hash.slice(0, 8) : null}
+                organizationName={orgName}
+                qrPayload={success.qr_payload}
+              />
+              <SealLabel
+                duplicate
+                protocolNumber={success.protocol_number}
+                protocolType={type}
+                createdAt={success.created_at}
+                pdfHashTruncated={success.pdf_hash ? success.pdf_hash.slice(0, 8) : null}
+                organizationName={orgName}
+                qrPayload={success.qr_payload}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <DashboardLayout
-      title="Selo Físico de Rastreabilidade"
-      subtitle="Registe documentos físicos e gere etiquetas com QR para validação pública"
-    >
+    <DashboardLayout title="Novo Selo" subtitle="Registar selo físico de rastreabilidade">
       <PageBreadcrumb
         items={[
           { label: "Documentos", href: "/documents" },
-          { label: "Selo Físico" },
+          { label: "Selos", href: "/seals" },
+          { label: "Novo" },
         ]}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Stamp className="h-5 w-5 text-primary" />
-              Dados do Documento Físico
-            </CardTitle>
-            <CardDescription>
-              O número de protocolo é gerado automaticamente após registo.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Tipo de Protocolo *</Label>
-                <Select
-                  value={protocolType}
-                  onValueChange={(v) => setProtocolType(v as ProtocolType)}
-                  disabled={submitting || !!seal}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ENT">ENT — Entrada</SelectItem>
-                    <SelectItem value="SAI">SAI — Saída</SelectItem>
-                    <SelectItem value="INT">INT — Interno</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Ano</Label>
-                <Input value={new Date().getFullYear()} disabled />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Título do Documento *</Label>
-              <Input
-                value={documentTitle}
-                onChange={(e) => setDocumentTitle(e.target.value.slice(0, 200))}
-                placeholder="Ex: Ofício n.º 123/2026"
-                disabled={submitting || !!seal}
-                maxLength={200}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Assunto *</Label>
-              <Textarea
-                value={subject}
-                onChange={(e) => setSubject(e.target.value.slice(0, 2000))}
-                placeholder="Descrição breve do conteúdo"
-                disabled={submitting || !!seal}
-                maxLength={2000}
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Remetente</Label>
-                <Input
-                  value={senderName}
-                  onChange={(e) => setSenderName(e.target.value)}
-                  placeholder="Nome / instituição"
-                  disabled={submitting || !!seal}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Destinatário</Label>
-                <Input
-                  value={recipientName}
-                  onChange={(e) => setRecipientName(e.target.value)}
-                  placeholder="Nome / instituição"
-                  disabled={submitting || !!seal}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label>PDF do Documento (opcional)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-                  disabled={submitting || !!seal}
-                />
-                {hashing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
-              {pdfFile && pdfHash && (
-                <div className="flex items-start gap-2 rounded-md bg-muted/40 p-2 text-xs">
-                  <FileCheck2 className="h-4 w-4 text-success mt-0.5" />
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{pdfFile.name}</div>
-                    <div className="font-mono text-muted-foreground break-all">
-                      SHA-256: {pdfHash}
-                    </div>
-                  </div>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                O hash garante que o PDF apresentado na validação pública é o original. Máx. {MAX_FILE_SIZE_MB}MB.
-              </p>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              {!seal ? (
-                <Button onClick={handleSubmit} disabled={submitting || hashing} className="flex-1">
-                  {submitting ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A registar...</>
-                  ) : (
-                    <><Upload className="h-4 w-4 mr-2" /> Registar e Gerar Selo</>
-                  )}
-                </Button>
-              ) : (
-                <Button onClick={resetForm} variant="outline" className="flex-1">
-                  <Plus className="h-4 w-4 mr-2" /> Registar Novo Selo
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Label preview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              Etiqueta de Rastreabilidade
-            </CardTitle>
-            <CardDescription>
-              {seal
-                ? "Imprima e cole no documento físico."
-                : "A etiqueta será apresentada após registo."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!seal ? (
-              <div className="flex h-72 items-center justify-center rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground">
-                Aguardando registo...
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div ref={labelRef}>
-                  <div className="label rounded-lg border-2 border-foreground p-4 bg-background">
-                    <div className="row flex items-start gap-4">
-                      <QRCodeCanvas
-                        value={seal.qr_payload}
-                        size={128}
-                        level="M"
-                        includeMargin={false}
+      <form
+        onSubmit={handleSubmit}
+        className="grid lg:grid-cols-[1fr_minmax(360px,420px)] gap-6"
+      >
+        <div className="space-y-5">
+          {/* Tipo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipo de protocolo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {TYPE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const active = type === opt.value;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      onClick={() => setType(opt.value)}
+                      className={cn(
+                        "rounded-lg border p-4 text-left transition-all",
+                        active
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-5 w-5 mb-2",
+                          active ? "text-primary" : "text-muted-foreground",
+                        )}
                       />
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-base font-bold leading-tight">
-                          {seal.protocol_number}
-                        </h2>
-                        <Badge variant="outline" className="mt-1">
-                          {seal.protocol_type}
-                        </Badge>
-                        <p className="muted mt-2 text-[11px] text-muted-foreground line-clamp-2">
-                          {seal.document_title}
-                        </p>
-                        <p className="muted mt-1 text-[10px] text-muted-foreground">
-                          {new Date(seal.created_at).toLocaleString("pt-PT")}
-                        </p>
+                      <div className="font-semibold">{opt.label}</div>
+                      <div className="text-xs text-muted-foreground">{opt.hint}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dados */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Dados do documento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="title">Título do documento</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  maxLength={200}
+                  className={errors.title ? "border-destructive" : ""}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  {errors.title ? <span className="text-destructive">{errors.title}</span> : <span />}
+                  <span>{title.length}/200</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="subject">Assunto</Label>
+                <Textarea
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  className={errors.subject ? "border-destructive" : ""}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  {errors.subject ? <span className="text-destructive">{errors.subject}</span> : <span />}
+                  <span>{subject.length}/500</span>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="sender">
+                    Remetente {type === "ENT" && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Input
+                    id="sender"
+                    value={sender}
+                    onChange={(e) => setSender(e.target.value)}
+                    maxLength={200}
+                    className={errors.sender ? "border-destructive" : ""}
+                  />
+                  {errors.sender && (
+                    <p className="text-xs text-destructive">{errors.sender}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="recipient">
+                    Destinatário {type === "SAI" && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Input
+                    id="recipient"
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    maxLength={200}
+                    className={errors.recipient ? "border-destructive" : ""}
+                  />
+                  {errors.recipient && (
+                    <p className="text-xs text-destructive">{errors.recipient}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* PDF */}
+          <Card>
+            <CardHeader>
+              <CardTitle>PDF original (opcional)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pdf ? (
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{pdf.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatBytes(pdf.size)}
                       </div>
                     </div>
-                    <Separator className="my-3" />
-                    <div className="mono text-[10px] break-all text-muted-foreground">
-                      {seal.qr_payload}
-                    </div>
+                    <Badge variant="secondary" className="shrink-0">SHA-256 será calculado</Badge>
                   </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setPdfFile(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1">
-                  <div><span className="font-medium">Token:</span> <span className="font-mono">{seal.validation_token}</span></div>
-                  {seal.pdf_hash && (
-                    <div className="break-all">
-                      <span className="font-medium">SHA-256:</span>{" "}
-                      <span className="font-mono">{seal.pdf_hash}</span>
-                    </div>
+              ) : (
+                <label
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    setPdfFile(e.dataTransfer.files?.[0] ?? null);
+                  }}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-8 cursor-pointer text-center transition-colors",
+                    dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
                   )}
-                </div>
+                >
+                  <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm">
+                    Arraste o PDF para esta zona ou{" "}
+                    <span className="text-primary font-medium">clique para escolher</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">PDF · até 25 MB</p>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
+              {pdfError && <p className="text-xs text-destructive mt-2">{pdfError}</p>}
+            </CardContent>
+          </Card>
 
-                <Button onClick={handlePrint} variant="outline" className="w-full">
-                  <Printer className="h-4 w-4 mr-2" /> Imprimir Etiqueta
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              size="lg"
+            >
+              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Registar e Gerar Etiqueta
+            </Button>
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="lg:sticky lg:top-4 self-start">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pré-visualização da etiqueta</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-3">
+              <SealLabel
+                protocolNumber={previewProtocol}
+                protocolType={type}
+                createdAt={new Date()}
+                pdfHashTruncated={null}
+                organizationName={orgName}
+                qrPayload=""
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                O QR e o número de protocolo são gerados ao registar.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </form>
     </DashboardLayout>
   );
 }
