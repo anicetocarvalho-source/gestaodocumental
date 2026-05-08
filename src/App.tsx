@@ -49,6 +49,7 @@ import PhysicalSealRegister from "./pages/PhysicalSealRegister";
 import PhysicalSealsList from "./pages/PhysicalSealsList";
 import PhysicalSealDetail from "./pages/PhysicalSealDetail";
 import ValidateSeal from "./pages/ValidateSeal";
+import PublicValidate from "./pages/PublicValidate";
 import ResetPassword from "./pages/ResetPassword";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -75,6 +76,8 @@ const App = () => (
               <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="/validate-seal" element={<ValidateSeal />} />
               <Route path="/validate-seal/:token" element={<ValidateSeal />} />
+              <Route path="/v" element={<PublicValidate />} />
+              <Route path="/v/:token" element={<PublicValidate />} />
               
               {/* Rotas protegidas */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
