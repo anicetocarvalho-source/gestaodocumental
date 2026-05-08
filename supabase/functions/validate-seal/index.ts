@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
     const token = String(body?.token ?? "").trim();
     const pdfHash =
       typeof body?.pdf_hash === "string" ? body.pdf_hash.toLowerCase() : null;
+    const isPublic = body?.public === true;
 
     if (!UUID_RE.test(token)) {
       return new Response(

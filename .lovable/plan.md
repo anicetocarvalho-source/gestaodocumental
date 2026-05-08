@@ -1,153 +1,115 @@
-# Plano — UI completa de gestão de Selos Físicos
+## Portal Público de Validação `/v/:token`
 
-## Estado actual
+Construir uma rota pública, sem auth, dedicada à validação institucional de selos NODIDOC, com 4 estados, integridade de PDF e respeito estrito por privacidade (sem PII).
 
-Já existem `PhysicalSealsList`, `PhysicalSealRegister`, `PhysicalSealDetail` montadas em `/physical-seals/*`, e o hook `usePhysicalSeals` que fala directamente com a tabela. Vão ser **reescritas** para cumprir a nova especificação e passar a consumir as Edge Functions já criadas (`register-seal`, `register-movement`, `validate-seal-public`, `verify-pdf-integrity`). As rotas pedidas `/seals`, `/seals/new`, `/seals/:id` são adicionadas como **rotas canónicas**, mantendo `/physical-seals/*` como aliases para não partir links existentes.
+### 1. Rota e isolamento de auth
 
-## 1. Cliente API tipado — `src/lib/api/seals.ts`
+- Adicionar em `src/App.tsx` duas novas rotas **fora** do `ProtectedRoute`:
+  - `/v/:token` → `<PublicValidate />`
+  - `/v` (sem token) → estado "Selo não encontrado"
+- Manter as rotas internas `/validate-seal/*` existentes intactas (uso interno).
+- Garantir que `AuthProvider` não força redirect quando o utilizador é anónimo nesta rota (já não força — `ProtectedRoute` é o único guard).
 
-Funções (todas com tratamento de erros e mensagens PT-PT formal via `sonner`):
+### 2. Edge Function — ajuste mínimo (sem PII)
 
-- `listSeals(filters: { type?: 'ENT'|'SAI'|'INT'|'ALL'; from?: string; to?: string; search?: string; page?: number; pageSize?: number; sortBy?: string; sortDir?: 'asc'|'desc' })` — lê `physical_seals` directamente (RLS já filtra por organização) com `range()` e `count: 'exact'`.
-- `getSeal(id)` — `physical_seals` por id (`maybeSingle`).
-- `getSealMovements(sealId)` — `seal_movements` ordenado por `created_at asc`, joining com `profiles` para nome/iniciais.
-- `createSeal(form: FormData)` — `supabase.functions.invoke('register-seal', { body: formData })`.
-- `cancelSeal(id, reason)` — `update physical_seals set status='cancelled', cancellation_reason, cancelled_at, cancelled_by`. (Não há edge function dedicada; respeita RLS.)
-- `registerMovement({ seal_id, to_user_id, to_department, notes, scanned_qr })` — invoca `register-movement`.
-- `listOrgMembers()` e `listOrgDepartments()` — para os selectores do modal de movimento (membros via `profiles` da org; departamentos via `distinct to_department from seal_movements where organization_id=...`).
+A função `validate-seal` actualmente devolve `sender_name` e `recipient_name` (PII). O portal público não pode expor isto.
 
-Tipos exportados: `Seal`, `SealMovement`, `ProtocolType = 'ENT'|'SAI'|'INT'`, `MovementType`.
+Opções:
+- **(A) Adicionar parâmetro `public: true`** ao body de `validate-seal`. Quando `true`, omitir `sender_name`, `recipient_name` e detalhes de movimentos com nomes/departamentos. (Recomendado — preserva compatibilidade.)
+- (B) Criar nova função `validate-seal-public` espelho da actual mas sem PII.
 
-## 2. Componente `<SealLabel />` — `src/components/seals/SealLabel.tsx`
+Vou usar (A): a UI pública chama com `{ token, public: true, pdf_hash? }` e a função filtra a resposta. A UI interna continua a receber tudo.
 
-Props conforme spec (`protocolNumber`, `protocolType`, `createdAt`, `pdfHashTruncated`, `organizationName`, `qrPayload`, `duplicate?`).
+A resposta pública conterá apenas:
+`protocol_number`, `protocol_type`, `document_title`, `subject` (truncado a 200 chars), `created_at`, `has_pdf_hash`, `organization_name`, `status`, `cancelled_at`, `cancelled_reason`, `pdf_hash` (apenas primeiros 8 chars), `pdf_hash_match`.
 
-Implementação:
-- Container 50mm × 30mm via classes utilitárias com tamanhos em `mm` (Tailwind arbitrary values). Borda tracejada `border-dashed` em tom `ice`.
-- Topo: nome da organização (truncado, `font-semibold text-[7pt]`).
-- Coluna esquerda: `<QRCodeSVG value={qrPayload} size={...} />` da `qrcode.react`.
-- Coluna direita: linhas com label/valor — `Protocolo`, `Data`, `Hash`. Tipografia institucional (Georgia para protocolo grande nas vistas detalhadas, sans para etiqueta).
-- Rodapé: URL do portal (`VALIDATION_BASE_URL` via `import.meta.env` ou prop).
-- Se `duplicate=true`: marca "DUPLICADO" rotada -45° no canto superior direito, vermelha 40% opacidade.
-- CSS de impressão (`@media print { @page { size: 50mm 30mm; margin: 0; } }`) num bloco `<style>` interno para que possa ser usado tal-qual em janela de impressão (deixado preparado, sem botão activo agora).
-- Sem QR → placeholder cinzento se `qrPayload` vazio.
+### 3. Página `src/pages/PublicValidate.tsx`
 
-## 3. Página `/seals` (lista)
-
-Ficheiro: `src/pages/PhysicalSealsList.tsx` (reescrito).
+Layout único, max-width 720px, mobile-first, system fonts, sem dependências externas de fonts.
 
 Estrutura:
-- `PageBreadcrumb` + título "Selos de Rastreabilidade" + botão **Novo Selo** (variant primário, `Link` para `/seals/new`).
-- Barra de filtros (linha responsiva → grelha 2 colunas em mobile):
-  - `Select` para tipo (ENT/SAI/INT/Todos).
-  - `DateRangePicker` (composto por dois Popover+Calendar shadcn — usa o padrão já existente em outras páginas).
-  - `Input` de pesquisa com ícone `Search` e debounce 300ms (`useDebouncedValue` local).
-- Tabela shadcn:
-  - Colunas: Protocolo (badge por tipo: ENT `bg-primary/15 text-primary`, SAI `bg-emerald-100 text-emerald-700`, INT `bg-amber-100 text-amber-700`), Documento (truncado 50), Remetente / Destinatário, Data (`dd/MM/yyyy HH:mm` via `date-fns/pt`), PDF (ícone `FileCheck` se hash existe, caso contrário `—`), Status (badge active/cancelled), Acções.
-  - Cabeçalhos clicáveis para ordenação por `protocol_number`, `created_at`, `status`.
-  - Acções por linha (dropdown ou ícones): Ver Detalhe (`Eye` → `/seals/:id`), Imprimir Etiqueta (`Printer` — abre `/seals/:id?print=1`, deixa stub para próximo prompt), Cancelar (`Ban` — só se `active`, abre `AlertDialog` com `Textarea` de razão).
-  - Paginação: 20 por página, controlos `Pagination` shadcn.
-- Estado de loading (skeleton rows) e empty state ("Nenhum selo registado.").
-
-Substitui o uso do hook actual por `listSeals` chamada via `useQuery(["seals", filters], ...)`.
-
-## 4. Página `/seals/new` (registo)
-
-Ficheiro: `src/pages/PhysicalSealRegister.tsx` (reescrito).
-
-Layout: `grid lg:grid-cols-[1fr_minmax(360px,420px)] gap-6`.
-
-**Coluna esquerda — formulário** (react-hook-form + zod):
-1. `RadioGroup` em "cards" para Tipo: ENT (ícone `ArrowDownToLine`), SAI (`ArrowUpFromLine`), INT (`Repeat`). Cada card destaca-se com borda `primary` quando seleccionado.
-2. Título do documento — `Input` (max 200, contador, validação inline, borda vermelha em erro).
-3. Assunto — `Textarea` (max 500, contador).
-4. Remetente — `Input` (obrigatório se tipo=ENT). Mensagem de erro contextual.
-5. Destinatário — `Input` (obrigatório se tipo=SAI).
-6. PDF — zona drag&drop + `<input type="file" accept="application/pdf">`:
-   - Validação no cliente: tipo MIME `application/pdf`, tamanho ≤ 25 MB.
-   - Mostra nome, tamanho legível, badge "Hash será calculado: SHA-256", botão remover (`X`).
-
-Botão submeter "Registar e Gerar Etiqueta" — desactivado enquanto inválido; estado loading com `Loader2`.
-
-**Coluna direita — preview**: `<SealLabel />` em modo placeholder (protocolo `XXX-2026-XXXXX`, QR vazio cinzento) que actualiza `organizationName` e mostra os dados que ainda não dependem do servidor.
-
-**Após sucesso** (resposta de `register-seal`): substitui o form por uma `Card` de sucesso com:
-- `<SealLabel />` real com `qrPayload`, `pdfHashTruncated`.
-- Botões: **Imprimir Etiqueta** (stub), **Imprimir Duplicado** (renderiza nova `<SealLabel duplicate />`, stub), **Registar Outro** (reset), **Ver Detalhes** (`/seals/{id}`).
-
-Toast PT-PT formal em sucesso/erro. Erros 413/415 do servidor mapeados a mensagens claras.
-
-## 5. Página `/seals/:id` (detalhe)
-
-Ficheiro: `src/pages/PhysicalSealDetail.tsx` (reescrito).
-
-3 secções:
-
-**Secção 1 — Cabeçalho**
-- `protocol_number` em `font-serif text-[28pt] font-bold text-primary`.
-- Badges de tipo e status, datas de criação (e cancelamento + razão se aplicável).
-- Acções: Imprimir Etiqueta (stub), Cancelar (se active).
-
-**Secção 2 — Card "Dados do documento"**
-- Título, assunto, remetente, destinatário em grelha 2 colunas.
-- Hash SHA-256 completo numa caixa monoespaçada com botão "Copiar" (`navigator.clipboard`) e truncamento visual `font-mono text-xs break-all`.
-- Botão "Descarregar PDF" se `pdf_storage_path` existe → `supabase.storage.from('seal-pdfs').createSignedUrl(path, 60)`.
-
-**Secção 3 — Card "Cadeia de Custódia"** (timeline vertical)
-- Lista de `seal_movements` com:
-  - Ícone por tipo: `initial` `Sparkles`, `handoff` `ArrowRightLeft`, `archive` `Archive`, `return` `Undo2`.
-  - Linha "De → Para" com avatares (iniciais) baseados em `profiles.full_name`.
-  - Departamento e notas; data/hora `dd/MM/yyyy HH:mm`; chip "Por leitura de QR" se `scanned_qr`.
-- Botão "Registar Movimento" abre **modal** `RegisterMovementModal`.
-
-**Modal `RegisterMovementModal`**:
-- `Combobox` (shadcn `Command` + `Popover`) com pesquisa, mostrando membros da organização (`listOrgMembers`).
-- `Combobox` de departamento com autocomplete (lista vinda de `listOrgDepartments` + opção "Outro" que abre Input livre).
-- `Textarea` notas (max 2000).
-- `Switch` "Foi por leitura de QR?".
-- Submete via `registerMovement` → invalida `["seal-movements", id]`.
-
-## 6. Routing — `src/App.tsx`
-
-Adicionar (manter os antigos como aliases):
 
 ```text
-/seals          → PhysicalSealsList
-/seals/new      → PhysicalSealRegister
-/seals/:id      → PhysicalSealDetail
+┌─────────────────────────────────┐
+│  Banda navy #0A1F44             │
+│  NODIDOC · Portal Público       │
+├─────────────────────────────────┤
+│  Banner de estado               │
+│  Card de metadados              │
+│  Verificação de integridade PDF │
+│  Nota legal                     │
+│  Footer minimal                 │
+└─────────────────────────────────┘
 ```
 
-Os 3 routes existentes em `/physical-seals/*` ficam apontando aos mesmos componentes para retro-compatibilidade.
+Quatro estados:
+1. **Loading** — spinner + "A verificar selo..."
+2. **Válido** (`valid: true`) — banner verde `#1F7A5C` "SELO VÁLIDO" + card metadados + secção verificação PDF (se `has_pdf_hash`).
+3. **Cancelado** (`status: 'cancelled'`) — banner vermelho `#B83A3A` "SELO CANCELADO" + data + razão + restantes metadados desbotados (`opacity-60`).
+4. **Não encontrado** (resposta sem `seal` ou `valid:false` com erro) — card cinzento, mensagem genérica, sem detalhes técnicos.
 
-## 7. Tema e tokens
+### 4. Verificação de integridade PDF
 
-Confirmar/adicionar em `tailwind.config.ts`/`index.css` (se ainda não presentes) tokens HSL para a paleta NODIDOC:
-- `--seal-navy: 218 73% 15%` (#0A1F44)
-- `--seal-gold: 42 47% 59%` (#C9A961)
-- `--seal-ice: 215 41% 94%` (#E8EEF7)
+- Componente interno `<PdfIntegrityCheck sealHash={...} token={...} />`:
+  - Drag & drop + `<input type="file" accept="application/pdf">`
+  - Validar tipo MIME e tamanho ≤ 25MB inline (sem toasts).
+  - Calcular SHA-256 no browser via `crypto.subtle.digest('SHA-256', arrayBuffer)` (não enviar ficheiro para servidor).
+  - Re-chamar `validate-seal` com `pdf_hash` para registar tentativa no `seal_validation_log` (ficheiro continua sem sair do browser).
+  - Mostrar dois banners possíveis (✓ íntegro / ✗ divergente) + comparação lado-a-lado dos primeiros 8 chars.
+  - Botão "Verificar outro ficheiro" reinicia.
 
-Usar via classes utilitárias `bg-[hsl(var(--seal-navy))]` apenas dentro de `<SealLabel />` e cabeçalhos institucionais; resto do UI usa `primary`/`secondary` do design system.
+### 5. SEO, meta e privacidade
 
-## 8. Detalhes técnicos relevantes
+Em `index.html` não dá para personalizar por rota. Solução: usar `react-helmet-async` se já instalado, senão um pequeno hook que actualiza `document.title` e meta tags ao montar:
 
-- Toda a obtenção de `organization_name` (necessária para a etiqueta) usa hook leve `useCurrentOrganization()` (consulta `organizations` via `get_user_org_id`).
-- Validação com `zod` + `@hookform/resolvers/zod`.
-- Datas: `date-fns` com locale `pt`.
-- Mensagens de erro/sucesso: `sonner` (`toast.success` / `toast.error`) — formal PT-PT, ex.: "Não foi possível registar o selo. Tente novamente.".
-- Sem `localStorage`/`sessionStorage`. Estado de filtros guardado no URL via `useSearchParams`.
+- `<title>`: `Validação de Selo {protocol_number} · NODIDOC` (ou `Validação de Selo · NODIDOC` se não encontrado).
+- `<meta name="description">`: "Verificação pública de autenticidade de documento institucional via NODIDOC."
+- `<meta name="robots" content="noindex, nofollow">`
+- `<html lang="pt-PT">` — definir via `document.documentElement.lang = 'pt-PT'`.
+- Open Graph genérico: título "NODIDOC — Validação de Selo" e descrição genérica (sem dados do selo).
 
-## 9. Fora de âmbito (para próximos prompts)
+### 6. Design tokens
 
-- Implementação real da impressão (modal de impressão / janela `window.print()` configurada).
-- Portal público de validação (já existe `ValidateSeal.tsx` interno; o portal anónimo virá no prompt #4).
-- Integração com `verify-pdf-integrity` na UI interna (não pedida aqui).
+Adicionar a `src/index.css` (ou re-aproveitar se existirem):
 
-## Entregáveis
+```css
+--seal-public-navy: 218 73% 16%;     /* #0A1F44 */
+--seal-public-text: 217 26% 15%;     /* #1A2332 */
+--seal-public-success: 158 60% 30%;  /* #1F7A5C */
+--seal-public-danger: 0 53% 48%;     /* #B83A3A */
+--seal-public-gold: 41 49% 60%;      /* #C9A961 */
+```
 
-1. `src/lib/api/seals.ts` — cliente API tipado.
-2. `src/components/seals/SealLabel.tsx` — etiqueta reutilizável.
-3. `src/components/seals/RegisterMovementModal.tsx` — modal.
-4. `src/hooks/useCurrentOrganization.ts` — hook leve.
-5. `src/pages/PhysicalSealsList.tsx`, `PhysicalSealRegister.tsx`, `PhysicalSealDetail.tsx` — reescritas.
-6. `src/App.tsx` — novas rotas `/seals`, `/seals/new`, `/seals/:id`.
-7. Tokens da paleta NODIDOC em `index.css`/`tailwind.config.ts` se em falta.
+E classes utilitárias `bg-seal-success`, `bg-seal-danger`, `text-seal-navy` no `tailwind.config.ts`.
+
+Tipografia: cabeçalho com `font-family: Georgia, 'Times New Roman', serif`; corpo com `system-ui, -apple-system, Segoe UI, Roboto, sans-serif`. Protocolo em `ui-monospace, Menlo, Consolas, monospace`.
+
+### 7. Acessibilidade
+
+- `lang="pt-PT"` no `<html>` enquanto a rota está activa.
+- Contraste verificado AA (navy/branco, success/branco, danger/branco).
+- Estados de erro com ícone + texto + cor (não só cor).
+- Inputs e botões com `aria-label` e `aria-describedby` para mensagens de validação.
+- Drag&drop também acessível via clique (botão visível).
+
+### 8. Ficheiros a criar/editar
+
+**Criar**
+- `src/pages/PublicValidate.tsx` — página principal.
+- `src/components/seals/public/StateBanner.tsx` — banner reutilizável.
+- `src/components/seals/public/PdfIntegrityCheck.tsx` — secção upload + hash.
+- `src/components/seals/public/SealMetadataCard.tsx` — card de metadados.
+- `src/lib/api/sealsPublic.ts` — wrapper `validatePublic(token, pdfHash?)` usando `fetch` directo (sem `supabase.functions.invoke` para não exigir client autenticado).
+- `src/lib/hooks/usePageMeta.ts` — hook para title/meta/robots.
+
+**Editar**
+- `src/App.tsx` — adicionar rotas `/v` e `/v/:token`.
+- `supabase/functions/validate-seal/index.ts` — aceitar `public: boolean`; quando `true`, remover PII da resposta e dos movimentos.
+- `src/index.css` + `tailwind.config.ts` — tokens de cor do portal público.
+
+### 9. Fora de âmbito
+
+- QR codes nas etiquetas (já feito noutra fase).
+- Analytics/tracking de terceiros — explicitamente não.
+- i18n — apenas pt-PT.
+- Fontes externas — apenas system fonts.
