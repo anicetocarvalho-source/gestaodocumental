@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { SealLabel } from "@/components/seals/SealLabel";
+import { PrintLabelDialog, type SealForPrint } from "@/components/seals/PrintLabelDialog";
 import { useCurrentOrganization } from "@/hooks/useCurrentOrganization";
 import { createSeal, type CreateSealResponse, type ProtocolType } from "@/lib/api/seals";
 
