@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Printer, RefreshCw, Usb, Globe2, Server, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Printer, RefreshCw, Usb, Globe2, Server, AlertTriangle, CheckCircle2, XCircle, Star, StarOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +49,9 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
   const [mode, setMode] = useState<PrintMode>(prefs.lastMode);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [agentChecking, setAgentChecking] = useState(false);
-  const [selectedPrinter, setSelectedPrinter] = useState<string | null>(prefs.lastPrinterName);
+  const [selectedPrinter, setSelectedPrinter] = useState<string | null>(
+    prefs.defaultPrinterName ?? prefs.lastPrinterName,
+  );
   const [usbDevice, setUsbDevice] = useState<USBDevice | null>(null);
   const [copies, setCopies] = useState(1);
   const [speed, setSpeed] = useState<2 | 3 | 4 | 6>(4);
@@ -70,8 +72,12 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
     const status = await checkAgent();
     setAgentStatus(status);
     if (status.available && status.printers && status.printers.length > 0) {
-      const stillThere = status.printers.find((p) => p.name === selectedPrinter);
-      if (!stillThere) setSelectedPrinter(status.printers[0].name);
+      const preferred =
+        status.printers.find((p) => p.name === prefs.defaultPrinterName) ??
+        status.printers.find((p) => p.name === selectedPrinter) ??
+        status.printers.find((p) => p.name === prefs.lastPrinterName) ??
+        status.printers[0];
+      setSelectedPrinter(preferred.name);
     }
     setAgentChecking(false);
   }
@@ -178,23 +184,73 @@ export function PrintLabelDialog({ seal, organizationName, isDuplicate = false, 
                   onRefresh={runAgentCheck}
                 />
                 {agentStatus?.available && agentStatus.printers && agentStatus.printers.length > 0 && (
-                  <div className="mt-2">
-                    <Label className="text-xs">Impressora</Label>
-                    <Select
-                      value={selectedPrinter ?? undefined}
-                      onValueChange={(v) => setSelectedPrinter(v)}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Seleccionar impressora" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {agentStatus.printers.map((p) => (
-                          <SelectItem key={p.name} value={p.name}>
-                            {p.name} {p.model ? `· ${p.model}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs">Impressoras detectadas ({agentStatus.printers.length})</Label>
+                      {prefs.defaultPrinterName && (
+                        <button
+                          type="button"
+                          className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                          onClick={() => prefs.setDefaultPrinterName(null)}
+                        >
+                          Limpar padrão
+                        </button>
+                      )}
+                    </div>
+                    <ul className="rounded-md border divide-y bg-background max-h-44 overflow-y-auto">
+                      {agentStatus.printers.map((p) => {
+                        const isSelected = selectedPrinter === p.name;
+                        const isDefault = prefs.defaultPrinterName === p.name;
+                        return (
+                          <li
+                            key={p.name}
+                            className={cn(
+                              "flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-muted/60",
+                              isSelected && "bg-primary/5",
+                            )}
+                            onClick={() => setSelectedPrinter(p.name)}
+                          >
+                            <input
+                              type="radio"
+                              name="agent-printer"
+                              checked={isSelected}
+                              onChange={() => setSelectedPrinter(p.name)}
+                              className="h-3.5 w-3.5 accent-primary"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="truncate font-medium">{p.name}</div>
+                              {(p.model || p.status) && (
+                                <div className="text-[10px] text-muted-foreground truncate">
+                                  {p.model}
+                                  {p.model && p.status ? " · " : ""}
+                                  {p.status}
+                                </div>
+                              )}
+                            </div>
+                            {isDefault && (
+                              <span className="text-[10px] uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                Padrão
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              title={isDefault ? "Remover como padrão" : "Definir como padrão"}
+                              className="text-muted-foreground hover:text-amber-600 p-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                prefs.setDefaultPrinterName(isDefault ? null : p.name);
+                              }}
+                            >
+                              {isDefault ? (
+                                <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                              ) : (
+                                <StarOff className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                 )}
               </ModeCard>
