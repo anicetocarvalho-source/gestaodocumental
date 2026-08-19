@@ -1,128 +1,55 @@
-## Impressão de etiquetas — 3 modos
+# Auditoria e Activação de Funcionalidades Incompletas
 
-Adicionar `<PrintLabelDialog />` accionado pelos botões existentes em `PhysicalSealRegister.tsx` e `PhysicalSealDetail.tsx`. Sem libs novas. Sem localStorage (estado em React + contexto leve).
+Fiz uma varredura completa do frontend. A plataforma está, na sua maioria, ligada a dados reais (Dashboard, Documentos, Processos, Despachos, Aprovações, Utilizadores, Selos, Auditoria). Mas existem pontos concretos onde a UI existe e a acção não faz nada.
 
-### Estrutura de ficheiros
+## O que está em falta (confirmado no código)
 
-**Criar**
-- `src/lib/printing/zpl.ts` — `generateZPL(seal, { isDuplicate, copies, speed, density })`.
-- `src/lib/printing/local-agent.ts` — `checkAgent()`, `printZPL(zpl, printerName, copies)`.
-- `src/lib/printing/webusb.ts` — `isWebUSBAvailable()`, `requestZebraPrinter()`, `printZPLViaUSB(device, zpl, copies)`.
-- `src/lib/printing/browser-print.ts` — `printViaBrowser(seal, isDuplicate, copies)` (janela A4 2×4).
-- `src/lib/printing/types.ts` — tipos partilhados (`PrintMode`, `PrintOptions`, `AgentStatus`).
-- `src/contexts/PrintPreferencesContext.tsx` — guarda `lastMode` e `lastDevice` na sessão (apenas React state, sem persistência).
-- `src/components/seals/PrintLabelDialog.tsx` — modal principal.
+### 1. Parecer em Processos — o caso que referiste
+- O botão "Novo Parecer" (`ProcessDetail.tsx`) não tem acção nenhuma.
+- Já existe no backend uma função pronta para gravar pareceres (com numeração automática PAR-TEC / PAR-JUR / DESP), mas nunca chega a ser chamada pela interface.
+- O botão "Ver Completo" de um parecer também não abre nada.
 
-**Editar**
-- `src/pages/PhysicalSealRegister.tsx` — substituir handlers dos botões "Imprimir Etiqueta" / "Imprimir Duplicado" por abertura do dialog.
-- `src/pages/PhysicalSealDetail.tsx` — idem para botão "Imprimir".
-- `src/App.tsx` — montar `<PrintPreferencesProvider>` dentro do `AuthProvider`.
+### 2. Visualizador de Documento (`/documents/:id/view`) — página inteiramente fictícia
+- Os dados mostrados (título, versões, log de auditoria, etiquetas) são fixos no código, não vêm da base de dados. Nem sequer lê o ID do documento do endereço.
+- A "área do PDF" é um desenho simulado, não mostra o ficheiro real.
+- Sem acção: Descarregar, Imprimir, Copiar Link, Partilhar, Adicionar a Processo, adicionar etiqueta, e botões do histórico de versões.
 
-### `generateZPL`
+### 3. Acções soltas noutras páginas
+- Detalhe do Documento: "Visualizar" e "Remover" anexo sem acção.
+- Repositório: botões em lote "Classificar", "Mover", "Transferir" sem acção.
+- Processos: botão "Exportar" sem acção.
+- Criar Processo: pré-visualizar anexo sem acção.
+- Centro de Digitalização: "Iniciar Digitalização", "Atribuir Operador", "Classificar" (lote) e "Aprovar"/"Rejeitar" da revisão de qualidade sem acção.
 
-Etiqueta 50×30mm @ 203dpi → 400×240 dots.
+### 4. Definições — secções decorativas
+- Sessões activas, backups recentes e chave de API são listas/valores inventados no código.
+- Sem acção: Carregar Logótipo, Renovar Certificado, Configurar 2FA, Terminar sessões, Regenerar API key, Restaurar/Baixar backup.
 
-```text
-^XA
-^PW400
-^LL240
-^CI28                      ; UTF-8
-^PR{speed}                 ; velocidade ips
-^MD{density}               ; densidade 0-30
-^FO20,15^A0N,18,18^FB360,1,0,C^FD{org_name}^FS
-^FO20,40^GB360,2,2^FS
-^FO20,55^BQN,2,4^FDLA,{qr_payload}^FS    ; QR esquerda
-^FO180,60^A0N,12,12^FDPROTOCOLO^FS
-^FO180,75^A0N,22,22^FD{protocol_number}^FS
-^FO180,105^A0N,12,12^FDDATA^FS
-^FO180,120^A0N,16,16^FD{date}^FS
-^FO180,145^A0N,12,12^FDHASH^FS
-^FO180,160^A0N,16,16^FD{hash8}^FS
-^FO20,210^A0N,14,14^FB360,1,0,C^FDvalida.nodidoc.ao^FS
-{if isDuplicate}
-^FO80,80^A0N,40,40^FWR^FDDUPLICADO^FS
-{endif}
-^PQ{copies}
-^XZ
-```
+## Proposta de execução (por fases, da maior para a menor prioridade)
 
-Escape obrigatório de `^`, `~`, `\` no payload de texto. Multi-cópias usa `^PQ` (mais eficiente que repetir).
+**Fase 1 — Parecer em Processos (fecha o problema que levantaste)**
+- Novo modal "Emitir Parecer": tipo (técnico, jurídico, despacho), decisão (favorável, desfavorável, informativo), resumo e conteúdo, com validação inline em PT-PT.
+- Liga o botão à função de gravação já existente; a lista de pareceres actualiza de imediato.
+- "Ver Completo" passa a abrir o conteúdo integral do parecer.
+- Respeita a permissão `processes.addParecer` já definida.
 
-### Modo 1 — Agente Local
+**Fase 2 — Visualizador de Documento a sério**
+- Passa a carregar o documento real pelo ID do endereço (título, metadados, versões, anexos, etiquetas, histórico).
+- Mostra o ficheiro real (PDF/imagem) a partir do armazenamento; estado próprio quando não há ficheiro.
+- Activa Descarregar, Imprimir, Copiar Link e gestão de etiquetas; grava a classificação em vez de a descartar.
 
-`checkAgent()`:
-- `fetch("http://localhost:9876/health", { signal: AbortSignal.timeout(2000) })` numa promise race.
-- Devolve `{ available, version, printers[] }` ou `{ available: false, error }`.
-- Se exception/timeout → "Agente não está activo. Inicie a aplicação NODIDOC Print Agent."
+**Fase 3 — Acções soltas**
+- Anexos: pré-visualizar e remover (com confirmação).
+- Repositório: classificar/mover em lote; "Transferir" como exportação da selecção.
+- Processos: exportar lista em CSV, no mesmo padrão já usado noutras páginas.
+- Digitalização: ligar "Iniciar Digitalização", atribuição de operador, classificação em lote e aprovar/rejeitar na revisão de qualidade.
 
-`printZPL(zpl, printerName, copies)`:
-- `POST /print` JSON `{ zpl, printer_name, copies }`.
-- Devolve `{ job_id }` em sucesso, throw com mensagem do servidor em erro.
+**Fase 4 — Definições**
+- Remover os blocos puramente decorativos ou substituí-los por dados reais quando existirem (sessões via sessão actual, logótipo via armazenamento).
+- Os que exigem infraestrutura não disponível (backups, API keys, 2FA) ficam claramente marcados como indisponíveis em vez de aparentarem funcionar.
 
-### Modo 2 — WebUSB
-
-`isWebUSBAvailable()` → `typeof navigator !== 'undefined' && 'usb' in navigator`.
-
-`requestZebraPrinter()`:
-- `navigator.usb.requestDevice({ filters: [{ vendorId: 0x0A5F }, { vendorId: 0x04F9 }] })`.
-
-`printZPLViaUSB(device, zpl, copies)`:
-- `device.open()` → `selectConfiguration(1)` → `claimInterface(0)`.
-- Encontrar endpoint `direction === 'out' && type === 'bulk'`.
-- Para cada cópia: `device.transferOut(endpointNumber, new TextEncoder().encode(zpl))`.
-- `releaseInterface(0)` → `close()`.
-- Try/finally garante release mesmo em erro.
-
-### Modo 3 — Print do navegador
-
-`printViaBrowser(seal, isDuplicate, copies)`:
-- `window.open('', '_blank', 'width=800,height=600')`.
-- Injectar HTML standalone com `@page { size: A4; margin: 10mm }` e grelha CSS de 8 etiquetas (88,9 × 67,7 mm cada — formato L7165 equivalente).
-- Renderizar QR via `qrcode` (já instalado) como SVG inline data-uri.
-- `win.document.write(html); win.document.close(); win.focus(); win.print();`
-- Listener `afterprint` → `win.close()`.
-
-### `<PrintLabelDialog />`
-
-```tsx
-interface Props {
-  seal: PhysicalSeal;
-  isDuplicate?: boolean;
-  isOpen: boolean;
-  onClose: () => void;
-}
-```
-
-Estado interno:
-- `mode: 'agent' | 'webusb' | 'browser'` (default = `lastMode` do contexto, fallback `'agent'`).
-- `agentStatus: AgentStatus | null`, `selectedPrinter: string | null`.
-- `usbDevice: USBDevice | null`.
-- `copies: number` (1-10), `speed: 2|3|4|6` (default 4), `density: number` (default 15).
-- `printing: boolean`.
-
-Comportamento:
-- On mount: `checkAgent()` automaticamente. Se WebUSB disponível, mostra a opção.
-- Radio cards mostram indicadores em tempo real.
-- Botão "Procurar agente" reactiva `checkAgent()`.
-- Botão "Selecionar impressora" → `requestZebraPrinter()`.
-- Speed/density apenas visíveis em modos `agent`/`webusb`.
-- Avisos:
-  - WebUSB: banner amarelo "Modo experimental. Para uso institucional, recomendamos o Agente Local NODIDOC."
-  - Browser: aviso "Use papel A4 com layout 2×4 de etiquetas auto-adesivas (88,9 × 67,7 mm)."
-- "Imprimir" → gera ZPL (modos 1/2) ou chama browser-print, mostra `toast.success("Etiqueta enviada para impressão")`, fecha modal.
-- Erros → `toast.error(mensagem)`, modal permanece aberto.
-- `console.info('[print]', { sealId, mode, copies, ts })` como log temporário.
-
-### Integração nos botões existentes
-
-Em `PhysicalSealRegister.tsx` e `PhysicalSealDetail.tsx`:
-- Adicionar `useState` para `printOpen` + `printDuplicate`.
-- Cada botão passa a abrir o dialog com `isDuplicate` adequado.
-- Renderizar `<PrintLabelDialog seal={seal} isDuplicate={...} isOpen={printOpen} onClose={...} />` no fim do JSX.
-
-### Fora de âmbito
-
-- Implementação do agente Tauri/Electron.
-- Persistência cross-session de preferências.
-- Fallback automático entre modos.
-- Reporte server-side de jobs de impressão (próximo prompt).
+## Notas técnicas
+- Fase 1 usa a mutation `useAddOpinion` de `src/hooks/useProcesses.ts` (já implementada, nunca importada) e um novo `src/components/processes/AddOpinionModal.tsx`.
+- Fase 2 reescreve `src/pages/DocumentViewer.tsx` sobre os hooks existentes `useDocument`/`useDocumentAttachments` e URLs assinados do armazenamento.
+- Exportações reutilizam o padrão de `ExportMovements` / `ExportRepository`.
+- Nenhuma alteração de schema é necessária nas fases 1 a 3.
