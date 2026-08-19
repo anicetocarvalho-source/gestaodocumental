@@ -1002,6 +1002,24 @@ const DocumentDetail = () => {
           toast.success(`Processo ${processNumber} criado`);
         }}
       />
+
+      {/* Confirmar remoção de anexo */}
+      <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover ficheiro</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que pretende remover &quot;{fileToDelete?.file_name}&quot;? Esta acção é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteFile.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteFile} disabled={deleteFile.isPending}>
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
