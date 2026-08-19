@@ -263,6 +263,16 @@ const DigitizationCenter = () => {
     }
   };
 
+  const handleStartScanning = () => {
+    const activeBatch = batches.find(b => b.status === 'in_progress') || batches.find(b => b.status === 'pending') || batches[0];
+    if (!activeBatch) {
+      toast.error('Crie primeiro um lote de digitalização');
+      setUploadDialogOpen(true);
+      return;
+    }
+    openUploadDialog(activeBatch);
+  };
+
   const handleProcessSelectedOcr = () => {
     const docsToProcess = scannedDocuments
       .filter(doc => selectedDocuments.has(doc.id))
@@ -410,7 +420,7 @@ const DigitizationCenter = () => {
               <Upload className="h-4 w-4 mr-2" />
               Criar Lote
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={handleStartScanning}>
               <ScanLine className="h-4 w-4 mr-2" />
               Iniciar Digitalização
             </Button>
