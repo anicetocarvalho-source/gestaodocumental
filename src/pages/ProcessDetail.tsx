@@ -912,6 +912,21 @@ const ProcessDetail = () => {
           linkedDocumentIds={processDocuments.filter(d => d.document_id).map(d => d.document_id!)}
         />
       )}
+
+      {/* Opinion Modals */}
+      {id && (
+        <AddOpinionModal
+          open={opinionModalOpen}
+          onOpenChange={setOpinionModalOpen}
+          processId={id}
+        />
+      )}
+      <ViewOpinionModal
+        open={!!viewOpinion}
+        onOpenChange={(open) => !open && setViewOpinion(null)}
+        opinion={viewOpinion}
+      />
+      
     </DashboardLayout>
   );
 };
