@@ -264,7 +264,7 @@ const DigitizationCenter = () => {
   };
 
   const handleStartScanning = () => {
-    const activeBatch = batches.find(b => b.status === 'in_progress') || batches.find(b => b.status === 'pending') || batches[0];
+    const activeBatch = batches.find(b => b.status === 'processing') || batches.find(b => b.status === 'pending') || batches[0];
     if (!activeBatch) {
       toast.error('Crie primeiro um lote de digitalização');
       setUploadDialogOpen(true);
