@@ -534,7 +534,7 @@ const DocumentDetail = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon-sm" aria-label="Visualizar">
+                        <Button variant="ghost" size="icon-sm" aria-label="Visualizar" onClick={() => handlePreviewFile(attachment.file_path)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -546,7 +546,12 @@ const DocumentDetail = () => {
                           <Download className="h-4 w-4" />
                         </Button>
                         <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover anexos">
-                          <Button variant="ghost" size="icon-sm" aria-label="Remover">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Remover"
+                            onClick={() => setFileToDelete({ id: attachment.id, file_path: attachment.file_path, file_name: attachment.file_name })}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </ProtectedContent>
