@@ -1476,21 +1476,22 @@ const IntegracoesSection = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Chave de API</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button variant="ghost" size="sm">Regenerar</Button>
-                  </motion.div>
+              <div className="p-4 bg-muted rounded-lg space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label>Chaves de API</Label>
+                  <Badge variant="secondary" className="text-xs">Em preparação</Badge>
                 </div>
-                <code className="text-sm font-mono bg-background p-2 rounded block overflow-x-auto">
-                  sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-                </code>
+                <p className="text-sm text-muted-foreground">
+                  A emissão de chaves de API e webhooks para sistemas externos será disponibilizada
+                  numa próxima fase. As integrações activas acima já se encontram operacionais.
+                </p>
               </div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button variant="outline">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Ver Documentação da API
+                <Button variant="outline" asChild>
+                  <Link to="/flow-documentation">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Ver Documentação dos Fluxos
+                  </Link>
                 </Button>
               </motion.div>
             </div>
