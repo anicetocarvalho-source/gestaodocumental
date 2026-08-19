@@ -1170,6 +1170,55 @@ const DigitizationCenter = () => {
           )}
         </SheetContent>
       </Sheet>
+      {/* Atribuir operador em lote */}
+      <Dialog open={assignOperatorOpen} onOpenChange={setAssignOperatorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir operador</DialogTitle>
+            <DialogDescription>
+              Atribuir um operador a {selectedDocuments.size} documento(s) seleccionado(s).
+            </DialogDescription>
+          </DialogHeader>
+          <Select value={operatorToAssign} onValueChange={setOperatorToAssign}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar operador" />
+            </SelectTrigger>
+            <SelectContent>
+              {operators.map((op) => (
+                <SelectItem key={op.id} value={op.id}>
+                  {op.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOperatorOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAssignOperator} disabled={bulkBusy || !operatorToAssign}>
+              {bulkBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Atribuir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remover documentos em lote */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover documentos</DialogTitle>
+            <DialogDescription>
+              Tem a certeza que pretende remover {selectedDocuments.size} documento(s)? Esta acção é irreversível.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleBulkDelete} disabled={bulkBusy}>
+              {bulkBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
