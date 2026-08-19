@@ -466,7 +466,7 @@ const ProcessDetail = () => {
                   Pareceres e Despachos
                 </CardTitle>
                 <ProtectedContent permission={{ module: "processes", action: "addParecer" }} showDisabled disabledTooltip="Requer permissão para emitir pareceres">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setOpinionModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Parecer
                   </Button>
@@ -511,14 +511,12 @@ const ProcessDetail = () => {
                           <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                             {opinion.summary}
                           </p>
-                          {opinion.content && (
-                            <div className="flex items-center gap-2 mt-3">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver Completo
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 mt-3">
+                            <Button variant="ghost" size="sm" onClick={() => setViewOpinion(opinion)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver Completo
+                            </Button>
+                          </div>
                         </div>
                       ))
                     )}
