@@ -87,6 +87,7 @@ const DocumentDetail = () => {
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isLockedByOther, setIsLockedByOther] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; file_path: string; file_name: string } | null>(null);
   
   const { canDo } = usePermissions();
   
@@ -95,6 +96,34 @@ const DocumentDetail = () => {
   const createComment = useCreateComment();
   const downloadFile = useDownloadFile();
   const uploadFile = useUploadDocumentFile();
+  const deleteFile = useDeleteDocumentFile();
+  const getFileUrl = useGetFileUrl();
+
+  const handlePreviewFile = async (filePath: string) => {
+    try {
+      const url = await getFileUrl(filePath);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      toast.error("Não foi possível abrir o ficheiro");
+    }
+  };
+
+  const handleConfirmDeleteFile = async () => {
+    if (!fileToDelete || !document) return;
+    try {
+      await deleteFile.mutateAsync({
+        fileId: fileToDelete.id,
+        filePath: fileToDelete.file_path,
+        documentId: document.id,
+      });
+      toast.success("Ficheiro removido");
+      refetch();
+    } catch (e) {
+      toast.error("Erro ao remover ficheiro");
+    } finally {
+      setFileToDelete(null);
+    }
+  };
 
   const getStageIcon = (status: string) => {
     switch (status) {
