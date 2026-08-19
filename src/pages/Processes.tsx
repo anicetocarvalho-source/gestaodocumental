@@ -291,7 +291,7 @@ const Processes = () => {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleExportCSV}>
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
