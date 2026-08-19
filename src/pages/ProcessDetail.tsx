@@ -40,6 +40,8 @@ import {
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 import { UploadProcessDocumentModal } from "@/components/processes/UploadProcessDocumentModal";
 import { LinkDocumentModal } from "@/components/processes/LinkDocumentModal";
+import { AddOpinionModal } from "@/components/processes/AddOpinionModal";
+import { ViewOpinionModal } from "@/components/processes/ViewOpinionModal";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment, useProcessDocuments, useDeleteProcessDocument } from "@/hooks/useProcesses";
@@ -74,6 +76,8 @@ const ProcessDetail = () => {
   const [isInternal, setIsInternal] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [opinionModalOpen, setOpinionModalOpen] = useState(false);
+  const [viewOpinion, setViewOpinion] = useState<any | null>(null);
   const { canDo } = usePermissions();
   
   // Fetch process data from database
