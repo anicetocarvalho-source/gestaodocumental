@@ -1752,84 +1752,59 @@ const ModelosSection = () => {
 
 // ========== SECÇÃO BACKUP ==========
 const BackupSection = () => {
-  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
-
-  const handleCreateBackup = async () => {
-    setIsCreatingBackup(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsCreatingBackup(false);
-    toast({
-      title: "Backup criado",
-      description: "A cópia de segurança foi criada com sucesso.",
-    });
-  };
-
   return (
     <>
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Cópia de Segurança</h2>
-          <p className="text-sm text-muted-foreground">Gerir backups e recuperação de dados</p>
+          <p className="text-sm text-muted-foreground">Estado das cópias de segurança dos dados</p>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button onClick={handleCreateBackup} disabled={isCreatingBackup}>
-            {isCreatingBackup ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2"
-              />
-            ) : (
-              <Database className="h-4 w-4 mr-2" />
-            )}
-            {isCreatingBackup ? "A criar..." : "Criar Backup Agora"}
-          </Button>
-        </motion.div>
+        <Badge variant="success" className="w-fit">Gerido pela plataforma</Badge>
       </motion.div>
 
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Backups Recentes</CardTitle>
+            <CardTitle className="text-base">Como funcionam as cópias de segurança</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {[
-                { date: "06 Jan 2026, 02:00", size: "2.4 GB", type: "Automático", status: "success" },
-                { date: "05 Jan 2026, 02:00", size: "2.3 GB", type: "Automático", status: "success" },
-                { date: "04 Jan 2026, 02:00", size: "2.3 GB", type: "Automático", status: "success" },
-                { date: "03 Jan 2026, 15:30", size: "2.2 GB", type: "Manual", status: "success" },
-              ].map((backup, i) => (
-                <motion.div 
-                  key={i} 
-                  className="flex items-center justify-between p-3 border border-border rounded-lg"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  whileHover={{ scale: 1.01, x: 4 }}
-                >
-                  <div className="flex items-center gap-3">
-                    <motion.div 
-                      className="h-10 w-10 bg-success-muted rounded-lg flex items-center justify-center"
-                      whileHover={{ rotate: 10 }}
-                    >
-                      <Database className="h-5 w-5 text-success" />
-                    </motion.div>
-                    <div>
-                      <p className="font-medium">{backup.date}</p>
-                      <p className="text-sm text-muted-foreground">{backup.size} • {backup.type}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button variant="ghost" size="sm">Restaurar</Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button variant="ghost" size="sm">Baixar</Button>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              ))}
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 bg-success-muted rounded-lg flex items-center justify-center shrink-0">
+                  <Database className="h-5 w-5 text-success" />
+                </div>
+                <div>
+                  <p className="font-medium">Backups automáticos diários</p>
+                  <p className="text-sm text-muted-foreground">
+                    A base de dados é copiada automaticamente todos os dias pela infra-estrutura da
+                    plataforma, sem necessidade de configuração manual.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 bg-info-muted rounded-lg flex items-center justify-center shrink-0">
+                  <Shield className="h-5 w-5 text-info" />
+                </div>
+                <div>
+                  <p className="font-medium">Ficheiros documentais</p>
+                  <p className="text-sm text-muted-foreground">
+                    Os ficheiros carregados são armazenados de forma redundante no armazenamento seguro,
+                    com acesso restrito por políticas de segurança.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 bg-warning-muted rounded-lg flex items-center justify-center shrink-0">
+                  <FileText className="h-5 w-5 text-warning" />
+                </div>
+                <div>
+                  <p className="font-medium">Restauro de dados</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pedidos de restauro pontual devem ser solicitados ao administrador do sistema.
+                    A exportação de registos está disponível nos relatórios e na auditoria.
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1838,35 +1813,27 @@ const BackupSection = () => {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Configuração de Backup Automático</CardTitle>
+            <CardTitle className="text-base">Exportações disponíveis</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <motion.div 
-                className="flex items-center justify-between"
-                whileHover={{ x: 4 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div>
-                  <p className="font-medium">Backup Automático Diário</p>
-                  <p className="text-sm text-muted-foreground">Executar às 02:00</p>
-                </div>
-                <Switch defaultChecked />
-              </motion.div>
-              <motion.div 
-                className="flex items-center justify-between"
-                whileHover={{ x: 4 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div>
-                  <p className="font-medium">Retenção de Backups</p>
-                  <p className="text-sm text-muted-foreground">Manter últimos 30 dias</p>
-                </div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" size="sm">Configurar</Button>
-                </motion.div>
-              </motion.div>
-            </div>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/audit-logs">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Registos de auditoria
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/reports">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Relatórios
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/folders">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Repositório documental
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </motion.div>
