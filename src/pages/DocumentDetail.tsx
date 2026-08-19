@@ -11,7 +11,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDocument } from "@/hooks/useDocuments";
 import { useCreateComment } from "@/hooks/useDocumentActions";
-import { useDownloadFile, useUploadDocumentFile } from "@/hooks/useFileUpload";
+import { useDownloadFile, useUploadDocumentFile, useDeleteDocumentFile, useGetFileUrl } from "@/hooks/useFileUpload";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   documentStatusLabels, 
   documentStatusVariants, 
