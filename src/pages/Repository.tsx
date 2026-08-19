@@ -58,6 +58,10 @@ import {
   useDocumentsByClassification,
   useRepositoryDocuments,
 } from "@/hooks/useRepository";
+import { BulkClassifyDialog } from "@/components/repository/BulkClassifyDialog";
+import { useDownloadFile } from "@/hooks/useFileUpload";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const statusLabels: Record<string, string> = {
   draft: "Rascunho",
@@ -85,6 +89,9 @@ export default function Repository() {
   const [activeTab, setActiveTab] = useState("browse");
   const [showFilters, setShowFilters] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [bulkDialog, setBulkDialog] = useState<null | "classify" | "move">(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const downloadFile = useDownloadFile();
   const [filters, setFilters] = useState<{
     search: string;
     status: string;
@@ -127,6 +134,33 @@ export default function Repository() {
       setSelectedItems(new Set());
     } else {
       setSelectedItems(new Set(documents?.map((doc) => doc.id) || []));
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    const ids = Array.from(selectedItems);
+    if (ids.length === 0) return;
+    setIsDownloading(true);
+    try {
+      const { data, error } = await supabase
+        .from("document_files")
+        .select("file_path, file_name")
+        .in("document_id", ids);
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        toast.error("Os documentos seleccionados não têm ficheiros anexados");
+        return;
+      }
+
+      for (const file of data) {
+        await downloadFile.mutateAsync({ filePath: file.file_path, fileName: file.file_name });
+      }
+      toast.success(`${data.length} ficheiro(s) transferido(s)`);
+    } catch {
+      toast.error("Erro ao transferir ficheiros");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -299,15 +333,21 @@ export default function Repository() {
                       {selectedItems.size > 0 && (
                         <>
                           <div className="h-6 w-px bg-border mx-2" />
-                          <Button variant="outline" size="sm" className="gap-2">
+                          <Button variant="outline" size="sm" className="gap-2" onClick={() => setBulkDialog("classify")}>
                             <Tags className="h-4 w-4" />
                             Classificar ({selectedItems.size})
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-2">
+                          <Button variant="outline" size="sm" className="gap-2" onClick={() => setBulkDialog("move")}>
                             <Move className="h-4 w-4" />
                             Mover
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={handleBulkDownload}
+                            disabled={isDownloading}
+                          >
                             <Download className="h-4 w-4" />
                             Transferir
                           </Button>
