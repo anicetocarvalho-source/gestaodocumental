@@ -1299,40 +1299,37 @@ const SegurancaSection = () => {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Sessões Activas</CardTitle>
+            <CardTitle className="text-base">Sessão Activa</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {[
-                { device: "Chrome no Windows", location: "Maputo, MZ", current: true, date: "Agora" },
-                { device: "Safari no iPhone", location: "Maputo, MZ", current: false, date: "Há 2 horas" },
-                { device: "Firefox no Linux", location: "Beira, MZ", current: false, date: "Ontem às 14:30" },
-              ].map((session, i) => (
-                <motion.div 
-                  key={i} 
-                  className="flex items-center justify-between p-3 border border-border rounded-lg"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  whileHover={{ scale: 1.01, x: 4 }}
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{session.device}</p>
-                      {session.current && <Badge variant="info" className="text-xs">Sessão actual</Badge>}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{session.location} • {session.date}</p>
-                  </div>
-                  {!session.current && (
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button variant="ghost" size="sm" className="text-destructive">Terminar</Button>
-                    </motion.div>
-                  )}
-                </motion.div>
-              ))}
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{navigator.userAgent.includes("Mobile") ? "Dispositivo móvel" : "Computador"}</p>
+                  <Badge variant="info" className="text-xs">Sessão actual</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Autenticado neste navegador
+                </p>
+              </div>
             </div>
+            <p className="text-sm text-muted-foreground mt-3">
+              Pode terminar as sessões abertas noutros dispositivos. Esta sessão permanece activa.
+            </p>
             <motion.div className="mt-4" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button variant="outline">Terminar Todas as Outras Sessões</Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const { error } = await supabase.auth.signOut({ scope: "others" });
+                  if (error) {
+                    toast({ title: "Erro", description: "Não foi possível terminar as outras sessões.", variant: "destructive" });
+                  } else {
+                    toast({ title: "Sessões terminadas", description: "As sessões noutros dispositivos foram encerradas." });
+                  }
+                }}
+              >
+                Terminar Todas as Outras Sessões
+              </Button>
             </motion.div>
           </CardContent>
         </Card>
