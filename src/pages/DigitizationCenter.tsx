@@ -77,6 +77,7 @@ import {
   useBatchDocumentStats,
   useCreateBatch,
   useUpdateBatch,
+  useUpdateScannedDocument,
   type ScannedDocument,
   type DigitizationBatch,
 } from "@/hooks/useDigitization";
@@ -134,6 +135,10 @@ const DigitizationCenter = () => {
   const [selectedForReview, setSelectedForReview] = useState<ScannedDocument | null>(null);
   const [filterStatus, setFilterStatus] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [assignOperatorOpen, setAssignOperatorOpen] = useState(false);
+  const [operatorToAssign, setOperatorToAssign] = useState("");
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Form state for new batch
   const [newBatchName, setNewBatchName] = useState("");
@@ -156,6 +161,7 @@ const DigitizationCenter = () => {
   const deleteDocument = useDeleteScannedDocumentWithFile();
   const processOcr = useProcessOcr();
   const processMultipleOcr = useProcessMultipleOcr();
+  const updateScannedDocument = useUpdateScannedDocument();
 
   // Get operators from profiles
   const operators = profiles;
@@ -221,6 +227,50 @@ const DigitizationCenter = () => {
       return;
     }
     processOcr.mutate({ documentId: doc.id, filePath: doc.file_path });
+  };
+
+  const handleAssignOperator = async () => {
+    if (!operatorToAssign) {
+      toast.error('Seleccione um operador');
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      for (const id of Array.from(selectedDocuments)) {
+        await updateScannedDocument.mutateAsync({ id, operator_id: operatorToAssign });
+      }
+      toast.success(`Operador atribuído a ${selectedDocuments.size} documento(s)`);
+      setSelectedDocuments(new Set());
+      setAssignOperatorOpen(false);
+      setOperatorToAssign("");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkBusy(true);
+    try {
+      const docs = scannedDocuments.filter(d => selectedDocuments.has(d.id));
+      for (const doc of docs) {
+        await deleteDocument.mutateAsync({ id: doc.id, filePath: doc.file_path });
+      }
+      toast.success(`${docs.length} documento(s) removido(s)`);
+      setSelectedDocuments(new Set());
+      setBulkDeleteOpen(false);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleStartScanning = () => {
+    const activeBatch = batches.find(b => b.status === 'processing') || batches.find(b => b.status === 'pending') || batches[0];
+    if (!activeBatch) {
+      toast.error('Crie primeiro um lote de digitalização');
+      setUploadDialogOpen(true);
+      return;
+    }
+    openUploadDialog(activeBatch);
   };
 
   const handleProcessSelectedOcr = () => {
@@ -370,7 +420,7 @@ const DigitizationCenter = () => {
               <Upload className="h-4 w-4 mr-2" />
               Criar Lote
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={handleStartScanning}>
               <ScanLine className="h-4 w-4 mr-2" />
               Iniciar Digitalização
             </Button>
@@ -476,7 +526,7 @@ const DigitizationCenter = () => {
                 {selectedDocuments.size > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">{selectedDocuments.size} seleccionados</span>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setAssignOperatorOpen(true)}>
                       <User className="h-4 w-4 mr-2" />
                       Atribuir Operador
                     </Button>
@@ -493,11 +543,12 @@ const DigitizationCenter = () => {
                       )}
                       Processar OCR
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Tags className="h-4 w-4 mr-2" />
-                      Classificar
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => setBulkDeleteOpen(true)}
+                    >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Remover
                     </Button>
@@ -1129,6 +1180,55 @@ const DigitizationCenter = () => {
           )}
         </SheetContent>
       </Sheet>
+      {/* Atribuir operador em lote */}
+      <Dialog open={assignOperatorOpen} onOpenChange={setAssignOperatorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atribuir operador</DialogTitle>
+            <DialogDescription>
+              Atribuir um operador a {selectedDocuments.size} documento(s) seleccionado(s).
+            </DialogDescription>
+          </DialogHeader>
+          <Select value={operatorToAssign} onValueChange={setOperatorToAssign}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar operador" />
+            </SelectTrigger>
+            <SelectContent>
+              {operators.map((op) => (
+                <SelectItem key={op.id} value={op.id}>
+                  {op.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOperatorOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAssignOperator} disabled={bulkBusy || !operatorToAssign}>
+              {bulkBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Atribuir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remover documentos em lote */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover documentos</DialogTitle>
+            <DialogDescription>
+              Tem a certeza que pretende remover {selectedDocuments.size} documento(s)? Esta acção é irreversível.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleBulkDelete} disabled={bulkBusy}>
+              {bulkBusy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

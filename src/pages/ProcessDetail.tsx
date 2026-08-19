@@ -40,6 +40,8 @@ import {
 import { WorkflowActionDrawer, type WorkflowAction } from "@/components/processes/WorkflowActionDrawer";
 import { UploadProcessDocumentModal } from "@/components/processes/UploadProcessDocumentModal";
 import { LinkDocumentModal } from "@/components/processes/LinkDocumentModal";
+import { AddOpinionModal } from "@/components/processes/AddOpinionModal";
+import { ViewOpinionModal } from "@/components/processes/ViewOpinionModal";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProcess, useProcessStages, useProcessMovements, useProcessComments, useProcessOpinions, useAddProcessComment, useProcessDocuments, useDeleteProcessDocument } from "@/hooks/useProcesses";
@@ -74,6 +76,8 @@ const ProcessDetail = () => {
   const [isInternal, setIsInternal] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [opinionModalOpen, setOpinionModalOpen] = useState(false);
+  const [viewOpinion, setViewOpinion] = useState<any | null>(null);
   const { canDo } = usePermissions();
   
   // Fetch process data from database
@@ -462,7 +466,7 @@ const ProcessDetail = () => {
                   Pareceres e Despachos
                 </CardTitle>
                 <ProtectedContent permission={{ module: "processes", action: "addParecer" }} showDisabled disabledTooltip="Requer permissão para emitir pareceres">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setOpinionModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Parecer
                   </Button>
@@ -507,14 +511,12 @@ const ProcessDetail = () => {
                           <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                             {opinion.summary}
                           </p>
-                          {opinion.content && (
-                            <div className="flex items-center gap-2 mt-3">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver Completo
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 mt-3">
+                            <Button variant="ghost" size="sm" onClick={() => setViewOpinion(opinion)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver Completo
+                            </Button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -910,6 +912,21 @@ const ProcessDetail = () => {
           linkedDocumentIds={processDocuments.filter(d => d.document_id).map(d => d.document_id!)}
         />
       )}
+
+      {/* Opinion Modals */}
+      {id && (
+        <AddOpinionModal
+          open={opinionModalOpen}
+          onOpenChange={setOpinionModalOpen}
+          processId={id}
+        />
+      )}
+      <ViewOpinionModal
+        open={!!viewOpinion}
+        onOpenChange={(open) => !open && setViewOpinion(null)}
+        opinion={viewOpinion}
+      />
+      
     </DashboardLayout>
   );
 };

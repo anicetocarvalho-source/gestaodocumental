@@ -44,6 +44,7 @@ interface UploadedFile {
   name: string;
   size: string;
   type: string;
+  file?: File;
 }
 
 interface LinkedDocument {
@@ -118,6 +119,7 @@ const CreateProcess = () => {
       name: file.name,
       size: formatFileSize(file.size),
       type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+      file,
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
   };
@@ -126,6 +128,13 @@ const CreateProcess = () => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const previewFile = (uploaded: UploadedFile) => {
+    if (!uploaded.file) return;
+    const url = URL.createObjectURL(uploaded.file);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
 
   const removeFile = (fileId: string) => {
@@ -473,7 +482,13 @@ const CreateProcess = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon-sm">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Pré-visualizar"
+                              disabled={!file.file}
+                              onClick={() => previewFile(file)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button 

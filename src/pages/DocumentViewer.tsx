@@ -1,19 +1,16 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
-import { 
-  FileText, 
-  Download, 
-  Share2,
-  FolderPlus,
-  Tag,
+import {
+  FileText,
+  Download,
   ZoomIn,
   ZoomOut,
   RotateCw,
@@ -21,7 +18,8 @@ import {
   Maximize2,
   Minimize2,
   ChevronLeft,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Sun,
   Moon,
   Contrast,
@@ -35,69 +33,99 @@ import {
   Eye,
   Printer,
   Copy,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Plus,
-  Check
+  Paperclip,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
+import { useDocument } from "@/hooks/useDocuments";
+import { useDownloadFile, useGetFileUrl } from "@/hooks/useFileUpload";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 
-// Document metadata
-const documentData = {
-  id: "DOC-2024-001234",
-  title: "Ofício nº 123/2024 - Secretaria de Educação",
-  type: "Ofício",
-  format: "PDF",
-  size: "2.4 MB",
-  pages: 12,
-  origin: "Externa",
-  classification: "Público",
-  status: "Em Análise",
-  author: "Maria Silva",
-  unit: "Gabinete",
-  created: "15 Nov 2024",
-  modified: "01 Dez 2024",
-  subject: "Solicitação de Recursos",
-  tags: ["educação", "recursos", "urgente"],
+const statusConfig: Record<string, { label: string; variant: "info" | "success" | "warning" | "error" | "secondary" }> = {
+  draft: { label: "Rascunho", variant: "secondary" },
+  registered: { label: "Registado", variant: "info" },
+  in_progress: { label: "Em Tramitação", variant: "info" },
+  dispatched: { label: "Despachado", variant: "info" },
+  pending_approval: { label: "Aguarda Aprovação", variant: "warning" },
+  validated: { label: "Validado", variant: "success" },
+  signed: { label: "Assinado", variant: "success" },
+  rejected: { label: "Rejeitado", variant: "error" },
+  archived: { label: "Arquivado", variant: "secondary" },
 };
 
-// Version history
-const versions = [
-  { version: "v3", date: "01 Dez 2024, 14:30", author: "Carlos Mendes", action: "Atualização de metadados", current: true },
-  { version: "v2", date: "28 Nov 2024, 10:15", author: "Ana Costa", action: "Anexo de parecer", current: false },
-  { version: "v1", date: "15 Nov 2024, 09:30", author: "Maria Silva", action: "Versão original", current: false },
-];
-
-// Audit log
-const auditLog = [
-  { action: "Visualização", user: "João Santos", date: "01 Dez 2024, 15:00", ip: "192.168.1.45" },
-  { action: "Download", user: "Carlos Mendes", date: "01 Dez 2024, 14:35", ip: "192.168.1.33" },
-  { action: "Metadados atualizados", user: "Carlos Mendes", date: "01 Dez 2024, 14:30", ip: "192.168.1.33" },
-  { action: "Visualização", user: "Ana Costa", date: "28 Nov 2024, 10:20", ip: "192.168.1.22" },
-  { action: "Versão criada", user: "Ana Costa", date: "28 Nov 2024, 10:15", ip: "192.168.1.22" },
-];
-
-// Available tags
-const availableTags = ["educação", "recursos", "urgente", "financeiro", "RH", "obras", "TI", "jurídico"];
+function formatFileSize(bytes?: number | null) {
+  if (!bytes) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const DocumentViewer = () => {
-  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const { data: doc, isLoading, error } = useDocument(id);
+
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [contrastMode, setContrastMode] = useState<"normal" | "high" | "inverted">("normal");
   const [showBottomPanel, setShowBottomPanel] = useState(true);
-  const [showTagModal, setShowTagModal] = useState(false);
-  const [selectedTags, setSelectedTags] = useState(documentData.tags);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [savingClassification, setSavingClassification] = useState(false);
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50));
-  const handleRotateRight = () => setRotation(prev => (prev + 90) % 360);
-  const handleRotateLeft = () => setRotation(prev => (prev - 90 + 360) % 360);
-  const handlePrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-  const handleNextPage = () => setCurrentPage(prev => Math.min(prev + 1, documentData.pages));
+  const getFileUrl = useGetFileUrl();
+  const downloadFile = useDownloadFile();
+
+  const files = useMemo(() => (doc?.files ?? []) as any[], [doc]);
+  const movements = useMemo(
+    () =>
+      [...((doc?.movements ?? []) as any[])].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ),
+    [doc]
+  );
+
+  const selectedFile = useMemo(() => {
+    if (!files.length) return null;
+    return files.find((f) => f.id === selectedFileId) || files.find((f) => f.is_main_file) || files[0];
+  }, [files, selectedFileId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPreviewUrl(null);
+    setPreviewError(null);
+
+    if (!selectedFile?.file_path) return;
+
+    setPreviewLoading(true);
+    getFileUrl(selectedFile.file_path)
+      .then((url) => {
+        if (!cancelled) setPreviewUrl(url);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setPreviewError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFile?.file_path]);
+
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50));
+  const handleRotateRight = () => setRotation((prev) => (prev + 90) % 360);
+  const handleRotateLeft = () => setRotation((prev) => (prev - 90 + 360) % 360);
 
   const getContrastStyle = () => {
     switch (contrastMode) {
@@ -110,122 +138,222 @@ const DocumentViewer = () => {
     }
   };
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    );
+  const handleDownload = () => {
+    if (!selectedFile) return;
+    downloadFile.mutate({ filePath: selectedFile.file_path, fileName: selectedFile.file_name });
   };
 
+  const handlePrint = () => {
+    if (!previewUrl) {
+      toast({
+        title: "Sem ficheiro para imprimir",
+        description: "Este documento não tem ficheiro associado.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const win = window.open(previewUrl, "_blank");
+    if (win) {
+      win.addEventListener("load", () => win.print());
+    }
+  };
+
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    toast({ title: "Ligação copiada", description: "O endereço deste documento foi copiado." });
+  };
+
+  const handleClassificationSaved = async (code: string) => {
+    if (!id) return;
+    setSavingClassification(true);
+    try {
+      const { data: classification } = await supabase
+        .from("classification_codes")
+        .select("id")
+        .eq("code", code)
+        .maybeSingle();
+
+      if (!classification) {
+        toast({
+          title: "Código não encontrado",
+          description: `O código ${code} não existe no plano de classificação da organização.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("documents")
+        .update({ classification_id: classification.id })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      toast({ title: "Classificação aplicada", description: `Documento classificado como ${code}.` });
+    } catch (e) {
+      toast({
+        title: "Erro ao guardar classificação",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingClassification(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Visualizador de Documento">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-[500px] w-full" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !doc) {
+    return (
+      <DashboardLayout title="Visualizador de Documento">
+        <Card>
+          <CardContent className="py-12 text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Documento não encontrado ou sem permissão de acesso.
+            </p>
+            <Link to="/documents">
+              <Button variant="outline" size="sm">Voltar à lista</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  const status = statusConfig[doc.status as string] || { label: doc.status, variant: "secondary" as const };
+  const isPdf = selectedFile?.mime_type?.includes("pdf");
+  const isImage = selectedFile?.mime_type?.startsWith("image/");
+
   return (
-    <DashboardLayout 
-      title="Visualizador de Documento" 
-      subtitle={documentData.id}
-    >
-      <PageBreadcrumb 
+    <DashboardLayout title="Visualizador de Documento" subtitle={doc.entry_number || doc.title}>
+      <PageBreadcrumb
         items={[
           { label: "Documentos", href: "/documents" },
-          { label: documentData.id, href: `/documents/${documentData.id}` },
-          { label: "Visualizar" }
-        ]} 
+          { label: doc.entry_number || "Documento", href: `/documents/${doc.id}` },
+          { label: "Visualizar" },
+        ]}
       />
 
       <div className={`grid grid-cols-1 ${isFullscreen ? "" : "lg:grid-cols-12"} gap-4`}>
-        
         {/* Left Panel - Metadata */}
         {!isFullscreen && (
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-3 space-y-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Metadados</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="space-y-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Título</span>
+                  </div>
+                  <p className="font-medium pl-5">{doc.title}</p>
+                </div>
+                <Separator />
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <FileType className="h-3.5 w-3.5" />
                     <span>Tipo</span>
                   </div>
-                  <p className="font-medium pl-5">{documentData.type}</p>
+                  <p className="font-medium pl-5">{(doc as any).document_type?.name || "-"}</p>
                 </div>
                 <Separator />
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <HardDrive className="h-3.5 w-3.5" />
-                    <span>Formato</span>
+                    <span>Ficheiro</span>
                   </div>
-                  <p className="font-medium pl-5">{documentData.format} • {documentData.size}</p>
+                  <p className="font-medium pl-5">
+                    {selectedFile
+                      ? `${selectedFile.mime_type?.split("/")[1]?.toUpperCase() || "FILE"} • ${formatFileSize(selectedFile.file_size)}`
+                      : "Sem ficheiro"}
+                  </p>
                 </div>
                 <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <FileText className="h-3.5 w-3.5" />
-                    <span>Páginas</span>
-                  </div>
-                  <p className="font-medium pl-5">{documentData.pages}</p>
-                </div>
-                <Separator />
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5" />
-                    <span>Origem</span>
+                    <span>Unidade actual</span>
                   </div>
-                  <p className="font-medium pl-5">{documentData.origin}</p>
+                  <p className="font-medium pl-5">{(doc as any).current_unit?.name || "-"}</p>
                 </div>
                 <Separator />
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Eye className="h-3.5 w-3.5" />
                     <span>Classificação</span>
                   </div>
-                  <Badge variant="success" className="ml-5">{documentData.classification}</Badge>
+                  <p className="font-medium pl-5">
+                    {(doc as any).classification
+                      ? `${(doc as any).classification.code} — ${(doc as any).classification.name}`
+                      : "Não classificado"}
+                  </p>
                 </div>
                 <Separator />
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <User className="h-3.5 w-3.5" />
-                    <span>Autor</span>
+                    <span>Responsável</span>
                   </div>
-                  <p className="font-medium pl-5">{documentData.author}</p>
+                  <p className="font-medium pl-5">{(doc as any).responsible_user?.full_name || "-"}</p>
                 </div>
                 <Separator />
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span>Data</span>
+                    <span>Entrada</span>
                   </div>
-                  <p className="font-medium pl-5">{documentData.created}</p>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Tag className="h-3.5 w-3.5" />
-                    <span>Tags</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 pl-5">
-                    {selectedTags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                    ))}
-                  </div>
+                  <p className="font-medium pl-5">
+                    {doc.entry_date ? format(new Date(doc.entry_date), "dd MMM yyyy", { locale: pt }) : "-"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
+
+            {files.length > 1 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Ficheiros ({files.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {files.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setSelectedFileId(f.id)}
+                      className={`w-full text-left text-xs px-2 py-2 rounded-md truncate transition-colors ${
+                        selectedFile?.id === f.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+                      }`}
+                    >
+                      {f.file_name}
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
-        {/* Center - PDF Viewer */}
-        <div className={`${isFullscreen ? "col-span-1" : "lg:col-span-7"} space-y-3`}>
-          {/* Viewer Toolbar */}
+        {/* Center - Viewer */}
+        <div className={`${isFullscreen ? "col-span-1" : "lg:col-span-6"} space-y-3`}>
           <Card>
             <CardContent className="p-3">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                {/* Zoom Controls */}
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    onClick={handleZoomOut}
-                    disabled={zoom <= 50}
-                    aria-label="Diminuir zoom"
-                  >
+                  <Button variant="outline" size="icon-sm" onClick={handleZoomOut} disabled={zoom <= 50} aria-label="Diminuir zoom">
                     <ZoomOut className="h-4 w-4" />
                   </Button>
                   <div className="flex items-center gap-2 min-w-[120px]">
@@ -240,113 +368,38 @@ const DocumentViewer = () => {
                     />
                     <span className="text-sm font-medium w-12">{zoom}%</span>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    onClick={handleZoomIn}
-                    disabled={zoom >= 200}
-                    aria-label="Aumentar zoom"
-                  >
+                  <Button variant="outline" size="icon-sm" onClick={handleZoomIn} disabled={zoom >= 200} aria-label="Aumentar zoom">
                     <ZoomIn className="h-4 w-4" />
                   </Button>
                 </div>
 
-                {/* Page Navigation */}
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    onClick={handlePrevPage}
-                    disabled={currentPage <= 1}
-                    aria-label="Página anterior"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    <Input 
-                      type="number" 
-                      value={currentPage}
-                      onChange={(e) => {
-                        const page = parseInt(e.target.value);
-                        if (page >= 1 && page <= documentData.pages) {
-                          setCurrentPage(page);
-                        }
-                      }}
-                      className="w-14 h-8 text-center"
-                      min={1}
-                      max={documentData.pages}
-                      aria-label="Número da página"
-                    />
-                    <span className="text-sm text-muted-foreground">/ {documentData.pages}</span>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    onClick={handleNextPage}
-                    disabled={currentPage >= documentData.pages}
-                    aria-label="Próxima página"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Rotation & View Controls */}
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    onClick={handleRotateLeft}
-                    aria-label="Girar para esquerda"
-                  >
+                  <Button variant="outline" size="icon-sm" onClick={handleRotateLeft} aria-label="Rodar para a esquerda">
                     <RotateCcw className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
-                    onClick={handleRotateRight}
-                    aria-label="Girar para direita"
-                  >
+                  <Button variant="outline" size="icon-sm" onClick={handleRotateRight} aria-label="Rodar para a direita">
                     <RotateCw className="h-4 w-4" />
                   </Button>
                   <Separator orientation="vertical" className="h-6" />
-                  <Button 
-                    variant="outline" 
-                    size="icon-sm" 
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
                     onClick={() => setIsFullscreen(!isFullscreen)}
-                    aria-label={isFullscreen ? "Sair do modo tela cheia" : "Modo tela cheia"}
+                    aria-label={isFullscreen ? "Sair do modo ecrã inteiro" : "Modo ecrã inteiro"}
                   >
                     {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                   </Button>
                 </div>
 
-                {/* Accessibility Controls */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Contraste:</span>
-                  <Button 
-                    variant={contrastMode === "normal" ? "default" : "outline"}
-                    size="icon-sm"
-                    onClick={() => setContrastMode("normal")}
-                    aria-label="Contraste normal"
-                    title="Normal"
-                  >
+                  <Button variant={contrastMode === "normal" ? "default" : "outline"} size="icon-sm" onClick={() => setContrastMode("normal")} aria-label="Contraste normal" title="Normal">
                     <Sun className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant={contrastMode === "high" ? "default" : "outline"}
-                    size="icon-sm"
-                    onClick={() => setContrastMode("high")}
-                    aria-label="Alto contraste"
-                    title="Alto Contraste"
-                  >
+                  <Button variant={contrastMode === "high" ? "default" : "outline"} size="icon-sm" onClick={() => setContrastMode("high")} aria-label="Alto contraste" title="Alto contraste">
                     <Contrast className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant={contrastMode === "inverted" ? "default" : "outline"}
-                    size="icon-sm"
-                    onClick={() => setContrastMode("inverted")}
-                    aria-label="Cores invertidas"
-                    title="Invertido"
-                  >
+                  <Button variant={contrastMode === "inverted" ? "default" : "outline"} size="icon-sm" onClick={() => setContrastMode("inverted")} aria-label="Cores invertidas" title="Invertido">
                     <Moon className="h-4 w-4" />
                   </Button>
                 </div>
@@ -354,55 +407,47 @@ const DocumentViewer = () => {
             </CardContent>
           </Card>
 
-          {/* PDF Preview Area */}
-          <Card className={`${isFullscreen ? "min-h-[calc(100vh-300px)]" : "min-h-[500px]"} overflow-hidden`}>
-            <CardContent className="p-0 h-full flex items-center justify-center bg-muted/30">
-              <div 
-                className={`transition-all duration-300 ${getContrastStyle()}`}
-                style={{ 
-                  transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                  transformOrigin: "center center"
-                }}
-              >
-                {/* Simulated PDF Page */}
-                <div className="w-[595px] bg-background shadow-lg border border-border p-12 space-y-6">
-                  {/* Header */}
-                  <div className="text-center space-y-2 border-b border-border pb-6">
-                    <div className="h-12 w-32 bg-muted rounded mx-auto" />
-                    <div className="h-4 w-48 bg-muted rounded mx-auto" />
-                  </div>
-                  
-                  {/* Title */}
-                  <div className="space-y-2">
-                    <div className="h-6 w-3/4 bg-muted/80 rounded" />
-                    <div className="h-4 w-1/2 bg-muted/60 rounded" />
-                  </div>
-
-                  {/* Content lines */}
-                  <div className="space-y-3">
-                    {[...Array(15)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`h-3 bg-muted/50 rounded ${i % 4 === 3 ? "w-3/4" : "w-full"}`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Signature area */}
-                  <div className="pt-8 flex justify-end">
-                    <div className="text-right space-y-2">
-                      <div className="h-16 w-32 border border-dashed border-muted-foreground/30 rounded" />
-                      <div className="h-3 w-28 bg-muted/60 rounded" />
-                      <div className="h-3 w-24 bg-muted/40 rounded" />
-                    </div>
-                  </div>
-
-                  {/* Page number */}
-                  <div className="text-center pt-4 text-sm text-muted-foreground">
-                    Página {currentPage} de {documentData.pages}
-                  </div>
+          <Card className={`${isFullscreen ? "min-h-[calc(100vh-300px)]" : "min-h-[500px]"} overflow-auto`}>
+            <CardContent className="p-0 h-full flex items-center justify-center bg-muted/30 min-h-[500px]">
+              {!selectedFile ? (
+                <div className="text-center space-y-2 py-16">
+                  <FileText className="h-10 w-10 mx-auto text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Este documento não tem ficheiro anexado.</p>
                 </div>
-              </div>
+              ) : previewLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : previewError ? (
+                <div className="text-center space-y-2 py-16">
+                  <AlertTriangle className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Não foi possível carregar o ficheiro.</p>
+                </div>
+              ) : (
+                <div
+                  className={`w-full h-full transition-all duration-300 ${getContrastStyle()}`}
+                  style={{ transform: `scale(${zoom / 100}) rotate(${rotation}deg)`, transformOrigin: "center center" }}
+                >
+                  {isPdf && previewUrl ? (
+                    <iframe
+                      src={previewUrl}
+                      title={selectedFile.file_name}
+                      className="w-full h-[70vh] min-h-[500px] border-0 bg-background"
+                    />
+                  ) : isImage && previewUrl ? (
+                    <img src={previewUrl} alt={selectedFile.file_name} className="mx-auto max-h-[70vh] object-contain" />
+                  ) : (
+                    <div className="text-center space-y-3 py-16">
+                      <FileText className="h-10 w-10 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Pré-visualização não disponível para {selectedFile.mime_type || "este formato"}.
+                      </p>
+                      <Button variant="outline" size="sm" onClick={handleDownload}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Descarregar ficheiro
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -410,117 +455,56 @@ const DocumentViewer = () => {
         {/* Right Panel - Actions */}
         {!isFullscreen && (
           <div className="lg:col-span-3 space-y-4">
-            {/* Primary Actions */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Ações</CardTitle>
+                <CardTitle className="text-sm">Acções</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full justify-start" variant="default">
-                  <Download className="h-4 w-4 mr-3" />
-                  Download
+                <Button className="w-full justify-start" variant="default" onClick={handleDownload} disabled={!selectedFile || downloadFile.isPending}>
+                  {downloadFile.isPending ? <Loader2 className="h-4 w-4 mr-3 animate-spin" /> : <Download className="h-4 w-4 mr-3" />}
+                  Descarregar
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handlePrint} disabled={!previewUrl}>
                   <Printer className="h-4 w-4 mr-3" />
                   Imprimir
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handleCopyLink}>
                   <Copy className="h-4 w-4 mr-3" />
-                  Copiar Link
-                </Button>
-                <Separator className="my-3" />
-                <Button className="w-full justify-start" variant="outline">
-                  <Share2 className="h-4 w-4 mr-3" />
-                  Compartilhar Interno
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <FolderPlus className="h-4 w-4 mr-3" />
-                  Adicionar a Processo
-                </Button>
-                <Separator className="my-3" />
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => setShowTagModal(!showTagModal)}
-                >
-                  <Tag className="h-4 w-4 mr-3" />
-                  Adicionar Tag
+                  Copiar Ligação
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Tag Modal */}
-            {showTagModal && (
-              <Card className="border-primary">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Gerenciar Tags</CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="icon-sm"
-                      onClick={() => setShowTagModal(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {availableTags.map(tag => (
-                      <Badge
-                        key={tag}
-                        variant={selectedTags.includes(tag) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {selectedTags.includes(tag) && <Check className="h-3 w-3 mr-1" />}
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="Nova tag..." className="h-8 text-sm" />
-                    <Button size="sm" variant="outline">
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <Button size="sm" className="w-full" onClick={() => setShowTagModal(false)}>
-                    Salvar Tags
-                  </Button>
-                </CardContent>
-              </Card>
+            <ClassificationPanel
+              documentId={doc.id}
+              currentClassification={(doc as any).classification?.code}
+              compact={true}
+              onClassificationSaved={handleClassificationSaved}
+            />
+            {savingClassification && (
+              <p className="text-xs text-muted-foreground">A guardar classificação...</p>
             )}
 
-            {/* Classification Panel */}
-            <ClassificationPanel 
-              documentId={documentData.id}
-              currentClassification="500.10.01"
-              compact={true}
-              onClassificationSaved={(code) => console.log("Classification saved:", code)}
-            />
-
-            {/* Document Status */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Estado do Documento</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <Badge variant="warning">{documentData.status}</Badge>
+                  <Badge variant={status.variant}>{status.label}</Badge>
                   <span className="text-xs text-muted-foreground">
-                    Atualizado: {documentData.modified}
+                    {doc.updated_at ? format(new Date(doc.updated_at), "dd MMM yyyy", { locale: pt }) : ""}
                   </span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Quick Links */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Links Rápidos</CardTitle>
+                <CardTitle className="text-sm">Ligações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Link to={`/documents/${documentData.id}`}>
+                <Link to={`/documents/${doc.id}`}>
                   <Button variant="ghost" size="sm" className="w-full justify-start">
                     <FileText className="h-4 w-4 mr-2" />
                     Ver Detalhes
@@ -529,7 +513,7 @@ const DocumentViewer = () => {
                 <Link to="/documents">
                   <Button variant="ghost" size="sm" className="w-full justify-start">
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Voltar para Lista
+                    Voltar à Lista
                   </Button>
                 </Link>
               </CardContent>
@@ -538,97 +522,101 @@ const DocumentViewer = () => {
         )}
       </div>
 
-      {/* Bottom Panel - Version History & Audit Log */}
+      {/* Bottom Panel - Files & Movements */}
       <div className="mt-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setShowBottomPanel(!showBottomPanel)}
-          className="mb-2"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setShowBottomPanel(!showBottomPanel)} className="mb-2">
           {showBottomPanel ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronUp className="h-4 w-4 mr-2" />}
           {showBottomPanel ? "Ocultar" : "Mostrar"} Histórico
         </Button>
 
         {showBottomPanel && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Version History */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <History className="h-4 w-4" />
-                  Histórico de Versões
+                  Ficheiros do Documento
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {versions.map((version, index) => (
-                    <div 
-                      key={index}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        version.current ? "border-primary bg-primary-muted" : "border-border"
-                      }`}
-                    >
-                      <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                        version.current ? "bg-primary text-primary-foreground" : "bg-muted"
-                      }`}>
-                        {version.version}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{version.action}</span>
-                          {version.current && <Badge variant="info" className="text-xs">Atual</Badge>}
+                {files.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Sem ficheiros anexados.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {files.map((f) => (
+                      <div
+                        key={f.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${
+                          selectedFile?.id === f.id ? "border-primary bg-primary-muted" : "border-border"
+                        }`}
+                      >
+                        <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{f.file_name}</span>
+                            {f.is_main_file && <Badge variant="info" className="text-xs">Principal</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatFileSize(f.file_size)} • {format(new Date(f.created_at), "dd MMM yyyy, HH:mm", { locale: pt })}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {version.author} • {version.date}
-                        </p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedFileId(f.id)}>
+                            <Eye className="h-3 w-3 mr-1" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => downloadFile.mutate({ filePath: f.file_path, fileName: f.file_name })}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button variant="ghost" size="sm" className="shrink-0">
-                        <Eye className="h-3 w-3 mr-1" />
-                        Ver
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Audit Log */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    Registro de Auditoria
+                    Histórico de Movimentos
                   </CardTitle>
                   <Link to="/audit-logs">
                     <Button variant="link" size="sm" className="text-xs h-auto p-0">
-                      Ver completo
+                      Ver auditoria
                     </Button>
                   </Link>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {auditLog.map((entry, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                        <div>
-                          <p className="text-sm font-medium">{entry.action}</p>
-                          <p className="text-xs text-muted-foreground">{entry.user}</p>
+                {movements.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Sem movimentos registados.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {movements.slice(0, 10).map((m) => (
+                      <div key={m.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium capitalize truncate">{m.action_type}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {m.from_unit?.name || "-"} → {m.to_unit?.name || "-"}
+                            </p>
+                          </div>
                         </div>
+                        <p className="text-xs text-muted-foreground shrink-0">
+                          {format(new Date(m.created_at), "dd MMM yyyy, HH:mm", { locale: pt })}
+                        </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">{entry.date}</p>
-                        <p className="text-xs font-mono text-muted-foreground">{entry.ip}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

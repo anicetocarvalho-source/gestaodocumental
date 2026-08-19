@@ -47,6 +47,7 @@ import {
   Process
 } from "@/hooks/useProcesses";
 import { useOrganizationalUnits } from "@/hooks/useReferenceData";
+import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -113,6 +114,38 @@ const Processes = () => {
       return <span className="text-warning font-medium">{days} dias</span>;
     }
     return <span className="text-muted-foreground">{days} dias</span>;
+  };
+
+  const handleExportCSV = () => {
+    const rows = processes || [];
+    if (rows.length === 0) {
+      toast.error("Não há processos para exportar");
+      return;
+    }
+
+    const headers = ["Nº Processo", "Assunto", "Tipo", "Estado", "Prioridade", "Unidade", "Data Abertura", "Prazo"];
+    const body = rows.map((p: any) => [
+      p.process_number || "",
+      p.subject || p.title || "",
+      p.process_type?.name || "",
+      p.status || "",
+      p.priority || "",
+      p.current_unit?.name || "",
+      p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "",
+      p.deadline ? format(new Date(p.deadline), "dd/MM/yyyy") : "",
+    ]);
+
+    const csv = [headers, ...body]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `processos_${format(new Date(), "yyyy-MM-dd_HHmm")}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast.success(`${rows.length} processos exportados`);
   };
 
   const clearFilters = () => {
@@ -258,7 +291,7 @@ const Processes = () => {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleExportCSV}>
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>

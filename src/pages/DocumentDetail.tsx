@@ -11,7 +11,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDocument } from "@/hooks/useDocuments";
 import { useCreateComment } from "@/hooks/useDocumentActions";
-import { useDownloadFile, useUploadDocumentFile } from "@/hooks/useFileUpload";
+import { useDownloadFile, useUploadDocumentFile, useDeleteDocumentFile, useGetFileUrl } from "@/hooks/useFileUpload";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   documentStatusLabels, 
   documentStatusVariants, 
@@ -77,6 +87,7 @@ const DocumentDetail = () => {
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isLockedByOther, setIsLockedByOther] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; file_path: string; file_name: string } | null>(null);
   
   const { canDo } = usePermissions();
   
@@ -85,6 +96,34 @@ const DocumentDetail = () => {
   const createComment = useCreateComment();
   const downloadFile = useDownloadFile();
   const uploadFile = useUploadDocumentFile();
+  const deleteFile = useDeleteDocumentFile();
+  const getFileUrl = useGetFileUrl();
+
+  const handlePreviewFile = async (filePath: string) => {
+    try {
+      const url = await getFileUrl(filePath);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      toast.error("Não foi possível abrir o ficheiro");
+    }
+  };
+
+  const handleConfirmDeleteFile = async () => {
+    if (!fileToDelete || !document) return;
+    try {
+      await deleteFile.mutateAsync({
+        fileId: fileToDelete.id,
+        filePath: fileToDelete.file_path,
+        documentId: document.id,
+      });
+      toast.success("Ficheiro removido");
+      refetch();
+    } catch (e) {
+      toast.error("Erro ao remover ficheiro");
+    } finally {
+      setFileToDelete(null);
+    }
+  };
 
   const getStageIcon = (status: string) => {
     switch (status) {
@@ -495,7 +534,7 @@ const DocumentDetail = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon-sm" aria-label="Visualizar">
+                        <Button variant="ghost" size="icon-sm" aria-label="Visualizar" onClick={() => handlePreviewFile(attachment.file_path)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -507,7 +546,12 @@ const DocumentDetail = () => {
                           <Download className="h-4 w-4" />
                         </Button>
                         <ProtectedContent permission={{ module: "documents", action: "edit" }} showDisabled disabledTooltip="Requer permissão de edição para remover anexos">
-                          <Button variant="ghost" size="icon-sm" aria-label="Remover">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Remover"
+                            onClick={() => setFileToDelete({ id: attachment.id, file_path: attachment.file_path, file_name: attachment.file_name })}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </ProtectedContent>
@@ -958,6 +1002,24 @@ const DocumentDetail = () => {
           toast.success(`Processo ${processNumber} criado`);
         }}
       />
+
+      {/* Confirmar remoção de anexo */}
+      <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover ficheiro</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que pretende remover &quot;{fileToDelete?.file_name}&quot;? Esta acção é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteFile.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteFile} disabled={deleteFile.isPending}>
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
