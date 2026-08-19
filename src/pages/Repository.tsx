@@ -559,6 +559,14 @@ export default function Repository() {
           </div>
         )}
       </div>
+
+      <BulkClassifyDialog
+        open={bulkDialog !== null}
+        onOpenChange={(open) => !open && setBulkDialog(null)}
+        documentIds={Array.from(selectedItems)}
+        mode={bulkDialog === "move" ? "move" : "classify"}
+        onDone={() => setSelectedItems(new Set())}
+      />
     </DashboardLayout>
   );
 }
