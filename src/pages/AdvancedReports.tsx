@@ -125,7 +125,17 @@ const LocationReport = () => {
             <ExportButtons build={build} disabled={!filtered.length} />
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="space-y-4">
+          <SavedFiltersBar
+            reportKey="localizacao"
+            current={{ search, locationId, status }}
+            onApply={(v) => {
+              setSearch(String(v.search ?? ""));
+              setLocationId(String(v.locationId ?? ALL));
+              setStatus(String(v.status ?? ALL));
+            }}
+          />
+          <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="loc-search">Pesquisa</Label>
             <div className="relative">
@@ -158,6 +168,7 @@ const LocationReport = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
           </div>
         </CardContent>
       </Card>
@@ -296,7 +307,16 @@ const LoansReport = () => {
             <ExportButtons build={build} disabled={!filtered.length} />
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
+        <CardContent className="space-y-4">
+          <SavedFiltersBar
+            reportKey="emprestimos"
+            current={{ search, scope }}
+            onApply={(v) => {
+              setSearch(String(v.search ?? ""));
+              setScope((v.scope as typeof scope) ?? "todos");
+            }}
+          />
+          <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="loan-search">Pesquisa</Label>
             <div className="relative">
@@ -314,6 +334,7 @@ const LoansReport = () => {
                 <SelectItem value="a_vencer">Apenas dentro do prazo</SelectItem>
               </SelectContent>
             </Select>
+          </div>
           </div>
         </CardContent>
       </Card>
@@ -431,7 +452,20 @@ const HistoryReport = () => {
             <ExportButtons build={build} disabled={!filtered.length} />
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="space-y-4">
+          <SavedFiltersBar
+            reportKey="historico"
+            current={{ dateFrom, dateTo, movementType, locationId, scannedOnly, search }}
+            onApply={(v) => {
+              if (v.dateFrom) setDateFrom(String(v.dateFrom));
+              if (v.dateTo) setDateTo(String(v.dateTo));
+              setMovementType(String(v.movementType ?? ALL));
+              setLocationId(String(v.locationId ?? ALL));
+              setScannedOnly(Boolean(v.scannedOnly));
+              setSearch(String(v.search ?? ""));
+            }}
+          />
+          <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="hist-from">Data inicial</Label>
             <Input id="hist-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
@@ -480,6 +514,7 @@ const HistoryReport = () => {
             >
               {scannedOnly ? "A mostrar apenas QR lido" : "Apenas movimentos com QR"}
             </Button>
+          </div>
           </div>
         </CardContent>
       </Card>
