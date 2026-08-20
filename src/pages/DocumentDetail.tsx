@@ -71,6 +71,7 @@ import { DocumentSignatureModal, SignatureData } from "@/components/documents/Do
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
 import { LinkedEntitiesPanel } from "@/components/documents/LinkedEntitiesPanel";
+import { DocumentApprovalPanel } from "@/components/documents/DocumentApprovalPanel";
 import { DocumentCheckoutBanner } from "@/components/documents/DocumentCheckoutBanner";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -881,6 +882,12 @@ const DocumentDetail = () => {
               </ProtectedContent>
             </CardContent>
           </Card>
+
+          {/* Fluxo de aprovação */}
+          <DocumentApprovalPanel
+            documentId={document.id}
+            workflowStatus={(document as { approval_workflow_status?: string }).approval_workflow_status}
+          />
 
           {/* Linked Entities (Processes & Dispatches) */}
           <LinkedEntitiesPanel documentId={document.id} />

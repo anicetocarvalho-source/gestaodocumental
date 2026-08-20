@@ -27,12 +27,15 @@ import {
 import { dispatchTypeLabels } from "@/hooks/useDispatches";
 import { DispatchApprovalModal } from "@/components/dispatches/DispatchApprovalModal";
 import { Database } from "@/integrations/supabase/types";
+import { useMyPendingDocumentApprovals } from "@/hooks/useDocumentApprovals";
+import { FileText } from "lucide-react";
 
 type DispatchType = Database["public"]["Enums"]["dispatch_type"];
 
 const PendingApprovals = () => {
   const navigate = useNavigate();
   const { data: pendingApprovals, isLoading, error } = useMyPendingApprovals();
+  const { data: pendingDocuments = [], isLoading: loadingDocuments } = useMyPendingDocumentApprovals();
   const processApproval = useProcessApproval();
   
   const [selectedApproval, setSelectedApproval] = useState<{
@@ -232,6 +235,59 @@ const PendingApprovals = () => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Documentos para aprovar */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Documentos para Aprovar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingDocuments ? (
+              <Skeleton className="h-20 w-full" />
+            ) : pendingDocuments.length === 0 ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="mx-auto mb-3 h-10 w-10 text-success" />
+                <p className="text-sm text-muted-foreground">
+                  Não existem documentos aguardando a sua aprovação.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingDocuments.map((approval) => (
+                  <div
+                    key={approval.id}
+                    className="flex flex-col gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50 md:flex-row md:items-center"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="font-mono text-sm font-medium text-primary">
+                          {approval.document?.entry_number}
+                        </span>
+                        <Badge variant="outline">Passo {approval.approval_order}</Badge>
+                      </div>
+                      <p className="truncate text-sm">{approval.document?.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Solicitado em {format(new Date(approval.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: pt })}
+                      </p>
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => navigate(`/documents/${approval.document_id}`)}
+                    >
+                      <Eye className="mr-1 h-4 w-4" />
+                      Rever e decidir
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
