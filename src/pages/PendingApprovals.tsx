@@ -35,6 +35,7 @@ type DispatchType = Database["public"]["Enums"]["dispatch_type"];
 const PendingApprovals = () => {
   const navigate = useNavigate();
   const { data: pendingApprovals, isLoading, error } = useMyPendingApprovals();
+  const { data: pendingDocuments = [], isLoading: loadingDocuments } = useMyPendingDocumentApprovals();
   const processApproval = useProcessApproval();
   
   const [selectedApproval, setSelectedApproval] = useState<{
