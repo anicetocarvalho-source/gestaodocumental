@@ -47,6 +47,7 @@ import {
   useStorageLocations,
 } from "@/hooks/usePhysicalArchive";
 import { exportReportCsv, exportReportPdf, type ReportExportOptions } from "@/lib/reportExport";
+import { SavedFiltersBar } from "@/components/reports/SavedFiltersBar";
 
 const ALL = "__all__";
 
