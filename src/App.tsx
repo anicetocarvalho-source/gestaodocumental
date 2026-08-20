@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Repository from "./pages/Repository";
 import DigitizationCenter from "./pages/DigitizationCenter";
+import ElectronicArchive from "./pages/ElectronicArchive";
 import QualityReview from "./pages/QualityReview";
 import CreateDispatch from "./pages/CreateDispatch";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
