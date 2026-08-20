@@ -52,6 +52,7 @@
     "driver.js": "^1.4.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.24.5",
+    "html5-qrcode": "^2.3.8",
     "input-otp": "^1.4.2",
     "jsdom": "^20.0.3",
     "jspdf": "^4.0.0",
