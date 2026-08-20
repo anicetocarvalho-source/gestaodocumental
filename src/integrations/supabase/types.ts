@@ -797,6 +797,70 @@ export type Database = {
           },
         ]
       }
+      document_approvals: {
+        Row: {
+          approval_order: number
+          approver_id: string
+          comments: string | null
+          created_at: string
+          decided_at: string | null
+          document_id: string
+          id: string
+          organization_id: string | null
+          requested_by: string | null
+          status: Database["public"]["Enums"]["approval_status"]
+          updated_at: string
+        }
+        Insert: {
+          approval_order?: number
+          approver_id: string
+          comments?: string | null
+          created_at?: string
+          decided_at?: string | null
+          document_id: string
+          id?: string
+          organization_id?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+        }
+        Update: {
+          approval_order?: number
+          approver_id?: string
+          comments?: string | null
+          created_at?: string
+          decided_at?: string | null
+          document_id?: string
+          id?: string
+          organization_id?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_approvals_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_audit_log: {
         Row: {
           action: string
@@ -1442,11 +1506,13 @@ export type Database = {
       }
       documents: {
         Row: {
+          approval_workflow_status: string
           archived_at: string | null
           classification_id: string | null
           confidentiality: string
           created_at: string
           created_by: string | null
+          current_approval_step: number
           current_unit_id: string | null
           description: string | null
           document_type_id: string | null
@@ -1469,11 +1535,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_workflow_status?: string
           archived_at?: string | null
           classification_id?: string | null
           confidentiality?: string
           created_at?: string
           created_by?: string | null
+          current_approval_step?: number
           current_unit_id?: string | null
           description?: string | null
           document_type_id?: string | null
@@ -1496,11 +1564,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_workflow_status?: string
           archived_at?: string | null
           classification_id?: string | null
           confidentiality?: string
           created_at?: string
           created_by?: string | null
+          current_approval_step?: number
           current_unit_id?: string | null
           description?: string | null
           document_type_id?: string | null
