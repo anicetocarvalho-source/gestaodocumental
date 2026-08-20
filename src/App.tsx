@@ -110,6 +110,7 @@ const App = () => (
               <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
               <Route path="/folders" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
               <Route path="/digitization" element={<ProtectedRoute><DigitizationCenter /></ProtectedRoute>} />
+              <Route path="/ged" element={<ProtectedRoute><ElectronicArchive /></ProtectedRoute>} />
               <Route path="/quality-review" element={<ProtectedRoute><QualityReview /></ProtectedRoute>} />
               <Route path="/ocr-processing" element={<ProtectedRoute><OCRProcessing /></ProtectedRoute>} />
               <Route path="/classification" element={<ProtectedRoute><DocumentClassification /></ProtectedRoute>} />
