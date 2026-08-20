@@ -21,6 +21,7 @@ import UserManagement from "./pages/UserManagement";
 import Permissions from "./pages/Permissions";
 import PermissionsMatrix from "./pages/PermissionsMatrix";
 import AuditLogs from "./pages/AuditLogs";
+import Traceability from "./pages/Traceability";
 import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Repository from "./pages/Repository";
@@ -106,6 +107,7 @@ const App = () => (
               <Route path="/permissions" element={<ProtectedRoute><Permissions /></ProtectedRoute>} />
               <Route path="/permissions-matrix" element={<ProtectedRoute><PermissionsMatrix /></ProtectedRoute>} />
               <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+              <Route path="/traceability" element={<ProtectedRoute><Traceability /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
               <Route path="/folders" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
