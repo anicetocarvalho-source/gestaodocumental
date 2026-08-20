@@ -127,6 +127,12 @@ const App = () => (
               <Route path="/physical-seals" element={<ProtectedRoute><PhysicalSealsList /></ProtectedRoute>} />
               <Route path="/physical-seals/new" element={<ProtectedRoute><PhysicalSealRegister /></ProtectedRoute>} />
               <Route path="/physical-seals/:id" element={<ProtectedRoute><PhysicalSealDetail /></ProtectedRoute>} />
+              <Route path="/archive/locations" element={<ProtectedRoute><ArchiveLocations /></ProtectedRoute>} />
+              <Route path="/archive/tracking" element={<ProtectedRoute><PhysicalTracking /></ProtectedRoute>} />
+              <Route path="/archive/loans" element={<ProtectedRoute><DocumentLoans /></ProtectedRoute>} />
+              <Route path="/archive/history" element={<ProtectedRoute><PhysicalArchiveHistory /></ProtectedRoute>} />
+              <Route path="/archive/reports" element={<ProtectedRoute><PhysicalArchiveReports /></ProtectedRoute>} />
+              <Route path="/integrations" element={<ProtectedRoute><ApiIntegrations /></ProtectedRoute>} />
               <Route path="/super-admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/placeholder" element={<ProtectedRoute><PlaceholderPage title="Módulo em Desenvolvimento" subtitle="Esta funcionalidade será implementada em breve" /></ProtectedRoute>} />
               
