@@ -882,6 +882,12 @@ const DocumentDetail = () => {
             </CardContent>
           </Card>
 
+          {/* Fluxo de aprovação */}
+          <DocumentApprovalPanel
+            documentId={document.id}
+            workflowStatus={(document as { approval_workflow_status?: string }).approval_workflow_status}
+          />
+
           {/* Linked Entities (Processes & Dispatches) */}
           <LinkedEntitiesPanel documentId={document.id} />
 
