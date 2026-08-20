@@ -71,6 +71,7 @@ import { DocumentSignatureModal, SignatureData } from "@/components/documents/Do
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
 import { LinkedEntitiesPanel } from "@/components/documents/LinkedEntitiesPanel";
+import { DocumentApprovalPanel } from "@/components/documents/DocumentApprovalPanel";
 import { DocumentCheckoutBanner } from "@/components/documents/DocumentCheckoutBanner";
 import { ProtectedContent } from "@/components/common/ProtectedContent";
 import { usePermissions } from "@/hooks/usePermissions";
