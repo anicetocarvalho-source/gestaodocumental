@@ -68,6 +68,8 @@ import {
 import { ClassificationPanel } from "@/components/documents/ClassificationPanel";
 import { DocumentVersionHistory } from "@/components/documents/DocumentVersionHistory";
 import { DocumentSignatureModal, SignatureData } from "@/components/documents/DocumentSignatureModal";
+import { DocumentSignaturePanel } from "@/components/documents/DocumentSignaturePanel";
+import { useSignDocument } from "@/hooks/useDocumentSignatures";
 import { DocumentWorkflowDrawer, type DocumentAction } from "@/components/documents/DocumentWorkflowDrawer";
 import { CreateProcessFromDocumentModal } from "@/components/documents/CreateProcessFromDocumentModal";
 import { LinkedEntitiesPanel } from "@/components/documents/LinkedEntitiesPanel";
@@ -80,6 +82,7 @@ const DocumentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const signDocument = useSignDocument();
   const [documentSigned, setDocumentSigned] = useState(false);
   const [actionDrawerOpen, setActionDrawerOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<DocumentAction | null>(null);
@@ -137,10 +140,15 @@ const DocumentDetail = () => {
     }
   };
 
-  const handleSignDocument = (signatureData: SignatureData) => {
-    console.log("Documento assinado:", signatureData);
+  const handleSignDocument = async (signatureData: SignatureData) => {
+    if (!document?.id) return;
+    await signDocument.mutateAsync({
+      documentId: document.id,
+      signatureImage: signatureData.signatureImage,
+      signerName: signatureData.signerName,
+      signerRole: signatureData.signerRole,
+    });
     setDocumentSigned(true);
-    toast.success("Documento assinado com sucesso");
   };
 
   const openActionDrawer = (action: DocumentAction) => {
@@ -719,43 +727,8 @@ const DocumentDetail = () => {
             </CardContent>
           </Card>
 
-          {/* Section 6: Signatures */}
-          {signatures.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileSignature className="h-4 w-4" />
-                  Assinaturas
-                  <Badge variant="secondary" className="ml-2">{signatures.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {signatures.map((sig) => (
-                    <div 
-                      key={sig.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${sig.is_valid ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                          {sig.is_valid ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{sig.signer?.full_name || "Signatário"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sig.signature_type} • {format(new Date(sig.signed_at), "d MMM yyyy, HH:mm", { locale: pt })}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={sig.is_valid ? "success" : "error"}>
-                        {sig.is_valid ? "Válida" : "Inválida"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Section 6: Electronic Signatures */}
+          <DocumentSignaturePanel documentId={document.id} documentTitle={document.title} />
 
           {/* Section 7: Version History */}
           <DocumentVersionHistory documentId={document.id} />
