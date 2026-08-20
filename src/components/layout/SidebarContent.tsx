@@ -69,6 +69,7 @@ const documentItems: NavItem[] = [
 
 const digitizationItems: NavItem[] = [
   { name: "Digitalização", href: "/digitization", icon: ScanLine, roles: ["admin", "gestor", "tecnico"] },
+  { name: "Arquivo Electrónico", href: "/ged", icon: FileSearch, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "OCR", href: "/ocr-processing", icon: FileSearch, roles: ["admin", "gestor", "tecnico"] },
   { name: "Classificação", href: "/classification", icon: Tags, roles: ["admin", "gestor", "tecnico"] },
   { name: "Revisão", href: "/quality-review", icon: FileCheck, roles: ["admin", "gestor"] },

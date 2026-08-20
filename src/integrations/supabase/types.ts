@@ -2911,13 +2911,20 @@ export type Database = {
       }
       scanned_documents: {
         Row: {
+          barcode: string | null
           batch_id: string
+          classification_id: string | null
           created_at: string
           detected_language: string | null
+          document_date: string | null
           document_number: string
           file_path: string | null
           file_size: number | null
           id: string
+          index_fields: Json
+          indexed_at: string | null
+          indexed_by: string | null
+          keywords: string[]
           metadata: Json | null
           mime_type: string | null
           ocr_confidence: number | null
@@ -2925,23 +2932,33 @@ export type Database = {
           operator_id: string | null
           page_count: number
           priority: string
+          qr_code: string | null
           quality_flags: Json | null
           quality_score: number | null
+          reference_number: string | null
           rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          sender: string | null
           status: string
           title: string | null
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           batch_id: string
+          classification_id?: string | null
           created_at?: string
           detected_language?: string | null
+          document_date?: string | null
           document_number: string
           file_path?: string | null
           file_size?: number | null
           id?: string
+          index_fields?: Json
+          indexed_at?: string | null
+          indexed_by?: string | null
+          keywords?: string[]
           metadata?: Json | null
           mime_type?: string | null
           ocr_confidence?: number | null
@@ -2949,23 +2966,33 @@ export type Database = {
           operator_id?: string | null
           page_count?: number
           priority?: string
+          qr_code?: string | null
           quality_flags?: Json | null
           quality_score?: number | null
+          reference_number?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sender?: string | null
           status?: string
           title?: string | null
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           batch_id?: string
+          classification_id?: string | null
           created_at?: string
           detected_language?: string | null
+          document_date?: string | null
           document_number?: string
           file_path?: string | null
           file_size?: number | null
           id?: string
+          index_fields?: Json
+          indexed_at?: string | null
+          indexed_by?: string | null
+          keywords?: string[]
           metadata?: Json | null
           mime_type?: string | null
           ocr_confidence?: number | null
@@ -2973,11 +3000,14 @@ export type Database = {
           operator_id?: string | null
           page_count?: number
           priority?: string
+          qr_code?: string | null
           quality_flags?: Json | null
           quality_score?: number | null
+          reference_number?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sender?: string | null
           status?: string
           title?: string | null
           updated_at?: string
@@ -2988,6 +3018,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "digitization_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scanned_documents_classification_id_fkey"
+            columns: ["classification_id"]
+            isOneToOne: false
+            referencedRelation: "classification_codes"
             referencedColumns: ["id"]
           },
           {

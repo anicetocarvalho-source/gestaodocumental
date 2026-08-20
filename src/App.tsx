@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Repository from "./pages/Repository";
 import DigitizationCenter from "./pages/DigitizationCenter";
+import ElectronicArchive from "./pages/ElectronicArchive";
 import QualityReview from "./pages/QualityReview";
 import CreateDispatch from "./pages/CreateDispatch";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
@@ -109,6 +110,7 @@ const App = () => (
               <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
               <Route path="/folders" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
               <Route path="/digitization" element={<ProtectedRoute><DigitizationCenter /></ProtectedRoute>} />
+              <Route path="/ged" element={<ProtectedRoute><ElectronicArchive /></ProtectedRoute>} />
               <Route path="/quality-review" element={<ProtectedRoute><QualityReview /></ProtectedRoute>} />
               <Route path="/ocr-processing" element={<ProtectedRoute><OCRProcessing /></ProtectedRoute>} />
               <Route path="/classification" element={<ProtectedRoute><DocumentClassification /></ProtectedRoute>} />
