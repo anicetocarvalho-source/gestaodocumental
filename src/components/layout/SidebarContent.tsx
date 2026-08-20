@@ -31,6 +31,10 @@ import {
   History,
   BookOpen,
   Stamp,
+  Boxes,
+  QrCode,
+  BookMarked,
+  Plug,
   LucideIcon,
   LogOut,
   UserCircle,
@@ -73,6 +77,11 @@ const digitizationItems: NavItem[] = [
 const archiveItems: NavItem[] = [
   { name: "Pastas", href: "/folders", icon: FolderOpen, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Arquivo", href: "/archive", icon: Archive, roles: ["admin", "gestor", "tecnico", "consulta"] },
+  { name: "Localizações", href: "/archive/locations", icon: Boxes, roles: ["admin", "gestor", "tecnico"] },
+  { name: "Rastreio QR", href: "/archive/tracking", icon: QrCode, roles: ["admin", "gestor", "tecnico"] },
+  { name: "Empréstimos", href: "/archive/loans", icon: BookMarked, roles: ["admin", "gestor", "tecnico", "consulta"] },
+  { name: "Histórico Físico", href: "/archive/history", icon: History, roles: ["admin", "gestor", "tecnico", "consulta"] },
+  { name: "Relatórios Arquivo", href: "/archive/reports", icon: BarChart3, roles: ["admin", "gestor"] },
 ];
 
 const toolsItems: NavItem[] = [
@@ -88,6 +97,7 @@ const managementItems: NavItem[] = [
   { name: "Notificações", href: "/notifications", icon: Bell, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Fluxos", href: "/workflow-builder", icon: GitBranch, roles: ["admin"] },
   { name: "Modelos", href: "/process-templates", icon: Layers, roles: ["admin", "gestor"] },
+  { name: "Integrações", href: "/integrations", icon: Plug, roles: ["admin"] },
   { name: "Super-Admin", href: "/super-admin", icon: Shield, roles: ["admin"] },
   { name: "Definições", href: "/settings", icon: Settings, roles: ["admin"] },
 ];

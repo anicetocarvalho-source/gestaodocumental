@@ -58,6 +58,14 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/physical-seals/new": ["admin", "gestor", "tecnico"],
   "/processes/new": ["admin", "gestor", "tecnico"],
   "/dispatches/new": ["admin", "gestor", "tecnico"],
+
+  // Arquivo físico e integrações
+  "/archive/locations": ["admin", "gestor", "tecnico"],
+  "/archive/tracking": ["admin", "gestor", "tecnico"],
+  "/archive/loans": ["admin", "gestor", "tecnico", "consulta"],
+  "/archive/history": ["admin", "gestor", "tecnico", "consulta"],
+  "/archive/reports": ["admin", "gestor"],
+  "/integrations": ["admin"],
 };
 
 // Permissões de acção dentro das páginas
