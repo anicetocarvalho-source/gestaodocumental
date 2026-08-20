@@ -93,6 +93,7 @@ const toolsItems: NavItem[] = [
 
 const managementItems: NavItem[] = [
   { name: "Utilizadores", href: "/users", icon: Users, roles: ["admin"] },
+  { name: "Rastreabilidade", href: "/traceability", icon: History, roles: ["admin", "gestor"] },
   { name: "Permissões", href: "/permissions", icon: Shield, roles: ["admin"] },
   { name: "Matriz Permissões", href: "/permissions-matrix", icon: Shield, roles: ["admin"] },
   { name: "Notificações", href: "/notifications", icon: Bell, roles: ["admin", "gestor", "tecnico", "consulta"] },
