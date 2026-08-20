@@ -106,16 +106,13 @@ export default function ElectronicArchive() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout
+      title="Arquivo Electrónico (GED)"
+      subtitle="Indexação e pesquisa de documentos digitalizados"
+    >
       <div className="space-y-6">
         <PageBreadcrumb items={[{ label: "Digitalização", href: "/digitization" }, { label: "Arquivo Electrónico (GED)" }]} />
 
-        <div>
-          <h1 className="text-2xl font-semibold">Arquivo Electrónico (GED)</h1>
-          <p className="text-muted-foreground text-sm">
-            Indexe os documentos digitalizados e pesquise por código de barras, QR, metadados ou texto OCR.
-          </p>
-        </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
