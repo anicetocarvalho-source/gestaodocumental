@@ -1358,39 +1358,73 @@ export type Database = {
       }
       document_signatures: {
         Row: {
+          approval_id: string | null
           device_info: string | null
+          document_hash: string | null
           document_id: string
           id: string
           ip_address: string | null
           is_valid: boolean
+          organization_id: string | null
+          previous_hash: string | null
+          reason: string | null
+          sequence_order: number
           signature_data: string | null
+          signature_hash: string | null
           signature_type: string
           signed_at: string
           signer_id: string
+          signer_name: string | null
+          signer_role: string | null
         }
         Insert: {
+          approval_id?: string | null
           device_info?: string | null
+          document_hash?: string | null
           document_id: string
           id?: string
           ip_address?: string | null
           is_valid?: boolean
+          organization_id?: string | null
+          previous_hash?: string | null
+          reason?: string | null
+          sequence_order?: number
           signature_data?: string | null
+          signature_hash?: string | null
           signature_type: string
           signed_at?: string
           signer_id: string
+          signer_name?: string | null
+          signer_role?: string | null
         }
         Update: {
+          approval_id?: string | null
           device_info?: string | null
+          document_hash?: string | null
           document_id?: string
           id?: string
           ip_address?: string | null
           is_valid?: boolean
+          organization_id?: string | null
+          previous_hash?: string | null
+          reason?: string | null
+          sequence_order?: number
           signature_data?: string | null
+          signature_hash?: string | null
           signature_type?: string
           signed_at?: string
           signer_id?: string
+          signer_name?: string | null
+          signer_role?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_signatures_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "document_approvals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_signatures_document_id_fkey"
             columns: ["document_id"]
@@ -1529,6 +1563,8 @@ export type Database = {
           responsible_user_id: string | null
           sender_institution: string | null
           sender_name: string | null
+          signature_status: string
+          signed_at: string | null
           status: string
           subject: string | null
           title: string
@@ -1558,6 +1594,8 @@ export type Database = {
           responsible_user_id?: string | null
           sender_institution?: string | null
           sender_name?: string | null
+          signature_status?: string
+          signed_at?: string | null
           status?: string
           subject?: string | null
           title: string
@@ -1587,6 +1625,8 @@ export type Database = {
           responsible_user_id?: string | null
           sender_institution?: string | null
           sender_name?: string | null
+          signature_status?: string
+          signed_at?: string | null
           status?: string
           subject?: string | null
           title?: string
@@ -3654,6 +3694,16 @@ export type Database = {
       user_can_access_dispatch: {
         Args: { _dispatch_id: string; _user_id: string }
         Returns: boolean
+      }
+      verify_document_signatures: {
+        Args: { _document_id: string }
+        Returns: {
+          is_chain_valid: boolean
+          sequence_order: number
+          signature_id: string
+          signed_at: string
+          signer_name: string
+        }[]
       }
     }
     Enums: {
