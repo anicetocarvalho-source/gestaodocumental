@@ -45,6 +45,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   // Rotas sensíveis - acesso restrito
   "/audit-logs": ["admin", "gestor"],
   "/traceability": ["admin", "gestor"],
+  "/archive/advanced-reports": ["admin", "gestor"],
   "/sla-configuration": ["admin"],
   "/pending-approvals": ["admin", "gestor"],
   "/workflow-visualization": ["admin", "gestor"],

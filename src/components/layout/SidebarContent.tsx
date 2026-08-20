@@ -83,6 +83,7 @@ const archiveItems: NavItem[] = [
   { name: "Empréstimos", href: "/archive/loans", icon: BookMarked, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Histórico Físico", href: "/archive/history", icon: History, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Relatórios Arquivo", href: "/archive/reports", icon: BarChart3, roles: ["admin", "gestor"] },
+  { name: "Relatórios Avançados", href: "/archive/advanced-reports", icon: BarChart3, roles: ["admin", "gestor"] },
 ];
 
 const toolsItems: NavItem[] = [
