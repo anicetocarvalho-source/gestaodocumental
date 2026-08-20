@@ -27,6 +27,8 @@ import {
 import { dispatchTypeLabels } from "@/hooks/useDispatches";
 import { DispatchApprovalModal } from "@/components/dispatches/DispatchApprovalModal";
 import { Database } from "@/integrations/supabase/types";
+import { useMyPendingDocumentApprovals } from "@/hooks/useDocumentApprovals";
+import { FileText } from "lucide-react";
 
 type DispatchType = Database["public"]["Enums"]["dispatch_type"];
 
