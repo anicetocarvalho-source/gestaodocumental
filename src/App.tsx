@@ -22,6 +22,7 @@ import Permissions from "./pages/Permissions";
 import PermissionsMatrix from "./pages/PermissionsMatrix";
 import AuditLogs from "./pages/AuditLogs";
 import Traceability from "./pages/Traceability";
+import AdvancedReports from "./pages/AdvancedReports";
 import Settings from "./pages/Settings";
 import SearchResults from "./pages/SearchResults";
 import Repository from "./pages/Repository";
@@ -141,6 +142,7 @@ const App = () => (
               <Route path="/archive/tracking" element={<ProtectedRoute><PhysicalTracking /></ProtectedRoute>} />
               <Route path="/archive/loans" element={<ProtectedRoute><DocumentLoans /></ProtectedRoute>} />
               <Route path="/archive/history" element={<ProtectedRoute><PhysicalArchiveHistory /></ProtectedRoute>} />
+              <Route path="/archive/advanced-reports" element={<ProtectedRoute><AdvancedReports /></ProtectedRoute>} />
               <Route path="/archive/reports" element={<ProtectedRoute><PhysicalArchiveReports /></ProtectedRoute>} />
               <Route path="/integrations" element={<ProtectedRoute><ApiIntegrations /></ProtectedRoute>} />
               <Route path="/super-admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
