@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.validate-seal]
 verify_jwt = false
+
+[functions.external-api]
+verify_jwt = false
