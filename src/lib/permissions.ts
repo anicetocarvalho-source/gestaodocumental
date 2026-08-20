@@ -19,6 +19,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   
   // Digitalização - Técnicos e acima
   "/digitization": ["admin", "gestor", "tecnico"],
+  "/ged": ["admin", "gestor", "tecnico", "consulta"],
   "/ocr-processing": ["admin", "gestor", "tecnico"],
   "/classification": ["admin", "gestor", "tecnico"],
   "/quality-review": ["admin", "gestor"],
