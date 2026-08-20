@@ -25,7 +25,9 @@ interface DocumentSignatureModalProps {
   onOpenChange: (open: boolean) => void;
   documentTitle?: string;
   documentId?: string;
-  onSign?: (signatureData: SignatureData) => void;
+  defaultSignerName?: string;
+  defaultSignerRole?: string;
+  onSign?: (signatureData: SignatureData) => void | Promise<void>;
 }
 
 export interface SignatureData {
@@ -41,11 +43,13 @@ export function DocumentSignatureModal({
   onOpenChange,
   documentTitle = "Documento",
   documentId,
+  defaultSignerName = "",
+  defaultSignerRole = "",
   onSign,
 }: DocumentSignatureModalProps) {
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  const [signerName, setSignerName] = useState("");
-  const [signerRole, setSignerRole] = useState("");
+  const [signerName, setSignerName] = useState(defaultSignerName);
+  const [signerRole, setSignerRole] = useState(defaultSignerRole);
   const [isSigning, setIsSigning] = useState(false);
   const [signed, setSigned] = useState(false);
 
@@ -59,9 +63,6 @@ export function DocumentSignatureModal({
       return;
     }
 
-    setIsSigning(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     const signatureData: SignatureData = {
       signatureImage,
       signerName: signerName.trim(),
@@ -70,20 +71,25 @@ export function DocumentSignatureModal({
       documentId,
     };
 
-    onSign?.(signatureData);
-    setSigned(true);
-    setIsSigning(false);
-    
-    toast.success("Documento assinado com sucesso!", {
-      description: `Assinado por ${signerName} em ${formattedDate}`,
-    });
+    setIsSigning(true);
+    try {
+      await onSign?.(signatureData);
+      setSigned(true);
+      toast.success("Documento assinado com sucesso!", {
+        description: `Assinado por ${signerName} em ${formattedDate}`,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível assinar o documento");
+    } finally {
+      setIsSigning(false);
+    }
   };
 
   const handleClose = () => {
     if (!isSigning) {
       setSignatureImage(null);
-      setSignerName("");
-      setSignerRole("");
+      setSignerName(defaultSignerName);
+      setSignerRole(defaultSignerRole);
       setSigned(false);
       onOpenChange(false);
     }
