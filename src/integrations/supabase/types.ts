@@ -14,6 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_key_logs: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          endpoint: string
+          id: string
+          ip_address: string | null
+          method: string
+          organization_id: string | null
+          status_code: number | null
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint: string
+          id?: string
+          ip_address?: string | null
+          method: string
+          organization_id?: string | null
+          status_code?: number | null
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address?: string | null
+          method?: string
+          organization_id?: string | null
+          status_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_key_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_key_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          organization_id: string | null
+          scopes: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          organization_id?: string | null
+          scopes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          organization_id?: string | null
+          scopes?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -874,6 +975,163 @@ export type Database = {
           },
         ]
       }
+      document_loans: {
+        Row: {
+          borrower_name: string | null
+          borrower_unit_id: string | null
+          borrower_user_id: string | null
+          created_at: string
+          document_id: string
+          due_date: string
+          id: string
+          loaned_at: string
+          loaned_by: string | null
+          organization_id: string | null
+          origin_location_id: string | null
+          reason: string | null
+          return_notes: string | null
+          returned_at: string | null
+          returned_location_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          borrower_name?: string | null
+          borrower_unit_id?: string | null
+          borrower_user_id?: string | null
+          created_at?: string
+          document_id: string
+          due_date: string
+          id?: string
+          loaned_at?: string
+          loaned_by?: string | null
+          organization_id?: string | null
+          origin_location_id?: string | null
+          reason?: string | null
+          return_notes?: string | null
+          returned_at?: string | null
+          returned_location_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          borrower_name?: string | null
+          borrower_unit_id?: string | null
+          borrower_user_id?: string | null
+          created_at?: string
+          document_id?: string
+          due_date?: string
+          id?: string
+          loaned_at?: string
+          loaned_by?: string | null
+          organization_id?: string | null
+          origin_location_id?: string | null
+          reason?: string | null
+          return_notes?: string | null
+          returned_at?: string | null
+          returned_location_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_loans_borrower_unit_id_fkey"
+            columns: ["borrower_unit_id"]
+            isOneToOne: false
+            referencedRelation: "organizational_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_loans_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_loans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_loans_origin_location_id_fkey"
+            columns: ["origin_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_loans_returned_location_id_fkey"
+            columns: ["returned_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_locations: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          location_id: string | null
+          notes: string | null
+          organization_id: string | null
+          physical_status: string
+          placed_at: string
+          placed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          physical_status?: string
+          placed_at?: string
+          placed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          physical_status?: string
+          placed_at?: string
+          placed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_locations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_locations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_movements: {
         Row: {
           action_type: string
@@ -1400,6 +1658,24 @@ export type Database = {
         }
         Relationships: []
       }
+      location_counters: {
+        Row: {
+          counter: number
+          location_type: string
+          organization_id: string
+        }
+        Insert: {
+          counter?: number
+          location_type: string
+          organization_id: string
+        }
+        Update: {
+          counter?: number
+          location_type?: string
+          organization_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -1671,6 +1947,90 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      physical_movements: {
+        Row: {
+          created_at: string
+          document_id: string | null
+          from_location_id: string | null
+          id: string
+          location_container_id: string | null
+          movement_type: string
+          notes: string | null
+          organization_id: string | null
+          performed_by: string | null
+          reason: string | null
+          scanned_qr: boolean
+          to_location_id: string | null
+          to_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_id?: string | null
+          from_location_id?: string | null
+          id?: string
+          location_container_id?: string | null
+          movement_type: string
+          notes?: string | null
+          organization_id?: string | null
+          performed_by?: string | null
+          reason?: string | null
+          scanned_qr?: boolean
+          to_location_id?: string | null
+          to_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_id?: string | null
+          from_location_id?: string | null
+          id?: string
+          location_container_id?: string | null
+          movement_type?: string
+          notes?: string | null
+          organization_id?: string | null
+          performed_by?: string | null
+          reason?: string | null
+          scanned_qr?: boolean
+          to_location_id?: string | null
+          to_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_movements_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_movements_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_movements_location_container_id_fkey"
+            columns: ["location_container_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_movements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_movements_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       physical_seals: {
         Row: {
@@ -2832,6 +3192,72 @@ export type Database = {
         }
         Relationships: []
       }
+      storage_locations: {
+        Row: {
+          capacity: number | null
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          level: number
+          location_type: string
+          name: string
+          notes: string | null
+          organization_id: string | null
+          parent_id: string | null
+          path: string | null
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          level?: number
+          location_type: string
+          name: string
+          notes?: string | null
+          organization_id?: string | null
+          parent_id?: string | null
+          path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          level?: number
+          location_type?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string | null
+          parent_id?: string | null
+          path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_locations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2855,6 +3281,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      webhook_endpoints: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          events: string[]
+          id: string
+          is_active: boolean
+          last_delivery_at: string | null
+          last_delivery_status: number | null
+          name: string
+          organization_id: string | null
+          secret: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          last_delivery_at?: string | null
+          last_delivery_status?: number | null
+          name: string
+          organization_id?: string | null
+          secret?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          last_delivery_at?: string | null
+          last_delivery_status?: number | null
+          name?: string
+          organization_id?: string | null
+          secret?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workflows: {
         Row: {
@@ -3029,6 +3508,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_next_location_code: {
+        Args: { ltype: string; org_id: string }
+        Returns: string
+      }
       get_next_protocol_number: {
         Args: { org_id: string; ptype: string; yr: number }
         Returns: string
