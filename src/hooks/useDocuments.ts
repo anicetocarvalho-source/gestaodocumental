@@ -229,12 +229,25 @@ export function useDeleteDocument() {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('documents')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
 
-      if (error) throw error;
+      if (error) {
+        // Documentos assinados são registos imutáveis (bloqueados por trigger)
+        if (error.message?.toLowerCase().includes('imut')) {
+          throw new Error('Documento assinado — não pode ser eliminado.');
+        }
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Não foi possível eliminar: sem permissão ou documento protegido (assinado/arquivado).'
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
