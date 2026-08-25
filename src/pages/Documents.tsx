@@ -246,23 +246,35 @@ const Documents = () => {
 
   const handleBulkDelete = async () => {
     setIsProcessing(true);
-    
-    try {
-      for (const docId of selectedDocuments) {
+
+    let deleted = 0;
+    const failures: string[] = [];
+
+    for (const docId of selectedDocuments) {
+      try {
         await deleteDocument.mutateAsync(docId);
+        deleted++;
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : "Erro desconhecido");
       }
-      
-      const count = selectedDocuments.length;
-      toast.success(`${count} documento${count > 1 ? 's' : ''} eliminado${count > 1 ? 's' : ''}`, {
+    }
+
+    if (deleted > 0) {
+      toast.success(`${deleted} documento${deleted > 1 ? 's' : ''} eliminado${deleted > 1 ? 's' : ''}`, {
         description: "Os documentos foram removidos permanentemente.",
       });
-      clearSelection();
-    } catch (error) {
-      toast.error("Erro ao eliminar documentos");
-    } finally {
-      setIsProcessing(false);
-      setDeleteDialogOpen(false);
     }
+
+    if (failures.length > 0) {
+      toast.error(
+        `${failures.length} documento${failures.length > 1 ? 's não foram eliminados' : ' não foi eliminado'}`,
+        { description: failures[0] }
+      );
+    }
+
+    if (deleted > 0) clearSelection();
+    setIsProcessing(false);
+    setDeleteDialogOpen(false);
   };
 
   const clearFilters = () => {
