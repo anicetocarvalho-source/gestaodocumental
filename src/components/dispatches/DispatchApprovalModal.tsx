@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,8 @@ interface DispatchApprovalModalProps {
   approverName: string;
   onApprove: (status: "aprovado" | "rejeitado" | "devolvido", comments?: string) => Promise<void>;
   isLoading?: boolean;
+  /** Decisão pré-seleccionada ao abrir o modal */
+  defaultDecision?: "aprovado" | "rejeitado" | "devolvido";
 }
 
 export function DispatchApprovalModal({
@@ -29,22 +31,31 @@ export function DispatchApprovalModal({
   approverName,
   onApprove,
   isLoading,
+  defaultDecision = "aprovado",
 }: DispatchApprovalModalProps) {
-  const [decision, setDecision] = useState<"aprovado" | "rejeitado" | "devolvido">("aprovado");
+  const [decision, setDecision] = useState<"aprovado" | "rejeitado" | "devolvido">(defaultDecision);
   const [comments, setComments] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setDecision(defaultDecision);
+      setComments("");
+    }
+  }, [open, defaultDecision]);
 
   const handleSubmit = async () => {
     await onApprove(decision, comments.trim() || undefined);
-    setDecision("aprovado");
+    setDecision(defaultDecision);
     setComments("");
     onOpenChange(false);
   };
 
   const handleClose = () => {
-    setDecision("aprovado");
+    setDecision(defaultDecision);
     setComments("");
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

@@ -80,7 +80,7 @@ const ApprovalQueue = () => {
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [urgentConfirmOpen, setUrgentConfirmOpen] = useState(false);
-  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | null>(null);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | 'comment' | null>(null);
   const [currentApprovalItem, setCurrentApprovalItem] = useState<ApprovalItem | null>(null);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'priority'>('recent');
@@ -145,15 +145,16 @@ const ApprovalQueue = () => {
     );
   };
 
-  const handleBulkAction = (action: 'approve' | 'reject') => {
+  const handleBulkAction = (action: 'approve' | 'reject' | 'comment') => {
+    setPendingBulkAction(action);
     const urgentItems = getUrgentSelectedItems();
-    if (urgentItems.length > 0) {
-      setPendingBulkAction(action);
+    if (urgentItems.length > 0 && action !== 'comment') {
       setUrgentConfirmOpen(true);
     } else {
       setBulkModalOpen(true);
     }
   };
+
 
   const handleUrgentConfirm = () => {
     setUrgentConfirmOpen(false);
@@ -611,15 +612,8 @@ const ApprovalQueue = () => {
                   <div className="space-y-2">
                     <Button 
                       className="w-full"
-                      disabled={selectedItems.size === 0 || isProcessing}
-                      onClick={() => {
-                        // Bulk approve - open modal for first selected
-                        const firstSelected = approvalItems.find(i => selectedItems.has(i.id));
-                        if (firstSelected) {
-                          setCurrentApprovalItem(firstSelected);
-                          setApprovalModalOpen(true);
-                        }
-                      }}
+                      disabled={selectedItems.size === 0 || isBulkProcessing}
+                      onClick={() => handleBulkAction('approve')}
                     >
                       <ThumbsUp className="h-4 w-4 mr-2" aria-hidden="true" />
                       Aprovar Seleccionados ({selectedItems.size})
@@ -627,15 +621,22 @@ const ApprovalQueue = () => {
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      disabled={selectedItems.size === 0 || isProcessing}
+                      disabled={selectedItems.size === 0 || isBulkProcessing}
+                      onClick={() => handleBulkAction('reject')}
                     >
                       <ThumbsDown className="h-4 w-4 mr-2" aria-hidden="true" />
                       Rejeitar Seleccionados
                     </Button>
-                    <Button variant="ghost" className="w-full" disabled={selectedItems.size === 0}>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      disabled={selectedItems.size === 0 || isBulkProcessing}
+                      onClick={() => handleBulkAction('comment')}
+                    >
                       <MessageSquare className="h-4 w-4 mr-2" aria-hidden="true" />
                       Comentário em Massa
                     </Button>
+
                   </div>
 
                   {/* Referência ao Registo de Auditoria */}
@@ -787,6 +788,14 @@ const ApprovalQueue = () => {
         approverName=""
         onApprove={handleBulkApprovalSubmit}
         isLoading={isBulkProcessing}
+        defaultDecision={
+          pendingBulkAction === 'reject'
+            ? 'rejeitado'
+            : pendingBulkAction === 'comment'
+            ? 'devolvido'
+            : 'aprovado'
+        }
+
       />
 
       {/* Urgent Items Confirmation Dialog */}
