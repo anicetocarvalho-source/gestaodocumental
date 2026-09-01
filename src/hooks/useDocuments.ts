@@ -229,6 +229,41 @@ export function useDeleteDocument() {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
+      // Pré-verificação: determinar o motivo exato caso a eliminação seja bloqueada
+      const { data: doc, error: fetchError } = await supabase
+        .from('documents')
+        .select('id, entry_number, status, is_archived, created_by')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      if (!doc) throw new Error('Documento não encontrado ou sem acesso.');
+
+      const ref = doc.entry_number || 'sem nº';
+
+      if (doc.is_archived || doc.status === 'archived') {
+        throw new Error(`${ref}: bloqueado porque está arquivado. Desarquive-o antes de eliminar.`);
+      }
+      if (doc.status === 'signed') {
+        throw new Error(`${ref}: bloqueado porque está assinado — registos assinados são imutáveis.`);
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      const { data: privileged } = await supabase.rpc('has_any_role', {
+        _user_id: userId,
+        _roles: ['admin', 'gestor'],
+      });
+
+      if (!privileged) {
+        if (doc.created_by !== userId) {
+          throw new Error(`${ref}: sem permissão — apenas administradores/gestores ou o autor podem eliminar este documento.`);
+        }
+        if (!['draft', 'received'].includes(doc.status)) {
+          throw new Error(`${ref}: como autor, só pode eliminar documentos em "Rascunho" ou "Recebido". Estado atual: ${doc.status}.`);
+        }
+      }
+
       const { data, error } = await supabase
         .from('documents')
         .delete()
@@ -236,17 +271,17 @@ export function useDeleteDocument() {
         .select('id');
 
       if (error) {
-        // Documentos assinados são registos imutáveis (bloqueados por trigger)
         if (error.message?.toLowerCase().includes('imut')) {
-          throw new Error('Documento assinado — não pode ser eliminado.');
+          throw new Error(`${ref}: documento assinado — não pode ser eliminado.`);
         }
-        throw error;
+        if (error.message?.toLowerCase().includes('signature')) {
+          throw new Error(`${ref}: possui assinaturas registadas — a eliminação está bloqueada.`);
+        }
+        throw new Error(`${ref}: ${error.message}`);
       }
 
       if (!data || data.length === 0) {
-        throw new Error(
-          'Não foi possível eliminar: sem permissão ou documento protegido (assinado/arquivado).'
-        );
+        throw new Error(`${ref}: eliminação bloqueada pelas regras de segurança da organização.`);
       }
     },
     onSuccess: () => {
