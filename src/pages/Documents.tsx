@@ -268,7 +268,10 @@ const Documents = () => {
     if (failures.length > 0) {
       toast.error(
         `${failures.length} documento${failures.length > 1 ? 's não foram eliminados' : ' não foi eliminado'}`,
-        { description: failures[0] }
+        {
+          description: failures.slice(0, 3).join('\n') + (failures.length > 3 ? `\n…e mais ${failures.length - 3}.` : ''),
+          duration: 8000,
+        }
       );
     }
 
@@ -831,6 +834,7 @@ const Documents = () => {
             <AlertDialogDescription>
               Está prestes a eliminar {selectedDocuments.length} documento{selectedDocuments.length > 1 ? 's' : ''}. 
               Esta acção não pode ser revertida. Todos os ficheiros associados serão permanentemente eliminados.
+              Documentos assinados ou arquivados estão protegidos e serão recusados com indicação do motivo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
