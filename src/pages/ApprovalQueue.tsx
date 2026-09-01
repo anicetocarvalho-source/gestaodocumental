@@ -145,15 +145,16 @@ const ApprovalQueue = () => {
     );
   };
 
-  const handleBulkAction = (action: 'approve' | 'reject') => {
+  const handleBulkAction = (action: 'approve' | 'reject' | 'comment') => {
+    setPendingBulkAction(action);
     const urgentItems = getUrgentSelectedItems();
-    if (urgentItems.length > 0) {
-      setPendingBulkAction(action);
+    if (urgentItems.length > 0 && action !== 'comment') {
       setUrgentConfirmOpen(true);
     } else {
       setBulkModalOpen(true);
     }
   };
+
 
   const handleUrgentConfirm = () => {
     setUrgentConfirmOpen(false);
