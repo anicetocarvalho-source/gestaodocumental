@@ -1,9 +1,13 @@
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { isValidUUID } from "@/lib/validation";
+import { useDownloadFile } from "@/hooks/useFileUpload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +29,6 @@ import {
   FolderTree,
   UserPlus,
   Eye,
-  RotateCcw,
   GitCompare,
   Clock,
   FileCheck,
@@ -34,17 +37,18 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Version {
   id: string;
   version: string;
-  uploader: {
-    name: string;
-    avatar?: string;
-    initials: string;
-  };
+  filePath: string;
+  fileName: string;
+  mimeType: string | null;
+  uploaderName: string;
+  uploaderInitials: string;
   date: string;
   time: string;
   changesSummary: string;
@@ -52,19 +56,22 @@ interface Version {
   isCurrent?: boolean;
 }
 
+type ActivityType =
+  | "upload"
+  | "ocr"
+  | "tagged"
+  | "classified"
+  | "assigned"
+  | "viewed"
+  | "approved";
+
 interface ActivityItem {
   id: string;
-  type: "upload" | "ocr" | "tagged" | "classified" | "assigned" | "viewed" | "approved";
+  type: ActivityType;
   description: string;
   user: string;
   date: string;
   time: string;
-}
-
-interface MetadataDiff {
-  field: string;
-  oldValue: string;
-  newValue: string;
 }
 
 interface DocumentVersionHistoryProps {
@@ -72,66 +79,7 @@ interface DocumentVersionHistoryProps {
   compact?: boolean;
 }
 
-// Mock data
-const mockVersions: Version[] = [
-  {
-    id: "v4",
-    version: "v4",
-    uploader: { name: "Carlos Santos", initials: "CS" },
-    date: "03/12/2024",
-    time: "14:32",
-    changesSummary: "Atualização de assinaturas digitais",
-    fileSize: "2.4 MB",
-    isCurrent: true,
-  },
-  {
-    id: "v3",
-    version: "v3",
-    uploader: { name: "Maria Silva", initials: "MS" },
-    date: "28/11/2024",
-    time: "09:15",
-    changesSummary: "Correção de dados cadastrais",
-    fileSize: "2.3 MB",
-  },
-  {
-    id: "v2",
-    version: "v2",
-    uploader: { name: "João Oliveira", initials: "JO" },
-    date: "15/11/2024",
-    time: "16:45",
-    changesSummary: "Adição de anexos complementares",
-    fileSize: "2.1 MB",
-  },
-  {
-    id: "v1",
-    version: "v1",
-    uploader: { name: "Ana Costa", initials: "AC" },
-    date: "01/11/2024",
-    time: "10:00",
-    changesSummary: "Versão inicial do documento",
-    fileSize: "1.8 MB",
-  },
-];
-
-const mockActivities: ActivityItem[] = [
-  { id: "a1", type: "upload", description: "Nova versão carregada (v4)", user: "Carlos Santos", date: "03/12/2024", time: "14:32" },
-  { id: "a2", type: "approved", description: "Documento aprovado", user: "Diretor Geral", date: "02/12/2024", time: "11:20" },
-  { id: "a3", type: "classified", description: "Classificado como 500.10.01", user: "Maria Silva", date: "30/11/2024", time: "15:45" },
-  { id: "a4", type: "tagged", description: "Tags adicionadas: urgente, confidencial", user: "Maria Silva", date: "30/11/2024", time: "15:40" },
-  { id: "a5", type: "ocr", description: "OCR processado com sucesso", user: "Sistema", date: "28/11/2024", time: "09:20" },
-  { id: "a6", type: "upload", description: "Nova versão carregada (v3)", user: "Maria Silva", date: "28/11/2024", time: "09:15" },
-  { id: "a7", type: "assigned", description: "Atribuído para Maria Silva", user: "João Oliveira", date: "20/11/2024", time: "14:00" },
-  { id: "a8", type: "viewed", description: "Documento visualizado", user: "João Oliveira", date: "16/11/2024", time: "10:30" },
-];
-
-const mockMetadataDiffs: MetadataDiff[] = [
-  { field: "Status", oldValue: "Em Revisão", newValue: "Aprovado" },
-  { field: "Classificação", oldValue: "500.10", newValue: "500.10.01" },
-  { field: "Responsável", oldValue: "João Oliveira", newValue: "Maria Silva" },
-  { field: "Tags", oldValue: "rascunho", newValue: "urgente, confidencial" },
-];
-
-const activityIcons: Record<ActivityItem["type"], React.ReactNode> = {
+const activityIcons: Record<ActivityType, React.ReactNode> = {
   upload: <Upload className="h-3.5 w-3.5" />,
   ocr: <ScanText className="h-3.5 w-3.5" />,
   tagged: <Tag className="h-3.5 w-3.5" />,
@@ -141,38 +89,194 @@ const activityIcons: Record<ActivityItem["type"], React.ReactNode> = {
   approved: <FileCheck className="h-3.5 w-3.5" />,
 };
 
-const activityColors: Record<ActivityItem["type"], string> = {
-  upload: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
-  ocr: "bg-purple-500/20 text-purple-600 dark:text-purple-400",
-  tagged: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
-  classified: "bg-green-500/20 text-green-600 dark:text-green-400",
-  assigned: "bg-cyan-500/20 text-cyan-600 dark:text-cyan-400",
-  viewed: "bg-slate-500/20 text-slate-600 dark:text-slate-400",
-  approved: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+const activityColors: Record<ActivityType, string> = {
+  upload: "bg-primary/15 text-primary",
+  ocr: "bg-accent text-accent-foreground",
+  tagged: "bg-warning/15 text-warning",
+  classified: "bg-success/15 text-success",
+  assigned: "bg-secondary text-secondary-foreground",
+  viewed: "bg-muted text-muted-foreground",
+  approved: "bg-success/15 text-success",
 };
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+
+const formatBytes = (bytes: number | null) => {
+  if (!bytes) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const splitDateTime = (iso: string) => {
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString("pt-PT"),
+    time: d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
+  };
+};
+
+const mapActivityType = (action: string): ActivityType => {
+  const a = (action || "").toLowerCase();
+  if (a.includes("upload") || a.includes("file") || a.includes("ficheiro")) return "upload";
+  if (a.includes("ocr") || a.includes("scan") || a.includes("digital")) return "ocr";
+  if (a.includes("tag") || a.includes("etiqueta")) return "tagged";
+  if (a.includes("classif")) return "classified";
+  if (a.includes("assign") || a.includes("atribu") || a.includes("dispatch") || a.includes("movement"))
+    return "assigned";
+  if (a.includes("approve") || a.includes("aprov") || a.includes("sign") || a.includes("assinat"))
+    return "approved";
+  return "viewed";
+};
+
+const actionLabels: Record<string, string> = {
+  created: "Documento criado",
+  updated: "Metadados actualizados",
+  deleted: "Documento eliminado",
+  archived: "Documento arquivado",
+  restored: "Documento restaurado",
+  signed: "Documento assinado",
+  approved: "Documento aprovado",
+  rejected: "Documento rejeitado",
+  returned: "Documento devolvido",
+  submitted: "Submetido para aprovação",
+  checked_out: "Documento bloqueado para edição",
+  checked_in: "Documento devolvido à edição",
+};
+
+async function resolveNames(ids: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(ids.filter((id) => id && isValidUUID(id)))];
+  if (unique.length === 0) return {};
+
+  const map: Record<string, string> = {};
+
+  const [byId, byUserId] = await Promise.all([
+    supabase.from("profiles").select("id, full_name").in("id", unique),
+    supabase.from("profiles").select("user_id, full_name").in("user_id", unique),
+  ]);
+
+  byId.data?.forEach((p) => {
+    map[p.id] = p.full_name;
+  });
+  byUserId.data?.forEach((p) => {
+    if (p.user_id) map[p.user_id] = p.full_name;
+  });
+
+  return map;
+}
+
+function useDocumentVersions(documentId: string) {
+  return useQuery({
+    queryKey: ["document-versions", documentId],
+    enabled: !!documentId && isValidUUID(documentId),
+    queryFn: async (): Promise<Version[]> => {
+      const { data, error } = await supabase
+        .from("document_files")
+        .select("id, file_name, file_path, file_size, mime_type, version, is_main_file, uploaded_by, created_at")
+        .eq("document_id", documentId)
+        .order("version", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const names = await resolveNames((data ?? []).map((f) => f.uploaded_by as string));
+
+      return (data ?? []).map((f, index) => {
+        const { date, time } = splitDateTime(f.created_at);
+        const uploaderName = names[f.uploaded_by as string] || "Desconhecido";
+        return {
+          id: f.id,
+          version: `v${f.version ?? 1}`,
+          filePath: f.file_path,
+          fileName: f.file_name,
+          mimeType: f.mime_type,
+          uploaderName,
+          uploaderInitials: getInitials(uploaderName),
+          date,
+          time,
+          changesSummary: f.is_main_file ? "Ficheiro principal" : "Ficheiro anexo",
+          fileSize: formatBytes(f.file_size),
+          isCurrent: index === 0,
+        };
+      });
+    },
+  });
+}
+
+function useDocumentActivities(documentId: string) {
+  return useQuery({
+    queryKey: ["document-activities", documentId],
+    enabled: !!documentId && isValidUUID(documentId),
+    queryFn: async (): Promise<ActivityItem[]> => {
+      const { data, error } = await supabase
+        .from("document_audit_log")
+        .select("id, action, description, performed_by, created_at")
+        .eq("document_id", documentId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const names = await resolveNames((data ?? []).map((l) => l.performed_by as string));
+
+      return (data ?? []).map((log) => {
+        const { date, time } = splitDateTime(log.created_at);
+        return {
+          id: log.id,
+          type: mapActivityType(log.action),
+          description: log.description || actionLabels[log.action] || log.action,
+          user: names[log.performed_by as string] || "Sistema",
+          date,
+          time,
+        };
+      });
+    },
+  });
+}
 
 export function DocumentVersionHistory({ documentId, compact = false }: DocumentVersionHistoryProps) {
   const [selectedVersions, setSelectedVersions] = useState<string[]>([]);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
 
-  const displayedActivities = showAllActivities ? mockActivities : mockActivities.slice(0, 5);
+  const { data: versions = [], isLoading: versionsLoading } = useDocumentVersions(documentId);
+  const { data: activities = [], isLoading: activitiesLoading } = useDocumentActivities(documentId);
+  const downloadFile = useDownloadFile();
+
+  const displayedActivities = showAllActivities ? activities : activities.slice(0, 5);
 
   const toggleVersionSelect = (versionId: string) => {
     setSelectedVersions((prev) => {
-      if (prev.includes(versionId)) {
-        return prev.filter((id) => id !== versionId);
-      }
-      if (prev.length < 2) {
-        return [...prev, versionId];
-      }
+      if (prev.includes(versionId)) return prev.filter((id) => id !== versionId);
+      if (prev.length < 2) return [...prev, versionId];
       return [prev[1], versionId];
     });
   };
 
-  const handleRestore = (version: Version) => {
-    console.log("Restoring version:", version.version);
-  };
+  const comparePair = selectedVersions
+    .map((id) => versions.find((v) => v.id === id))
+    .filter(Boolean) as Version[];
+
+  const diffRows =
+    comparePair.length === 2
+      ? [
+          { field: "Ficheiro", oldValue: comparePair[0].fileName, newValue: comparePair[1].fileName },
+          { field: "Versão", oldValue: comparePair[0].version, newValue: comparePair[1].version },
+          { field: "Tamanho", oldValue: comparePair[0].fileSize, newValue: comparePair[1].fileSize },
+          { field: "Tipo", oldValue: comparePair[0].mimeType || "—", newValue: comparePair[1].mimeType || "—" },
+          {
+            field: "Carregado por",
+            oldValue: `${comparePair[0].uploaderName} (${comparePair[0].date})`,
+            newValue: `${comparePair[1].uploaderName} (${comparePair[1].date})`,
+          },
+        ]
+      : [];
 
   return (
     <div className={cn("space-y-4", compact && "space-y-3")}>
@@ -200,25 +304,38 @@ export function DocumentVersionHistory({ documentId, compact = false }: Document
                 <DialogHeader>
                   <DialogTitle>Comparar Versões</DialogTitle>
                   <DialogDescription>
-                    Diferenças entre {selectedVersions[0]} e {selectedVersions[1]}
+                    {comparePair.length === 2
+                      ? `Diferenças entre ${comparePair[0].version} e ${comparePair[1].version}`
+                      : "Seleccione duas versões"}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                  <h4 className="text-sm font-medium">Alterações de Metadados</h4>
+                  <h4 className="text-sm font-medium">Propriedades do ficheiro</h4>
                   <div className="rounded-lg border">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">
                           <th className="px-4 py-2 text-left font-medium">Campo</th>
-                          <th className="px-4 py-2 text-left font-medium text-destructive/80">Anterior</th>
-                          <th className="px-4 py-2 text-left font-medium text-green-600 dark:text-green-400">Atual</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                            {comparePair[0]?.version ?? "A"}
+                          </th>
+                          <th className="px-4 py-2 text-left font-medium text-success">
+                            {comparePair[1]?.version ?? "B"}
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {mockMetadataDiffs.map((diff, index) => (
-                          <tr key={diff.field} className={cn(index !== mockMetadataDiffs.length - 1 && "border-b")}>
+                        {diffRows.map((diff, index) => (
+                          <tr key={diff.field} className={cn(index !== diffRows.length - 1 && "border-b")}>
                             <td className="px-4 py-2.5 font-medium">{diff.field}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground line-through">{diff.oldValue}</td>
+                            <td
+                              className={cn(
+                                "px-4 py-2.5 text-muted-foreground",
+                                diff.oldValue !== diff.newValue && "line-through"
+                              )}
+                            >
+                              {diff.oldValue}
+                            </td>
                             <td className="px-4 py-2.5">{diff.newValue}</td>
                           </tr>
                         ))}
@@ -234,66 +351,68 @@ export function DocumentVersionHistory({ documentId, compact = false }: Document
           </p>
         </CardHeader>
         <CardContent className={cn("pt-0", compact && "p-4 pt-0")}>
-          <div className="relative">
-            {/* Timeline connector */}
-            <div className="absolute left-[17px] top-2 bottom-2 w-px bg-border" />
+          {versionsLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : versions.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Ainda não existem ficheiros carregados neste documento.
+            </p>
+          ) : (
+            <div className="relative">
+              {/* Timeline connector */}
+              <div className="absolute left-[17px] top-2 bottom-2 w-px bg-border" />
 
-            <div className="space-y-0">
-              {mockVersions.map((version, index) => (
-                <div
-                  key={version.id}
-                  className={cn(
-                    "relative flex gap-3 py-3 group",
-                    index !== mockVersions.length - 1 && "border-b border-border/50"
-                  )}
-                >
-                  {/* Timeline dot */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => toggleVersionSelect(version.id)}
-                          className={cn(
-                            "relative z-10 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border-2 transition-all",
-                            version.isCurrent
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : selectedVersions.includes(version.id)
-                              ? "bg-secondary border-primary text-primary"
-                              : "bg-background border-border hover:border-primary/50"
+              <div className="space-y-0">
+                {versions.map((version, index) => (
+                  <div
+                    key={version.id}
+                    className={cn(
+                      "relative flex gap-3 py-3 group",
+                      index !== versions.length - 1 && "border-b border-border/50"
+                    )}
+                  >
+                    {/* Timeline dot */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => toggleVersionSelect(version.id)}
+                            className={cn(
+                              "relative z-10 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                              version.isCurrent
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : selectedVersions.includes(version.id)
+                                ? "bg-secondary border-primary text-primary"
+                                : "bg-background border-border hover:border-primary/50"
+                            )}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Clique para selecionar</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    {/* Version content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-semibold text-sm">{version.version}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {version.fileName}
+                          </span>
+                          {version.isCurrent && (
+                            <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                              Atual
+                            </Badge>
                           )}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>Clique para selecionar</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-
-                  {/* Version content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{version.version}</span>
-                        {version.isCurrent && (
-                          <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                            Atual
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <Download className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Baixar versão</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        {!version.isCurrent && (
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -301,43 +420,52 @@ export function DocumentVersionHistory({ documentId, compact = false }: Document
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  onClick={() => handleRestore(version)}
+                                  disabled={downloadFile.isPending}
+                                  onClick={() =>
+                                    downloadFile.mutate({
+                                      filePath: version.filePath,
+                                      fileName: version.fileName,
+                                    })
+                                  }
                                 >
-                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  {downloadFile.isPending ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Download className="h-3.5 w-3.5" />
+                                  )}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Restaurar versão</TooltipContent>
+                              <TooltipContent>Baixar versão</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        )}
+                        </div>
                       </div>
-                    </div>
 
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {version.changesSummary}
-                    </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {version.changesSummary}
+                      </p>
 
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Avatar className="h-4 w-4">
-                          <AvatarImage src={version.uploader.avatar} />
-                          <AvatarFallback className="text-[8px]">
-                            {version.uploader.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{version.uploader.name}</span>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-4 w-4">
+                            <AvatarFallback className="text-[8px]">
+                              {version.uploaderInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{version.uploaderName}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{version.date} às {version.time}</span>
+                        </div>
+                        <span>{version.fileSize}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{version.date} às {version.time}</span>
-                      </div>
-                      <span>{version.fileSize}</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -350,57 +478,66 @@ export function DocumentVersionHistory({ documentId, compact = false }: Document
           </CardTitle>
         </CardHeader>
         <CardContent className={cn("pt-0", compact && "p-4 pt-0")}>
-          <div className="relative">
-            {/* Timeline connector */}
-            <div className="absolute left-[13px] top-2 bottom-2 w-px bg-border" />
-
+          {activitiesLoading ? (
             <div className="space-y-3">
-              {displayedActivities.map((activity) => (
-                <div key={activity.id} className="relative flex gap-3">
-                  {/* Activity icon */}
-                  <div
-                    className={cn(
-                      "relative z-10 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full",
-                      activityColors[activity.type]
-                    )}
-                  >
-                    {activityIcons[activity.type]}
-                  </div>
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : activities.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Sem actividade registada para este documento.
+            </p>
+          ) : (
+            <div className="relative">
+              {/* Timeline connector */}
+              <div className="absolute left-[13px] top-2 bottom-2 w-px bg-border" />
 
-                  {/* Activity content */}
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <p className="text-sm">{activity.description}</p>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                      <span>{activity.user}</span>
-                      <span>•</span>
-                      <span>{activity.date} às {activity.time}</span>
+              <div className="space-y-3">
+                {displayedActivities.map((activity) => (
+                  <div key={activity.id} className="relative flex gap-3">
+                    <div
+                      className={cn(
+                        "relative z-10 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full",
+                        activityColors[activity.type]
+                      )}
+                    >
+                      {activityIcons[activity.type]}
+                    </div>
+
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <p className="text-sm">{activity.description}</p>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        <span>{activity.user}</span>
+                        <span>•</span>
+                        <span>{activity.date} às {activity.time}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {mockActivities.length > 5 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full mt-3 text-muted-foreground"
-                onClick={() => setShowAllActivities(!showAllActivities)}
-              >
-                {showAllActivities ? (
-                  <>
-                    <ChevronUp className="h-4 w-4 mr-1" />
-                    Mostrar menos
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-1" />
-                    Ver mais {mockActivities.length - 5} atividades
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
+              {activities.length > 5 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-3 text-muted-foreground"
+                  onClick={() => setShowAllActivities(!showAllActivities)}
+                >
+                  {showAllActivities ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-1" />
+                      Mostrar menos
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      Ver mais {activities.length - 5} atividades
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
