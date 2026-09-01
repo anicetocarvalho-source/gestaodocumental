@@ -80,7 +80,7 @@ const ApprovalQueue = () => {
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [urgentConfirmOpen, setUrgentConfirmOpen] = useState(false);
-  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | null>(null);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'approve' | 'reject' | 'comment' | null>(null);
   const [currentApprovalItem, setCurrentApprovalItem] = useState<ApprovalItem | null>(null);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
   const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'priority'>('recent');
