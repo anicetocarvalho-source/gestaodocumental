@@ -788,6 +788,14 @@ const ApprovalQueue = () => {
         approverName=""
         onApprove={handleBulkApprovalSubmit}
         isLoading={isBulkProcessing}
+        defaultDecision={
+          pendingBulkAction === 'reject'
+            ? 'rejeitado'
+            : pendingBulkAction === 'comment'
+            ? 'devolvido'
+            : 'aprovado'
+        }
+
       />
 
       {/* Urgent Items Confirmation Dialog */}
