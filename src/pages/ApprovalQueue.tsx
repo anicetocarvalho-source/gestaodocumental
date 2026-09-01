@@ -612,15 +612,8 @@ const ApprovalQueue = () => {
                   <div className="space-y-2">
                     <Button 
                       className="w-full"
-                      disabled={selectedItems.size === 0 || isProcessing}
-                      onClick={() => {
-                        // Bulk approve - open modal for first selected
-                        const firstSelected = approvalItems.find(i => selectedItems.has(i.id));
-                        if (firstSelected) {
-                          setCurrentApprovalItem(firstSelected);
-                          setApprovalModalOpen(true);
-                        }
-                      }}
+                      disabled={selectedItems.size === 0 || isBulkProcessing}
+                      onClick={() => handleBulkAction('approve')}
                     >
                       <ThumbsUp className="h-4 w-4 mr-2" aria-hidden="true" />
                       Aprovar Seleccionados ({selectedItems.size})
@@ -628,15 +621,22 @@ const ApprovalQueue = () => {
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      disabled={selectedItems.size === 0 || isProcessing}
+                      disabled={selectedItems.size === 0 || isBulkProcessing}
+                      onClick={() => handleBulkAction('reject')}
                     >
                       <ThumbsDown className="h-4 w-4 mr-2" aria-hidden="true" />
                       Rejeitar Seleccionados
                     </Button>
-                    <Button variant="ghost" className="w-full" disabled={selectedItems.size === 0}>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      disabled={selectedItems.size === 0 || isBulkProcessing}
+                      onClick={() => handleBulkAction('comment')}
+                    >
                       <MessageSquare className="h-4 w-4 mr-2" aria-hidden="true" />
                       Comentário em Massa
                     </Button>
+
                   </div>
 
                   {/* Referência ao Registo de Auditoria */}
