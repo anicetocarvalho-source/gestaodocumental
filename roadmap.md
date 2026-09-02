@@ -18,3 +18,7 @@
 
 ## Novos pedidos (2 Set)
 - [ ] Registar entrada real no Livro de Protocolo, tramitar internamente e gerar despacho, confirmando cada estado
+
+- [x] Fluxo do Protocolo (/protocol-flow): fases entrada/tramitação/despacho/arquivo com histórico e acções
+- [x] Painel de Decisões Internas (/dispatches/decisions): prazos, estados e ligação ao protocolo
+- [x] Notificações automáticas de protocolo (registo e mudança de estado do documento)
