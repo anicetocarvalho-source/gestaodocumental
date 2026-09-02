@@ -84,16 +84,9 @@ export default function DispatchDecisions() {
   ];
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Painel de Decisões Internas" subtitle="Despachos em trâmite, prazos e ligação ao protocolo">
       <div className="space-y-6">
         <PageBreadcrumb items={[{ label: "Expedições", href: "/dispatches" }, { label: "Decisões internas" }]} />
-
-        <div>
-          <h1 className="text-2xl font-semibold">Painel de Decisões Internas</h1>
-          <p className="text-muted-foreground">
-            Despachos em trâmite, prazos de resposta e ligação ao estado do protocolo.
-          </p>
-        </div>
 
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
           {cards.map((c) => (
