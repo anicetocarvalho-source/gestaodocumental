@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Camera, CameraOff, Download, FileSearch, QrCode, ScanBarcode, Search, Tags, X } from "lucide-react";
 import { IndexDocumentModal } from "@/components/ged/IndexDocumentModal";
+import { GedControlPanel } from "@/components/ged/GedControlPanel";
 import { useClassificationCodes } from "@/hooks/useReferenceData";
 import { getGedDocumentUrl, useGedSearch, useGedStats, type GedDocument, type GedSearchFilters } from "@/hooks/useGedIndexing";
 
@@ -132,6 +133,23 @@ export default function ElectronicArchive() {
             </Card>
           ))}
         </div>
+
+        <GedControlPanel
+          onSelectStatus={(status) => {
+            setDraft((d) => ({ ...d, status }));
+            setFilters((f) => ({ ...f, status }));
+          }}
+          onSelectClassification={(classificationId) => {
+            setDraft((d) => ({ ...d, classificationId }));
+            setFilters((f) => ({ ...f, classificationId }));
+          }}
+          onSelectIndexing={(indexed) => {
+            setDraft((d) => ({ ...d, indexed }));
+            setFilters((f) => ({ ...f, indexed }));
+          }}
+        />
+
+
 
         <Card>
           <CardHeader>

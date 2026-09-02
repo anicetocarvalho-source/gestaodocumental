@@ -15,3 +15,6 @@
 - [ ] Painel de decisões internas: dashboard de despachos em trâmite e prazos (módulo Expedições)
 - [ ] Fluxo completo de protocolo: entrada → tramitação interna → emissão de despacho → devolução, com estados e auditoria
 - [ ] Painel de controlo GED: documentos por categoria, classificação e estado (Gestor/Técnico)
+
+## Novos pedidos (2 Set)
+- [ ] Registar entrada real no Livro de Protocolo, tramitar internamente e gerar despacho, confirmando cada estado
