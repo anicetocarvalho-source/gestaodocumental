@@ -168,3 +168,105 @@ export async function getGedDocumentUrl(filePath: string) {
   if (error) return null;
   return data.signedUrl;
 }
+
+export interface GedDashboardSlice {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface GedDashboard {
+  total: number;
+  byStatus: GedDashboardSlice[];
+  byClassification: GedDashboardSlice[];
+  byCategory: GedDashboardSlice[];
+  byIndexing: GedDashboardSlice[];
+  byMonth: GedDashboardSlice[];
+}
+
+export const GED_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendente',
+  ocr_processing: 'Em OCR',
+  quality_review: 'Em revisão',
+  completed: 'Concluído',
+  error: 'Erro',
+};
+
+export function useGedDashboard() {
+  return useQuery({
+    queryKey: ['ged-dashboard'],
+    queryFn: async (): Promise<GedDashboard> => {
+      const { data, error } = await supabase
+        .from('scanned_documents')
+        .select(`
+          id, status, created_at, indexed_at, classification_id,
+          classification:classification_codes(id, code, name),
+          batch:digitization_batches(id, name, batch_number)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(2000);
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as unknown as Array<{
+        id: string;
+        status: string;
+        created_at: string;
+        indexed_at: string | null;
+        classification_id: string | null;
+        classification: { id: string; code: string; name: string } | null;
+        batch: { id: string; name: string; batch_number: string } | null;
+      }>;
+
+      const tally = (
+        items: Array<{ key: string; label: string }>,
+      ): GedDashboardSlice[] => {
+        const map = new Map<string, GedDashboardSlice>();
+        items.forEach(({ key, label }) => {
+          const current = map.get(key);
+          if (current) current.count += 1;
+          else map.set(key, { key, label, count: 1 });
+        });
+        return [...map.values()].sort((a, b) => b.count - a.count);
+      };
+
+      const byStatus = tally(
+        rows.map((r) => ({ key: r.status, label: GED_STATUS_LABELS[r.status] ?? r.status })),
+      );
+
+      const byClassification = tally(
+        rows.map((r) => ({
+          key: r.classification?.id ?? 'none',
+          label: r.classification ? `${r.classification.code} — ${r.classification.name}` : 'Sem classificação',
+        })),
+      ).slice(0, 8);
+
+      const byCategory = tally(
+        rows.map((r) => ({
+          key: r.batch?.id ?? 'none',
+          label: r.batch ? r.batch.name || r.batch.batch_number : 'Sem lote',
+        })),
+      ).slice(0, 8);
+
+      const indexedCount = rows.filter((r) => r.indexed_at).length;
+      const byIndexing: GedDashboardSlice[] = [
+        { key: 'indexed', label: 'Indexados', count: indexedCount },
+        { key: 'pending', label: 'Por indexar', count: rows.length - indexedCount },
+      ];
+
+      const monthMap = new Map<string, number>();
+      rows.forEach((r) => {
+        const d = new Date(r.created_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthMap.set(key, (monthMap.get(key) ?? 0) + 1);
+      });
+      const byMonth = [...monthMap.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-6)
+        .map(([key, count]) => ({ key, label: key, count }));
+
+      return { total: rows.length, byStatus, byClassification, byCategory, byIndexing, byMonth };
+    },
+    staleTime: 30000,
+  });
+}
