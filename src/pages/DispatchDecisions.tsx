@@ -209,7 +209,7 @@ export default function DispatchDecisions() {
                         ) : (
                           <div className="flex flex-col gap-1">
                             {r.protocols.map((p) => (
-                              <Link key={p.id} to="/protocol" className="text-sm hover:underline">
+                              <Link key={p.id} to="/protocol-flow" className="text-sm hover:underline">
                                 {p.protocol_number}
                               </Link>
                             ))}

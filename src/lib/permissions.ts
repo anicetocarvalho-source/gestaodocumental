@@ -41,6 +41,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/flow-documentation": ["admin", "gestor", "tecnico", "consulta"],
   "/profile": ["admin", "gestor", "tecnico", "consulta"],
   "/protocol-book": ["admin", "gestor", "tecnico", "consulta"],
+  "/protocol-flow": ["admin", "gestor", "tecnico", "consulta"],
 
   // Rotas sensíveis - acesso restrito
   "/audit-logs": ["admin", "gestor"],
@@ -61,6 +62,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/physical-seals/new": ["admin", "gestor", "tecnico"],
   "/processes/new": ["admin", "gestor", "tecnico"],
   "/dispatches/new": ["admin", "gestor", "tecnico"],
+  "/dispatches/decisions": ["admin", "gestor", "tecnico"],
 
   // Arquivo físico e integrações
   "/archive/locations": ["admin", "gestor", "tecnico"],

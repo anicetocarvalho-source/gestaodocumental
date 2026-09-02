@@ -49,6 +49,8 @@ import PendingApprovals from "./pages/PendingApprovals";
 import FlowDocumentation from "./pages/FlowDocumentation";
 import Profile from "./pages/Profile";
 import ProtocolBook from "./pages/ProtocolBook";
+import ProtocolFlow from "./pages/ProtocolFlow";
+import DispatchDecisions from "./pages/DispatchDecisions";
 import ArchiveLocations from "./pages/ArchiveLocations";
 import PhysicalTracking from "./pages/PhysicalTracking";
 import DocumentLoans from "./pages/DocumentLoans";
@@ -100,6 +102,7 @@ const App = () => (
               <Route path="/processes/new" element={<ProtectedRoute><CreateProcess /></ProtectedRoute>} />
               <Route path="/processes/:id" element={<ProtectedRoute><ProcessDetail /></ProtectedRoute>} />
               <Route path="/dispatches" element={<ProtectedRoute><DispatchManagement /></ProtectedRoute>} />
+              <Route path="/dispatches/decisions" element={<ProtectedRoute><DispatchDecisions /></ProtectedRoute>} />
               <Route path="/dispatches/new" element={<ProtectedRoute><CreateDispatch /></ProtectedRoute>} />
               <Route path="/dispatches/:id" element={<ProtectedRoute><DispatchDetail /></ProtectedRoute>} />
               <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
@@ -131,6 +134,7 @@ const App = () => (
               <Route path="/movement-history" element={<ProtectedRoute><MovementHistory /></ProtectedRoute>} />
               <Route path="/flow-documentation" element={<ProtectedRoute><FlowDocumentation /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/protocol-flow" element={<ProtectedRoute><ProtocolFlow /></ProtectedRoute>} />
               <Route path="/protocol-book" element={<ProtectedRoute><ProtocolBook /></ProtectedRoute>} />
               <Route path="/seals" element={<ProtectedRoute><PhysicalSealsList /></ProtectedRoute>} />
               <Route path="/seals/new" element={<ProtectedRoute><PhysicalSealRegister /></ProtectedRoute>} />
