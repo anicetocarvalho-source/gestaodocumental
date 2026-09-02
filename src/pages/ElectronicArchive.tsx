@@ -133,6 +133,23 @@ export default function ElectronicArchive() {
           ))}
         </div>
 
+        <GedControlPanel
+          onSelectStatus={(status) => {
+            setDraft((d) => ({ ...d, status }));
+            setFilters((f) => ({ ...f, status }));
+          }}
+          onSelectClassification={(classificationId) => {
+            setDraft((d) => ({ ...d, classificationId }));
+            setFilters((f) => ({ ...f, classificationId }));
+          }}
+          onSelectIndexing={(indexed) => {
+            setDraft((d) => ({ ...d, indexed }));
+            setFilters((f) => ({ ...f, indexed }));
+          }}
+        />
+
+
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pesquisa</CardTitle>
