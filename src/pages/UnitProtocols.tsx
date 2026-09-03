@@ -52,7 +52,7 @@ export default function UnitProtocols() {
   );
 
   // Técnico: fica sempre limitado à sua unidade; Gestor/Admin podem alternar
-  const canViewAllUnits = profile?.role === "gestor" || profile?.role === "admin";
+  const canViewAllUnits = primaryRole === "gestor" || primaryRole === "admin";
 
   useEffect(() => {
     if (!canViewAllUnits && myUnitId) setUnitFilter("mine");
@@ -94,7 +94,7 @@ export default function UnitProtocols() {
         : units?.find((u) => u.id === unitFilter)?.name ?? "";
 
   return (
-    <MainLayout>
+    <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Protocolos por Unidade</h1>
@@ -270,6 +270,6 @@ export default function UnitProtocols() {
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
+    </DashboardLayout>
   );
 }
