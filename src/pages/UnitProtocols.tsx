@@ -35,6 +35,7 @@ const STAGE_VARIANTS: Record<ProtocolStage, "default" | "secondary" | "outline" 
 export default function UnitProtocols() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { primaryRole } = useUserRole();
   const { data: units } = useOrganizationalUnits({ activeOnly: true });
 
   const [search, setSearch] = useState("");
