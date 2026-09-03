@@ -42,6 +42,7 @@ export const navigationPermissions: Record<string, AppRole[]> = {
   "/profile": ["admin", "gestor", "tecnico", "consulta"],
   "/protocol-book": ["admin", "gestor", "tecnico", "consulta"],
   "/protocol-flow": ["admin", "gestor", "tecnico", "consulta"],
+  "/unit-protocols": ["admin", "gestor", "tecnico"],
 
   // Rotas sensíveis - acesso restrito
   "/audit-logs": ["admin", "gestor"],

@@ -50,6 +50,7 @@ import FlowDocumentation from "./pages/FlowDocumentation";
 import Profile from "./pages/Profile";
 import ProtocolBook from "./pages/ProtocolBook";
 import ProtocolFlow from "./pages/ProtocolFlow";
+import UnitProtocols from "./pages/UnitProtocols";
 import DispatchDecisions from "./pages/DispatchDecisions";
 import ArchiveLocations from "./pages/ArchiveLocations";
 import PhysicalTracking from "./pages/PhysicalTracking";
@@ -135,6 +136,7 @@ const App = () => (
               <Route path="/flow-documentation" element={<ProtectedRoute><FlowDocumentation /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/protocol-flow" element={<ProtectedRoute><ProtocolFlow /></ProtectedRoute>} />
+              <Route path="/unit-protocols" element={<ProtectedRoute><UnitProtocols /></ProtectedRoute>} />
               <Route path="/protocol-book" element={<ProtectedRoute><ProtocolBook /></ProtectedRoute>} />
               <Route path="/seals" element={<ProtectedRoute><PhysicalSealsList /></ProtectedRoute>} />
               <Route path="/seals/new" element={<ProtectedRoute><PhysicalSealRegister /></ProtectedRoute>} />
