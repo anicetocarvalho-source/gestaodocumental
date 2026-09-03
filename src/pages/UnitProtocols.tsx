@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MainLayout } from "@/components/layout/MainLayout";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
