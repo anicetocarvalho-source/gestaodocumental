@@ -64,6 +64,7 @@ const documentItems: NavItem[] = [
   { name: "Decisões Internas", href: "/dispatches/decisions", icon: Package, roles: ["admin", "gestor", "tecnico"] },
   { name: "Protocolo", href: "/protocol-book", icon: BookOpen, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Fluxo do Protocolo", href: "/protocol-flow", icon: BookOpen, roles: ["admin", "gestor", "tecnico", "consulta"] },
+  { name: "Protocolos por Unidade", href: "/unit-protocols", icon: Building2, roles: ["admin", "gestor", "tecnico"] },
   { name: "Selo Físico", href: "/physical-seals", icon: Stamp, roles: ["admin", "gestor", "tecnico", "consulta"] },
   { name: "Aprovações", href: "/approvals", icon: CheckSquare, roles: ["admin", "gestor"] },
   { name: "Movimentações", href: "/movement-history", icon: History, roles: ["admin", "gestor", "tecnico", "consulta"] },
