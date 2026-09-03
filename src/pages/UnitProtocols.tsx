@@ -95,7 +95,7 @@ export default function UnitProtocols() {
         : units?.find((u) => u.id === unitFilter)?.name ?? "";
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Protocolos por Unidade">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Protocolos por Unidade</h1>
