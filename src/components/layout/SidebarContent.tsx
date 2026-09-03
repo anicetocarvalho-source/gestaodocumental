@@ -34,6 +34,7 @@ import {
   Boxes,
   QrCode,
   BookMarked,
+  Building2,
   Plug,
   LucideIcon,
   LogOut,
