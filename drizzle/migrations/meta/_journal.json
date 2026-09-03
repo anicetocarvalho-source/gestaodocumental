@@ -8,6 +8,13 @@
       "when": 1788351112239,
       "tag": "0000_protocol_flow_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788444711965,
+      "tag": "0001_auto_assign_unit_to_new_profiles",
+      "breakpoints": true
     }
   ]
 }
